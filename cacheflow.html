@@ -496,6 +496,13 @@ async function submitUnlock() {
     const plain = await decryptPayload(enc.iv, enc.ct, key);
     sessionKey = key;
     appData = JSON.parse(plain);
+    // Ensure all fields exist (forward compatibility)
+    appData.balance = appData.balance ?? 0;
+    appData.recurring = appData.recurring || [];
+    appData.oneoffs = appData.oneoffs || [];
+    appData.history = appData.history || [];
+    appData.settings = appData.settings || { currency: 'USD' };
+    appData.importedAt = appData.importedAt ?? null;
     setLockProgress('lock-progress', 'lock-progress-bar', 100, true);
     setTimeout(() => {
       setLockProgress('lock-progress', 'lock-progress-bar', 0, false);
@@ -567,6 +574,10 @@ function cancelChangePassword() {
 
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape' && isChangingPw) cancelChangePassword();
+  if (e.ctrlKey && e.key === 'l' && !isLocked) {
+    e.preventDefault();
+    lockApp();
+  }
 });
 
 // ── LOCK / IDLE ───────────────────────────────────────────────────────────
@@ -802,6 +813,20 @@ function renderDashboard() {
   }
 
   let html = '';
+  if (appData.recurring.length === 0 && appData.oneoffs.length === 0) {
+    html += '<div class="section"><div style="padding:32px 24px;text-align:center">';
+    html += '<div style="font-family:var(--serif);font-size:20px;margin-bottom:8px">Welcome to Cache Flow</div>';
+    html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);line-height:1.6;max-width:400px;margin:0 auto">';
+    html += 'Get started by importing your recurring transactions from Cache (Settings \u2192 Import), or add them manually from the Transactions tab.</div>';
+    html += '<div style="margin-top:16px;display:flex;gap:8px;justify-content:center">';
+    html += '<button class="form-btn" onclick="openSettings()">Import from Cache</button>';
+    html += '<button class="form-btn cancel" onclick="switchTab(\'transactions\')">Add Manually</button>';
+    html += '</div></div></div>';
+    html += '<div class="quick-add-bar"><button class="quick-add-btn" onclick="showQuickAdd()">+ Quick Add</button></div>';
+    html += '<div id="quick-add-form"></div>';
+    container.innerHTML = html;
+    return;
+  }
   html += renderSection('Upcoming This Week', '7', weekItems);
   html += renderSection('Upcoming This Month', '30', monthItems);
   html += '<div class="quick-add-bar"><button class="quick-add-btn" onclick="showQuickAdd()">+ Quick Add</button></div>';
@@ -1368,10 +1393,29 @@ async function submitQuickAdd() {
 // ══════════════════════════════════════════════════════════════════════════
 
 (function boot() {
-  const hasEncrypted = !!localStorage.getItem(STORAGE_ENC);
-  if (hasEncrypted) {
-    showLockScreen('unlock');
-  } else {
+  try {
+    const hasEncrypted = !!localStorage.getItem(STORAGE_ENC);
+    if (hasEncrypted) {
+      const meta = JSON.parse(localStorage.getItem(STORAGE_META) || '{}');
+      if (!meta.salt) {
+        if (confirm('Data appears corrupted (missing encryption metadata). Clear and start fresh?')) {
+          localStorage.removeItem(STORAGE_ENC);
+          localStorage.removeItem(STORAGE_META);
+          isFirstRun = true;
+          showLockScreen('set');
+          return;
+        }
+      }
+      showLockScreen('unlock');
+    } else {
+      isFirstRun = true;
+      showLockScreen('set');
+    }
+  } catch (e) {
+    if (confirm('Error loading data: ' + e.message + '. Clear and start fresh?')) {
+      localStorage.removeItem(STORAGE_ENC);
+      localStorage.removeItem(STORAGE_META);
+    }
     isFirstRun = true;
     showLockScreen('set');
   }
