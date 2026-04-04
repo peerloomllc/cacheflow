@@ -27,6 +27,7 @@ Each item: `- [ ] Description` with metadata tags: `[type]` `[complexity]` `[pri
 - [ ] Add a dedicated Recurring Cash Flow tab/page (like Cache's Cash Flow page) for managing all recurring income/expenses setup `[feature]` `[large]` `[high]`
 
 ### Transactions Page Overhaul
+- [ ] Ability to search/filter transactions on Transactions tab `[feature]` `[small]` `[high]`
 - [ ] Transactions page should forecast out 6 months with +/- controls to increase/decrease the horizon `[feature]` `[medium]` `[high]`
 - [ ] Transactions page should be grouped by month with expand/collapse capability `[feature]` `[medium]` `[high]`
 - [ ] Remove "Add Recurring" button from Transactions page (recurring items managed on Recurring Cash Flow page) `[refactor]` `[small]` `[medium]`
