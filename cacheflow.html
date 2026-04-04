@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cache Flow — Personal Cash Flow</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='16' fill='%230d0f0e'/><text x='16' y='22' text-anchor='middle' font-family='Georgia,serif' font-size='18' font-style='italic' fill='%23a8d08d'>CF</text></svg>">
+<meta name="theme-color" content="#0d0f0e">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0f0e; --surface:#141714; --surface2:#1a1e1a;
+    --border:#252a25; --border-light:#2e352e;
+    --accent:#a8d08d; --accent-dim:#6a9e52; --accent-glow:rgba(168,208,141,0.12);
+    --red:#e07070; --red-dim:#a84f4f; --red-glow:rgba(224,112,112,0.10);
+    --gold:#d4a843;
+    --text:#e8ede8; --text-muted:#7a8a7a; --text-dim:#4a5a4a;
+    --mono:'DM Mono',monospace; --serif:'DM Serif Display',serif; --sans:'DM Sans',sans-serif;
+    --radius:6px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  input[type=number]{-moz-appearance:textfield}
+  html{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(168,208,141,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(168,208,141,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+  /* ── LOCK SCREEN ── */
+  #lock-screen{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center;animation:fadeIn .25s ease}
+  #lock-screen.hidden{display:none}
+  .lock-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:40px 44px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:20px;animation:fadeUp .3s ease}
+  .lock-title{font-family:var(--serif);font-size:26px;font-weight:400;letter-spacing:-.3px;text-align:center}
+  .lock-title span{color:var(--accent);font-style:italic}
+  .lock-subtitle{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:center;letter-spacing:1px;margin-top:2px}
+  .lock-field{display:flex;flex-direction:column;gap:6px}
+  .lock-label{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim)}
+  .lock-input{background:var(--surface2);border:1px solid var(--border-light);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:14px;padding:10px 12px;outline:none;transition:border-color .15s;width:100%}
+  .lock-input:focus{border-color:var(--accent-dim)}
+  .lock-input.error{border-color:var(--red);animation:shake .3s ease}
+  .lock-btn{background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:1px;padding:11px;border:none;border-radius:4px;cursor:pointer;transition:background .15s;width:100%}
+  .lock-btn:hover{background:#bfe0a0}
+  .lock-btn:disabled{opacity:.5;cursor:not-allowed}
+  .lock-btn.secondary{background:transparent;border:1px solid var(--border-light);color:var(--text-muted)}
+  .lock-btn.secondary:hover{border-color:var(--text-dim);color:var(--text);background:transparent}
+  .lock-error{font-family:var(--mono);font-size:11px;color:var(--red);text-align:center;min-height:16px}
+  .lock-hint{font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center}
+  .lock-progress{height:2px;background:var(--border);border-radius:1px;overflow:hidden;display:none}
+  .lock-progress-bar{height:100%;background:var(--accent);width:0%;transition:width .1s}
+  .lock-progress.active{display:block}
+
+  /* ── TOAST ── */
+  .toast{position:fixed;top:24px;right:32px;z-index:200;background:var(--surface2);border:1px solid var(--border-light);color:var(--text);font-family:var(--mono);font-size:12px;padding:10px 18px;border-radius:5px;opacity:0;transform:translateY(-8px);transition:all .2s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.success{border-color:var(--accent-dim);color:var(--accent)}
+  .toast.error{border-color:var(--red-dim);color:var(--red)}
+</style>
+</head>
+<body>
+
+<!-- ══ LOCK SCREEN ══ -->
+<div id="lock-screen">
+  <div class="lock-card">
+    <div>
+      <div class="lock-title">Cache <span>Flow</span></div>
+      <div class="lock-subtitle" id="lock-subtitle">Enter your password to unlock</div>
+    </div>
+    <div id="lock-form-unlock">
+      <div class="lock-field">
+        <div class="lock-label">Password</div>
+        <input class="lock-input" type="password" id="lock-pw-input" placeholder="••••••••••••"
+          onkeydown="if(event.key==='Enter')submitUnlock()">
+      </div>
+      <div class="lock-progress" id="lock-progress"><div class="lock-progress-bar" id="lock-progress-bar"></div></div>
+      <div class="lock-error" id="lock-error"></div>
+      <button class="lock-btn" id="lock-submit-btn" onclick="submitUnlock()">Unlock</button>
+    </div>
+    <div id="lock-form-set" style="display:none;flex-direction:column;gap:12px">
+      <div class="lock-field">
+        <div class="lock-label">New Password</div>
+        <input class="lock-input" type="password" id="lock-set-pw" placeholder="Choose a strong password"
+          onkeydown="if(event.key==='Enter')document.getElementById('lock-set-pw2').focus()">
+      </div>
+      <div class="lock-field">
+        <div class="lock-label">Confirm Password</div>
+        <input class="lock-input" type="password" id="lock-set-pw2" placeholder="Repeat password"
+          onkeydown="if(event.key==='Enter')submitSetPassword()">
+      </div>
+      <div class="lock-progress" id="lock-set-progress"><div class="lock-progress-bar" id="lock-set-progress-bar"></div></div>
+      <div class="lock-error" id="lock-set-error"></div>
+      <button class="lock-btn" onclick="submitSetPassword()">Set Password &amp; Continue</button>
+      <button class="lock-btn secondary" id="lock-set-cancel" onclick="cancelChangePassword()" style="display:none">Cancel</button>
+    </div>
+    <div class="lock-hint" id="lock-hint">Your data is encrypted with AES-256-GCM. The password is never stored.</div>
+  </div>
+</div>
+
+<!-- ══ APP (hidden until unlocked) ══ -->
+<div id="app" style="display:none">
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// ── CONSTANTS & STATE ────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+const STORAGE_ENC  = 'cacheflow-v1-enc';
+const STORAGE_META = 'cacheflow-v1-meta';
+const PBKDF2_ITERS = 310000;
+const IDLE_TIMEOUT = 15 * 60 * 1000;
+
+let sessionKey    = null;
+let idleTimer     = null;
+let isLocked      = true;
+let isFirstRun    = false;
+let isChangingPw  = false;
+
+let appData = {
+  balance: 0,
+  recurring: [],
+  oneoffs: [],
+  history: [],
+  settings: { currency: 'USD' },
+  importedAt: null,
+  savedAt: null
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── CRYPTO HELPERS ───────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+function buf2b64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+function b642buf(b64) {
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+async function deriveKey(password, salt) {
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERS, hash: 'SHA-256' },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptPayload(plaintext, key) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+  return { iv: buf2b64(iv), ct: buf2b64(ct) };
+}
+
+async function decryptPayload(ivB64, ctB64, key) {
+  const iv = b642buf(ivB64);
+  const ct = b642buf(ctB64);
+  const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return new TextDecoder().decode(dec);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── TOAST ────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+let toastTimer;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = 'toast', 2500);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── LOCK SCREEN ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+function showLockScreen(mode) {
+  const screen = document.getElementById('lock-screen');
+  screen.classList.remove('hidden');
+  screen.style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lock-form-unlock').style.display = mode === 'unlock' ? 'flex' : 'none';
+  document.getElementById('lock-form-unlock').style.flexDirection = 'column';
+  document.getElementById('lock-form-unlock').style.gap = '12px';
+  document.getElementById('lock-form-set').style.display = mode === 'set' ? 'flex' : 'none';
+  document.getElementById('lock-error').textContent = '';
+  document.getElementById('lock-set-error').textContent = '';
+
+  if (mode === 'set') {
+    document.getElementById('lock-subtitle').textContent = isChangingPw ? 'Change your password' : 'Set a password to protect your data';
+    document.getElementById('lock-hint').textContent = 'AES-256-GCM encryption \u00b7 PBKDF2 310k iterations \u00b7 password never stored';
+    document.getElementById('lock-set-cancel').style.display = isChangingPw ? 'block' : 'none';
+    setTimeout(() => document.getElementById('lock-set-pw').focus(), 80);
+  } else {
+    document.getElementById('lock-subtitle').textContent = 'Enter your password to unlock';
+    document.getElementById('lock-hint').textContent = 'Your data is encrypted with AES-256-GCM. The password is never stored.';
+    setTimeout(() => document.getElementById('lock-pw-input').focus(), 80);
+  }
+}
+
+function hideLockScreen() {
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('lock-pw-input').value = '';
+  document.getElementById('lock-set-pw').value = '';
+  document.getElementById('lock-set-pw2').value = '';
+}
+
+function setLockProgress(id, barId, pct, active) {
+  const wrap = document.getElementById(id);
+  const bar = document.getElementById(barId);
+  wrap.classList.toggle('active', active);
+  if (bar) bar.style.width = pct + '%';
+}
+
+function setLockBtn(disabled, label) {
+  const btn = document.getElementById('lock-submit-btn');
+  if (!btn) return;
+  btn.disabled = disabled;
+  btn.textContent = label || 'Unlock';
+}
+
+// ── UNLOCK ────────────────────────────────────────────────────────────────
+async function submitUnlock() {
+  const pw = document.getElementById('lock-pw-input').value;
+  if (!pw) return;
+  const errEl = document.getElementById('lock-error');
+  errEl.textContent = '';
+  setLockBtn(true, 'Decrypting\u2026');
+  setLockProgress('lock-progress', 'lock-progress-bar', 60, true);
+
+  try {
+    const meta = JSON.parse(localStorage.getItem(STORAGE_META) || '{}');
+    const enc = JSON.parse(localStorage.getItem(STORAGE_ENC) || '{}');
+    const salt = b642buf(meta.salt);
+    const key = await deriveKey(pw, salt);
+    setLockProgress('lock-progress', 'lock-progress-bar', 90, true);
+    const plain = await decryptPayload(enc.iv, enc.ct, key);
+    sessionKey = key;
+    appData = JSON.parse(plain);
+    setLockProgress('lock-progress', 'lock-progress-bar', 100, true);
+    setTimeout(() => {
+      setLockProgress('lock-progress', 'lock-progress-bar', 0, false);
+      setLockBtn(false, 'Unlock');
+      hideLockScreen();
+      isLocked = false;
+      resetIdleTimer();
+      renderAll();
+    }, 200);
+  } catch (e) {
+    setLockProgress('lock-progress', 'lock-progress-bar', 0, false);
+    setLockBtn(false, 'Unlock');
+    const input = document.getElementById('lock-pw-input');
+    input.classList.add('error');
+    errEl.textContent = 'Incorrect password \u2014 please try again.';
+    input.value = '';
+    setTimeout(() => input.classList.remove('error'), 500);
+  }
+}
+
+// ── SET / CHANGE PASSWORD ─────────────────────────────────────────────────
+async function submitSetPassword() {
+  const pw = document.getElementById('lock-set-pw').value;
+  const pw2 = document.getElementById('lock-set-pw2').value;
+  const errEl = document.getElementById('lock-set-error');
+  errEl.textContent = '';
+
+  if (pw.length < 8) {
+    errEl.textContent = 'Password must be at least 8 characters.';
+    return;
+  }
+  if (pw !== pw2) {
+    errEl.textContent = 'Passwords do not match.';
+    document.getElementById('lock-set-pw2').classList.add('error');
+    setTimeout(() => document.getElementById('lock-set-pw2').classList.remove('error'), 500);
+    return;
+  }
+
+  setLockProgress('lock-set-progress', 'lock-set-progress-bar', 50, true);
+  const salt = crypto.getRandomValues(new Uint8Array(32));
+  const key = await deriveKey(pw, salt);
+  sessionKey = key;
+  setLockProgress('lock-set-progress', 'lock-set-progress-bar', 80, true);
+
+  localStorage.setItem(STORAGE_META, JSON.stringify({ salt: buf2b64(salt) }));
+  await encryptAndSave();
+
+  setLockProgress('lock-set-progress', 'lock-set-progress-bar', 100, true);
+  setTimeout(() => {
+    setLockProgress('lock-set-progress', 'lock-set-progress-bar', 0, false);
+    isChangingPw = false;
+    hideLockScreen();
+    isLocked = false;
+    resetIdleTimer();
+    renderAll();
+    showToast('Password set \u2014 data is now encrypted', 'success');
+  }, 300);
+}
+
+function showChangePassword() {
+  isChangingPw = true;
+  showLockScreen('set');
+}
+
+function cancelChangePassword() {
+  isChangingPw = false;
+  hideLockScreen();
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && isChangingPw) cancelChangePassword();
+});
+
+// ── LOCK / IDLE ───────────────────────────────────────────────────────────
+function lockApp() {
+  sessionKey = null;
+  isLocked = true;
+  clearIdleTimer();
+  appData = { balance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  showLockScreen('unlock');
+}
+
+function resetIdleTimer() {
+  clearIdleTimer();
+  idleTimer = setTimeout(() => {
+    if (!isLocked) lockApp();
+  }, IDLE_TIMEOUT);
+}
+
+function clearIdleTimer() {
+  if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+}
+
+['mousemove', 'keydown', 'click', 'touchstart'].forEach(ev => {
+  document.addEventListener(ev, () => { if (!isLocked) resetIdleTimer(); }, { passive: true });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── ENCRYPT & SAVE ───────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+async function encryptAndSave() {
+  pruneHistory();
+  appData.savedAt = new Date().toISOString();
+  const payload = JSON.stringify(appData);
+  if (sessionKey) {
+    const { iv, ct } = await encryptPayload(payload, sessionKey);
+    localStorage.setItem(STORAGE_ENC, JSON.stringify({ iv, ct }));
+  }
+}
+
+function pruneHistory() {
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  appData.history = appData.history.filter(h => new Date(h.paidAt).getTime() > cutoff);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── RENDER STUB ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderAll() {
+  // Will be implemented in subsequent tasks
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── BOOT ─────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+(function boot() {
+  const hasEncrypted = !!localStorage.getItem(STORAGE_ENC);
+  if (hasEncrypted) {
+    showLockScreen('unlock');
+  } else {
+    isFirstRun = true;
+    showLockScreen('set');
+  }
+})();
+</script>
+</body>
+</html>
