@@ -159,6 +159,23 @@
   .edit-panel .inline-form{padding:8px 0;border:none;background:transparent}
   .edit-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
   .enabled-toggle{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--text-dim);cursor:pointer;padding:6px 0}
+
+  /* ── FORECAST TABLE ── */
+  .forecast-table{width:100%;border-collapse:collapse}
+  .forecast-table th{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:10px 14px;text-align:right;border-bottom:1px solid var(--border);background:var(--surface2)}
+  .forecast-table th:first-child{text-align:left}
+  .forecast-table td{font-family:var(--mono);font-size:13px;padding:10px 14px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03)}
+  .forecast-table td:first-child{text-align:left;color:var(--text-muted);font-size:12px}
+  .forecast-table tr:nth-child(even) td{background:var(--surface2)}
+  .forecast-table tr:nth-child(odd) td{background:var(--surface)}
+  .forecast-table tr.current-month td{border-left:2px solid var(--accent)}
+  .forecast-table tr.negative-balance td{background:var(--red-glow)}
+  .forecast-table .f-income{color:var(--accent)}
+  .forecast-table .f-expense{color:var(--red)}
+  .forecast-table .f-net-pos{color:var(--accent)}
+  .forecast-table .f-net-neg{color:var(--red)}
+  .forecast-table .f-bal-pos{color:var(--text);font-weight:500}
+  .forecast-table .f-bal-neg{color:var(--red);font-weight:500}
 </style>
 </head>
 <body>
@@ -925,7 +942,78 @@ async function submitAddRecurring() {
   showToast('Added ' + name, 'success');
 }
 
-function renderForecast() {}
+function renderForecast() {
+  const container = document.getElementById('view-forecast');
+  const now = new Date();
+  const currentMonthKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+
+  let monthlyIncome = 0, monthlyExpense = 0;
+  appData.recurring.filter(r => r.enabled).forEach(r => {
+    const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+    if (r.direction === 'income') monthlyIncome += monthly;
+    else monthlyExpense += monthly;
+  });
+
+  const oneoffByMonth = {};
+  appData.oneoffs.filter(o => !o.paid).forEach(o => {
+    const key = o.date.slice(0, 7);
+    if (!oneoffByMonth[key]) oneoffByMonth[key] = { income: 0, expense: 0 };
+    if (o.direction === 'income') oneoffByMonth[key].income += parseFloat(o.amount) || 0;
+    else oneoffByMonth[key].expense += parseFloat(o.amount) || 0;
+  });
+
+  let html = '<div class="section"><div class="section-header"><div class="section-title">';
+  html += '<div class="section-icon icon-default">12</div>';
+  html += '<span class="section-name">12-Month Forecast</span></div></div>';
+  html += '<table class="forecast-table"><thead><tr>';
+  html += '<th>Month</th><th>Income</th><th>Expenses</th><th>Net</th><th>Balance</th>';
+  html += '</tr></thead><tbody>';
+
+  let runningBalance = appData.balance;
+
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const monthKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const isCurrent = monthKey === currentMonthKey;
+
+    let incomeThisMonth = monthlyIncome;
+    let expenseThisMonth = monthlyExpense;
+
+    if (i === 0) {
+      const totalDays = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      const remainingDays = totalDays - now.getDate() + 1;
+      const fraction = remainingDays / totalDays;
+      incomeThisMonth = monthlyIncome * fraction;
+      expenseThisMonth = monthlyExpense * fraction;
+    }
+
+    const oo = oneoffByMonth[monthKey];
+    if (oo) {
+      incomeThisMonth += oo.income;
+      expenseThisMonth += oo.expense;
+    }
+
+    const net = incomeThisMonth - expenseThisMonth;
+    runningBalance += net;
+    const isNegBal = runningBalance < 0;
+
+    let rowClass = '';
+    if (isCurrent) rowClass += ' current-month';
+    if (isNegBal) rowClass += ' negative-balance';
+
+    html += '<tr class="' + rowClass.trim() + '">';
+    html += '<td>' + label + '</td>';
+    html += '<td class="f-income">' + fmtMoney(incomeThisMonth) + '</td>';
+    html += '<td class="f-expense">' + fmtMoney(expenseThisMonth) + '</td>';
+    html += '<td class="' + (net >= 0 ? 'f-net-pos' : 'f-net-neg') + '">' + (net >= 0 ? '+' : '') + fmtMoney(net) + '</td>';
+    html += '<td class="' + (runningBalance >= 0 ? 'f-bal-pos' : 'f-bal-neg') + '">' + fmtMoney(runningBalance) + '</td>';
+    html += '</tr>';
+  }
+
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
 
 function openSettings() {
   // Will be implemented in Task 6
