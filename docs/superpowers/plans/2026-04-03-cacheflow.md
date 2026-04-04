@@ -1,0 +1,1846 @@
+# Cache Flow Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Build a single-file personal cash flow and budgeting app (`cacheflow.html`) with encrypted localStorage persistence, matching the Cache companion app's design language.
+
+**Architecture:** Single HTML file with inline `<style>` and `<script>`. AES-256-GCM encryption with PBKDF2 key derivation via Web Crypto API. Three-tab UI (Dashboard, Transactions, Forecast) with a lock screen overlay. All state held in JS variables, persisted to localStorage on save.
+
+**Tech Stack:** Vanilla HTML/CSS/JS, Web Crypto API, localStorage, Google Fonts (DM Serif Display, DM Mono, DM Sans)
+
+---
+
+### File Structure
+
+- **Create:** `cacheflow.html` — the entire application (CSS + HTML + JS in one file)
+
+The file is organized in this order:
+1. `<head>` — meta tags, favicon, Google Fonts link
+2. `<style>` — all CSS (CSS custom properties, lock screen, header, tabs, sections, rows, modals, toast, animations, responsive)
+3. `<body>` — lock screen HTML, header, tab nav, three view containers, settings modal, toast element
+4. `<script>` — all JS organized as:
+   - Constants and state variables
+   - Crypto helpers (buf2b64, b642buf, deriveKey, encryptPayload, decryptPayload)
+   - Lock/unlock/password functions
+   - Data helpers (generateId, advanceDate, getUpcoming, normalizeToMonthly, pruneHistory)
+   - Render functions (renderDashboard, renderTransactions, renderForecast, renderAll)
+   - Action handlers (markPaid, addOneoff, addRecurring, editRecurring, deleteRecurring)
+   - Settings/import/export functions
+   - Idle timer
+   - Boot sequence
+
+---
+
+### Task 1: HTML Shell + CSS Foundation + Lock Screen
+
+Create the file with the complete HTML structure, all CSS, and a working lock screen (encryption + unlock + set password). No app content yet — just the encrypted shell.
+
+**Files:**
+- Create: `cacheflow.html`
+
+- [ ] **Step 1: Create the file with head, CSS custom properties, and base styles**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cache Flow — Personal Cash Flow</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='16' fill='%230d0f0e'/><text x='16' y='22' text-anchor='middle' font-family='Georgia,serif' font-size='18' font-style='italic' fill='%23a8d08d'>CF</text></svg>">
+<meta name="theme-color" content="#0d0f0e">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0f0e; --surface:#141714; --surface2:#1a1e1a;
+    --border:#252a25; --border-light:#2e352e;
+    --accent:#a8d08d; --accent-dim:#6a9e52; --accent-glow:rgba(168,208,141,0.12);
+    --red:#e07070; --red-dim:#a84f4f; --red-glow:rgba(224,112,112,0.10);
+    --gold:#d4a843;
+    --text:#e8ede8; --text-muted:#7a8a7a; --text-dim:#4a5a4a;
+    --mono:'DM Mono',monospace; --serif:'DM Serif Display',serif; --sans:'DM Sans',sans-serif;
+    --radius:6px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  input[type=number]{-moz-appearance:textfield}
+  html{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(168,208,141,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(168,208,141,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+  /* ── LOCK SCREEN ── */
+  #lock-screen{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center;animation:fadeIn .25s ease}
+  #lock-screen.hidden{display:none}
+  .lock-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:40px 44px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:20px;animation:fadeUp .3s ease}
+  .lock-title{font-family:var(--serif);font-size:26px;font-weight:400;letter-spacing:-.3px;text-align:center}
+  .lock-title span{color:var(--accent);font-style:italic}
+  .lock-subtitle{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:center;letter-spacing:1px;margin-top:2px}
+  .lock-field{display:flex;flex-direction:column;gap:6px}
+  .lock-label{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim)}
+  .lock-input{background:var(--surface2);border:1px solid var(--border-light);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:14px;padding:10px 12px;outline:none;transition:border-color .15s;width:100%}
+  .lock-input:focus{border-color:var(--accent-dim)}
+  .lock-input.error{border-color:var(--red);animation:shake .3s ease}
+  .lock-btn{background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:1px;padding:11px;border:none;border-radius:4px;cursor:pointer;transition:background .15s;width:100%}
+  .lock-btn:hover{background:#bfe0a0}
+  .lock-btn:disabled{opacity:.5;cursor:not-allowed}
+  .lock-btn.secondary{background:transparent;border:1px solid var(--border-light);color:var(--text-muted)}
+  .lock-btn.secondary:hover{border-color:var(--text-dim);color:var(--text);background:transparent}
+  .lock-error{font-family:var(--mono);font-size:11px;color:var(--red);text-align:center;min-height:16px}
+  .lock-hint{font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center}
+  .lock-progress{height:2px;background:var(--border);border-radius:1px;overflow:hidden;display:none}
+  .lock-progress-bar{height:100%;background:var(--accent);width:0%;transition:width .1s}
+  .lock-progress.active{display:block}
+
+  /* ── TOAST ── */
+  .toast{position:fixed;top:24px;right:32px;z-index:200;background:var(--surface2);border:1px solid var(--border-light);color:var(--text);font-family:var(--mono);font-size:12px;padding:10px 18px;border-radius:5px;opacity:0;transform:translateY(-8px);transition:all .2s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.success{border-color:var(--accent-dim);color:var(--accent)}
+  .toast.error{border-color:var(--red-dim);color:var(--red)}
+</style>
+</head>
+<body>
+
+<!-- ══ LOCK SCREEN ══ -->
+<div id="lock-screen">
+  <div class="lock-card">
+    <div>
+      <div class="lock-title">Cache <span>Flow</span></div>
+      <div class="lock-subtitle" id="lock-subtitle">Enter your password to unlock</div>
+    </div>
+    <div id="lock-form-unlock">
+      <div class="lock-field">
+        <div class="lock-label">Password</div>
+        <input class="lock-input" type="password" id="lock-pw-input" placeholder="••••••••••••"
+          onkeydown="if(event.key==='Enter')submitUnlock()">
+      </div>
+      <div class="lock-progress" id="lock-progress"><div class="lock-progress-bar" id="lock-progress-bar"></div></div>
+      <div class="lock-error" id="lock-error"></div>
+      <button class="lock-btn" id="lock-submit-btn" onclick="submitUnlock()">Unlock</button>
+    </div>
+    <div id="lock-form-set" style="display:none;flex-direction:column;gap:12px">
+      <div class="lock-field">
+        <div class="lock-label">New Password</div>
+        <input class="lock-input" type="password" id="lock-set-pw" placeholder="Choose a strong password"
+          onkeydown="if(event.key==='Enter')document.getElementById('lock-set-pw2').focus()">
+      </div>
+      <div class="lock-field">
+        <div class="lock-label">Confirm Password</div>
+        <input class="lock-input" type="password" id="lock-set-pw2" placeholder="Repeat password"
+          onkeydown="if(event.key==='Enter')submitSetPassword()">
+      </div>
+      <div class="lock-progress" id="lock-set-progress"><div class="lock-progress-bar" id="lock-set-progress-bar"></div></div>
+      <div class="lock-error" id="lock-set-error"></div>
+      <button class="lock-btn" onclick="submitSetPassword()">Set Password &amp; Continue</button>
+      <button class="lock-btn secondary" id="lock-set-cancel" onclick="cancelChangePassword()" style="display:none">Cancel</button>
+    </div>
+    <div class="lock-hint" id="lock-hint">Your data is encrypted with AES-256-GCM. The password is never stored.</div>
+  </div>
+</div>
+
+<!-- ══ APP (hidden until unlocked) ══ -->
+<div id="app" style="display:none">
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// ── CONSTANTS & STATE ────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+const STORAGE_ENC  = 'cacheflow-v1-enc';
+const STORAGE_META = 'cacheflow-v1-meta';
+const PBKDF2_ITERS = 310000;
+const IDLE_TIMEOUT = 15 * 60 * 1000;
+
+let sessionKey    = null;
+let idleTimer     = null;
+let isLocked      = true;
+let isFirstRun    = false;
+let isChangingPw  = false;
+
+let appData = {
+  balance: 0,
+  recurring: [],
+  oneoffs: [],
+  history: [],
+  settings: { currency: 'USD' },
+  importedAt: null,
+  savedAt: null
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── CRYPTO HELPERS ───────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+function buf2b64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+function b642buf(b64) {
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+async function deriveKey(password, salt) {
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERS, hash: 'SHA-256' },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptPayload(plaintext, key) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+  return { iv: buf2b64(iv), ct: buf2b64(ct) };
+}
+
+async function decryptPayload(ivB64, ctB64, key) {
+  const iv = b642buf(ivB64);
+  const ct = b642buf(ctB64);
+  const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return new TextDecoder().decode(dec);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── TOAST ────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+let toastTimer;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = 'toast', 2500);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── LOCK SCREEN ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+function showLockScreen(mode) {
+  const screen = document.getElementById('lock-screen');
+  screen.classList.remove('hidden');
+  screen.style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lock-form-unlock').style.display = mode === 'unlock' ? 'flex' : 'none';
+  document.getElementById('lock-form-unlock').style.flexDirection = 'column';
+  document.getElementById('lock-form-unlock').style.gap = '12px';
+  document.getElementById('lock-form-set').style.display = mode === 'set' ? 'flex' : 'none';
+  document.getElementById('lock-error').textContent = '';
+  document.getElementById('lock-set-error').textContent = '';
+
+  if (mode === 'set') {
+    document.getElementById('lock-subtitle').textContent = isChangingPw ? 'Change your password' : 'Set a password to protect your data';
+    document.getElementById('lock-hint').textContent = 'AES-256-GCM encryption \u00b7 PBKDF2 310k iterations \u00b7 password never stored';
+    document.getElementById('lock-set-cancel').style.display = isChangingPw ? 'block' : 'none';
+    setTimeout(() => document.getElementById('lock-set-pw').focus(), 80);
+  } else {
+    document.getElementById('lock-subtitle').textContent = 'Enter your password to unlock';
+    document.getElementById('lock-hint').textContent = 'Your data is encrypted with AES-256-GCM. The password is never stored.';
+    setTimeout(() => document.getElementById('lock-pw-input').focus(), 80);
+  }
+}
+
+function hideLockScreen() {
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('lock-pw-input').value = '';
+  document.getElementById('lock-set-pw').value = '';
+  document.getElementById('lock-set-pw2').value = '';
+}
+
+function setLockProgress(id, barId, pct, active) {
+  const wrap = document.getElementById(id);
+  const bar = document.getElementById(barId);
+  wrap.classList.toggle('active', active);
+  if (bar) bar.style.width = pct + '%';
+}
+
+function setLockBtn(disabled, label) {
+  const btn = document.getElementById('lock-submit-btn');
+  if (!btn) return;
+  btn.disabled = disabled;
+  btn.textContent = label || 'Unlock';
+}
+
+// ── UNLOCK ────────────────────────────────────────────────────────────────
+async function submitUnlock() {
+  const pw = document.getElementById('lock-pw-input').value;
+  if (!pw) return;
+  const errEl = document.getElementById('lock-error');
+  errEl.textContent = '';
+  setLockBtn(true, 'Decrypting\u2026');
+  setLockProgress('lock-progress', 'lock-progress-bar', 60, true);
+
+  try {
+    const meta = JSON.parse(localStorage.getItem(STORAGE_META) || '{}');
+    const enc = JSON.parse(localStorage.getItem(STORAGE_ENC) || '{}');
+    const salt = b642buf(meta.salt);
+    const key = await deriveKey(pw, salt);
+    setLockProgress('lock-progress', 'lock-progress-bar', 90, true);
+    const plain = await decryptPayload(enc.iv, enc.ct, key);
+    sessionKey = key;
+    appData = JSON.parse(plain);
+    setLockProgress('lock-progress', 'lock-progress-bar', 100, true);
+    setTimeout(() => {
+      setLockProgress('lock-progress', 'lock-progress-bar', 0, false);
+      setLockBtn(false, 'Unlock');
+      hideLockScreen();
+      isLocked = false;
+      resetIdleTimer();
+      renderAll();
+    }, 200);
+  } catch (e) {
+    setLockProgress('lock-progress', 'lock-progress-bar', 0, false);
+    setLockBtn(false, 'Unlock');
+    const input = document.getElementById('lock-pw-input');
+    input.classList.add('error');
+    errEl.textContent = 'Incorrect password \u2014 please try again.';
+    input.value = '';
+    setTimeout(() => input.classList.remove('error'), 500);
+  }
+}
+
+// ── SET / CHANGE PASSWORD ─────────────────────────────────────────────────
+async function submitSetPassword() {
+  const pw = document.getElementById('lock-set-pw').value;
+  const pw2 = document.getElementById('lock-set-pw2').value;
+  const errEl = document.getElementById('lock-set-error');
+  errEl.textContent = '';
+
+  if (pw.length < 8) {
+    errEl.textContent = 'Password must be at least 8 characters.';
+    return;
+  }
+  if (pw !== pw2) {
+    errEl.textContent = 'Passwords do not match.';
+    document.getElementById('lock-set-pw2').classList.add('error');
+    setTimeout(() => document.getElementById('lock-set-pw2').classList.remove('error'), 500);
+    return;
+  }
+
+  setLockProgress('lock-set-progress', 'lock-set-progress-bar', 50, true);
+  const salt = crypto.getRandomValues(new Uint8Array(32));
+  const key = await deriveKey(pw, salt);
+  sessionKey = key;
+  setLockProgress('lock-set-progress', 'lock-set-progress-bar', 80, true);
+
+  localStorage.setItem(STORAGE_META, JSON.stringify({ salt: buf2b64(salt) }));
+  await encryptAndSave();
+
+  setLockProgress('lock-set-progress', 'lock-set-progress-bar', 100, true);
+  setTimeout(() => {
+    setLockProgress('lock-set-progress', 'lock-set-progress-bar', 0, false);
+    isChangingPw = false;
+    hideLockScreen();
+    isLocked = false;
+    resetIdleTimer();
+    renderAll();
+    showToast('Password set \u2014 data is now encrypted', 'success');
+  }, 300);
+}
+
+function showChangePassword() {
+  isChangingPw = true;
+  showLockScreen('set');
+}
+
+function cancelChangePassword() {
+  isChangingPw = false;
+  hideLockScreen();
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && isChangingPw) cancelChangePassword();
+});
+
+// ── LOCK / IDLE ───────────────────────────────────────────────────────────
+function lockApp() {
+  sessionKey = null;
+  isLocked = true;
+  clearIdleTimer();
+  appData = { balance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  showLockScreen('unlock');
+}
+
+function resetIdleTimer() {
+  clearIdleTimer();
+  idleTimer = setTimeout(() => {
+    if (!isLocked) lockApp();
+  }, IDLE_TIMEOUT);
+}
+
+function clearIdleTimer() {
+  if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+}
+
+['mousemove', 'keydown', 'click', 'touchstart'].forEach(ev => {
+  document.addEventListener(ev, () => { if (!isLocked) resetIdleTimer(); }, { passive: true });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── ENCRYPT & SAVE ───────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+async function encryptAndSave() {
+  pruneHistory();
+  appData.savedAt = new Date().toISOString();
+  const payload = JSON.stringify(appData);
+  if (sessionKey) {
+    const { iv, ct } = await encryptPayload(payload, sessionKey);
+    localStorage.setItem(STORAGE_ENC, JSON.stringify({ iv, ct }));
+  }
+}
+
+function pruneHistory() {
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  appData.history = appData.history.filter(h => new Date(h.paidAt).getTime() > cutoff);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── RENDER STUB ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderAll() {
+  // Will be implemented in subsequent tasks
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── BOOT ─────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+(function boot() {
+  const hasEncrypted = !!localStorage.getItem(STORAGE_ENC);
+  if (hasEncrypted) {
+    showLockScreen('unlock');
+  } else {
+    isFirstRun = true;
+    showLockScreen('set');
+  }
+})();
+</script>
+</body>
+</html>
+```
+
+- [ ] **Step 2: Open in browser to verify lock screen renders**
+
+Open `cacheflow.html` in a browser. Expected: dark background with centered lock card showing "Cache Flow" title, "Set a password to protect your data" subtitle, new password + confirm fields, and hint text.
+
+- [ ] **Step 3: Test set password → lock → unlock cycle**
+
+1. Set a password (8+ chars) — should see progress bar, then toast "Password set"
+2. The lock screen should hide (showing empty app div)
+3. Click nothing for now — verify `localStorage` has `cacheflow-v1-enc` and `cacheflow-v1-meta` keys (check in browser DevTools → Application → Local Storage)
+4. Refresh the page — should show unlock screen
+5. Enter wrong password — should show error "Incorrect password"
+6. Enter correct password — should decrypt and show empty app
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add cacheflow.html
+git commit -m "feat: add cacheflow.html with encryption and lock screen"
+```
+
+---
+
+### Task 2: Header, Tab Navigation, and App Shell
+
+Add the header (title + balance display + settings/lock icons), tab navigation, and empty view containers.
+
+**Files:**
+- Modify: `cacheflow.html`
+
+- [ ] **Step 1: Add header and tab CSS after the lock screen styles**
+
+Add this CSS before the closing `</style>` tag:
+
+```css
+  /* ── HEADER ── */
+  header{position:relative;z-index:10;border-bottom:1px solid var(--border);padding:20px 32px 16px;display:flex;align-items:flex-end;justify-content:space-between;background:linear-gradient(180deg,rgba(13,15,14,.98),rgba(20,23,20,.95));backdrop-filter:blur(12px)}
+  .header-left h1{font-family:var(--serif);font-size:28px;font-weight:400;letter-spacing:-.5px;line-height:1}
+  .header-left h1 span{color:var(--accent);font-style:italic}
+  .header-left .subtitle{margin-top:4px;font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase}
+  .header-right{display:flex;align-items:flex-end;gap:16px}
+  .balance-display{text-align:right}
+  .balance-label{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:2px}
+  .balance-value{font-family:var(--serif);font-size:32px;letter-spacing:-1px;color:var(--accent);text-shadow:0 0 40px rgba(168,208,141,.3);transition:all .4s}
+  .balance-value.negative{color:var(--red);text-shadow:0 0 40px rgba(224,112,112,.3)}
+  .header-actions{display:flex;gap:8px;padding-bottom:4px}
+  .header-btn{background:none;border:1px solid var(--border);color:var(--text-dim);width:28px;height:28px;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s}
+  .header-btn:hover{color:var(--accent);border-color:var(--accent-dim)}
+
+  /* ── SUMMARY BAR ── */
+  .summary-bar{position:relative;z-index:10;display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border);background:var(--surface)}
+  .summary-item{padding:14px 24px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px}
+  .summary-item:last-child{border-right:none}
+  .s-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim)}
+  .s-value{font-family:var(--mono);font-size:18px;font-weight:500}
+  .s-value.income{color:var(--accent)}
+  .s-value.expense{color:var(--red)}
+  .s-value.net-pos{color:var(--gold)}
+  .s-value.net-neg{color:var(--red)}
+
+  /* ── TAB NAV ── */
+  .tab-nav{position:relative;z-index:10;display:flex;justify-content:center;border-bottom:1px solid var(--border);background:var(--surface2);padding:0 24px}
+  .tab-btn{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:12px 20px;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;transition:all .2s;margin-bottom:-1px}
+  .tab-btn:hover{color:var(--text-muted)}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+  /* ── VIEWS ── */
+  .view{display:none;position:relative;z-index:10;max-width:900px;margin:0 auto;padding:24px 24px 80px}
+  .view.active{display:block}
+
+  /* ── SECTIONS ── */
+  .section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;animation:fadeUp .4s ease both;margin-bottom:16px}
+  .section-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2)}
+  .section-title{display:flex;align-items:center;gap:8px}
+  .section-icon{width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px}
+  .icon-income{background:var(--accent-glow);border:1px solid rgba(168,208,141,.2)}
+  .icon-expense{background:var(--red-glow);border:1px solid rgba(224,112,112,.2)}
+  .icon-default{background:rgba(255,255,255,.05);border:1px solid var(--border)}
+  .section-name{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)}
+  .section-total{font-family:var(--mono);font-size:14px;font-weight:500}
+```
+
+- [ ] **Step 2: Add header and tab HTML inside the `#app` div**
+
+Replace the empty `<div id="app" style="display:none">` with:
+
+```html
+<div id="app" style="display:none">
+  <header>
+    <div class="header-left">
+      <h1>Cache <span>Flow</span></h1>
+      <div class="subtitle">Personal Cash Flow</div>
+    </div>
+    <div class="header-right">
+      <div class="balance-display">
+        <div class="balance-label">Balance</div>
+        <div class="balance-value" id="balanceDisplay">—</div>
+      </div>
+      <div class="header-actions">
+        <button class="header-btn" onclick="openSettings()" title="Settings">&#9881;</button>
+        <button class="header-btn" onclick="lockApp()" title="Lock">&#128274;</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="summary-bar" id="summaryBar">
+    <div class="summary-item">
+      <div class="s-label">Monthly Income</div>
+      <div class="s-value income" id="sumIncome">—</div>
+    </div>
+    <div class="summary-item">
+      <div class="s-label">Monthly Expenses</div>
+      <div class="s-value expense" id="sumExpense">—</div>
+    </div>
+    <div class="summary-item">
+      <div class="s-label">Net Cash Flow</div>
+      <div class="s-value" id="sumNet">—</div>
+    </div>
+  </div>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>
+    <button class="tab-btn" data-tab="transactions" onclick="switchTab('transactions')">Transactions</button>
+    <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')">Forecast</button>
+  </div>
+
+  <div id="view-dashboard" class="view active"></div>
+  <div id="view-transactions" class="view"></div>
+  <div id="view-forecast" class="view"></div>
+</div>
+```
+
+- [ ] **Step 3: Add tab switching JS and balance/summary rendering**
+
+Add this JS right before the `renderAll()` function:
+
+```javascript
+// ══════════════════════════════════════════════════════════════════════════
+// ── HELPERS ──────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+function generateId() {
+  return Math.random().toString(36).slice(2, 9);
+}
+
+function fmtMoney(n) {
+  const abs = Math.abs(n);
+  const str = abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (n < 0 ? '-' : '') + '$' + str;
+}
+
+function fmtMoneyShort(n) {
+  const abs = Math.abs(n);
+  const str = abs >= 1000
+    ? '$' + (abs / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+    : '$' + abs.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return (n < 0 ? '-' : '') + str;
+}
+
+function normalizeToMonthly(amount, frequency) {
+  switch (frequency) {
+    case 'weekly': return amount * 4.33;
+    case 'biweekly': return amount * 2.17;
+    case 'monthly': return amount;
+    case 'quarterly': return amount / 3;
+    case 'annual': return amount / 12;
+    default: return amount;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── TAB SWITCHING ────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+let currentTab = 'dashboard';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+}
+```
+
+Then update the `renderAll()` function:
+
+```javascript
+function renderAll() {
+  // Balance display
+  const bal = appData.balance;
+  const balEl = document.getElementById('balanceDisplay');
+  balEl.textContent = fmtMoney(bal);
+  balEl.classList.toggle('negative', bal < 0);
+
+  // Summary bar
+  let monthlyIncome = 0, monthlyExpense = 0;
+  appData.recurring.filter(r => r.enabled).forEach(r => {
+    const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+    if (r.direction === 'income') monthlyIncome += monthly;
+    else monthlyExpense += monthly;
+  });
+  document.getElementById('sumIncome').textContent = fmtMoney(monthlyIncome);
+  document.getElementById('sumExpense').textContent = fmtMoney(monthlyExpense);
+  const net = monthlyIncome - monthlyExpense;
+  const netEl = document.getElementById('sumNet');
+  netEl.textContent = (net >= 0 ? '+' : '') + fmtMoney(net);
+  netEl.className = 's-value ' + (net >= 0 ? 'net-pos' : 'net-neg');
+
+  renderDashboard();
+  renderTransactions();
+  renderForecast();
+}
+
+function renderDashboard() {}
+function renderTransactions() {}
+function renderForecast() {}
+```
+
+- [ ] **Step 4: Verify in browser**
+
+Open `cacheflow.html`. Set a password. Expected: header with "Cache Flow" title, balance showing "$0.00", summary bar showing "$0.00" for all three values, three tabs with Dashboard active, empty content area below tabs.
+
+Click each tab — view should switch (empty content area, but active tab styling changes).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add cacheflow.html
+git commit -m "feat: add header, summary bar, and tab navigation"
+```
+
+---
+
+### Task 3: Dashboard View — Upcoming Sections + Quick Add
+
+Implement the Dashboard tab: "Upcoming This Week" and "Upcoming This Month" sections with Paid/Received buttons, plus the Quick Add form for one-off transactions.
+
+**Files:**
+- Modify: `cacheflow.html`
+
+- [ ] **Step 1: Add transaction row and quick-add CSS**
+
+Add before closing `</style>`:
+
+```css
+  /* ── TRANSACTION ROWS ── */
+  .tx-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.03);transition:background .1s}
+  .tx-row:last-child{border-bottom:none}
+  .tx-row:hover{background:rgba(255,255,255,.015)}
+  .tx-row.income-row{background:rgba(168,208,141,0.04);border-left:2px solid var(--accent)}
+  .tx-row.income-row:hover{background:rgba(168,208,141,0.07)}
+  .tx-row.paid-row{opacity:.5}
+  .tx-row.paid-row .tx-name{text-decoration:line-through;color:var(--text-dim)}
+  .tx-name{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tx-meta{font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px;display:flex;align-items:center;gap:6px}
+  .freq-badge{border:1px solid var(--border-light);padding:1px 4px;border-radius:2px;letter-spacing:.5px;text-transform:uppercase}
+  .paid-badge{color:var(--accent-dim);letter-spacing:.5px}
+  .tx-amount{font-family:var(--mono);font-size:13px;color:var(--text);text-align:right;white-space:nowrap}
+  .tx-amount.income{color:var(--accent)}
+  .tx-btn{background:none;border:1px solid var(--border-light);color:var(--text-dim);font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:3px;cursor:pointer;transition:all .15s;white-space:nowrap}
+  .tx-btn:hover{color:var(--accent);border-color:var(--accent-dim)}
+  .tx-btn.danger:hover{color:var(--red);border-color:var(--red-dim)}
+
+  /* ── QUICK ADD / INLINE FORMS ── */
+  .quick-add-bar{display:flex;justify-content:center;padding:16px}
+  .quick-add-btn{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:8px 20px;border-radius:var(--radius);cursor:pointer;transition:all .15s}
+  .quick-add-btn:hover{color:var(--accent);border-color:var(--accent-dim)}
+  .inline-form{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;animation:fadeUp .2s ease}
+  .form-field{display:flex;flex-direction:column;gap:3px}
+  .form-field label{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)}
+  .form-input{background:var(--surface);border:1px solid var(--border-light);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 8px;outline:none;transition:border-color .15s}
+  .form-input:focus{border-color:var(--accent-dim)}
+  .form-select{background:var(--surface);border:1px solid var(--border-light);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 8px;outline:none;cursor:pointer}
+  .form-btn{background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:10px;font-weight:500;padding:6px 14px;border:none;border-radius:3px;cursor:pointer;transition:background .15s}
+  .form-btn:hover{background:#bfe0a0}
+  .form-btn.cancel{background:transparent;border:1px solid var(--border);color:var(--text-dim)}
+  .form-btn.cancel:hover{border-color:var(--text-dim);color:var(--text)}
+
+  /* ── DIRECTION TOGGLE ── */
+  .dir-toggle{display:flex;border:1px solid var(--border-light);border-radius:3px;overflow:hidden}
+  .dir-toggle button{background:none;border:none;color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:6px 10px;cursor:pointer;transition:all .15s}
+  .dir-toggle button.active{background:var(--accent-glow);color:var(--accent)}
+  .dir-toggle button.active.expense-active{background:var(--red-glow);color:var(--red)}
+```
+
+- [ ] **Step 2: Add date helper functions and upcoming transaction generator**
+
+Add this JS after the `normalizeToMonthly` function:
+
+```javascript
+function advanceDate(dateStr, frequency) {
+  const d = new Date(dateStr + 'T00:00:00');
+  switch (frequency) {
+    case 'weekly': d.setDate(d.getDate() + 7); break;
+    case 'biweekly': d.setDate(d.getDate() + 14); break;
+    case 'monthly': d.setMonth(d.getMonth() + 1); break;
+    case 'quarterly': d.setMonth(d.getMonth() + 3); break;
+    case 'annual': d.setFullYear(d.getFullYear() + 1); break;
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+function toDateStr(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function getUpcomingTransactions(daysAhead) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + daysAhead);
+  const items = [];
+
+  // Project recurring transactions forward
+  appData.recurring.filter(r => r.enabled).forEach(r => {
+    let due = r.nextDue;
+    while (due && new Date(due + 'T00:00:00') <= endDate) {
+      if (new Date(due + 'T00:00:00') >= today) {
+        items.push({
+          type: 'recurring',
+          recurringId: r.id,
+          name: r.name,
+          amount: parseFloat(r.amount) || 0,
+          direction: r.direction,
+          frequency: r.frequency,
+          date: due
+        });
+      }
+      due = advanceDate(due, r.frequency);
+    }
+  });
+
+  // Add unpaid one-offs within range
+  appData.oneoffs.filter(o => !o.paid).forEach(o => {
+    const d = new Date(o.date + 'T00:00:00');
+    if (d >= today && d <= endDate) {
+      items.push({
+        type: 'oneoff',
+        oneoffId: o.id,
+        name: o.name,
+        amount: parseFloat(o.amount) || 0,
+        direction: o.direction,
+        frequency: null,
+        date: o.date
+      });
+    }
+  });
+
+  items.sort((a, b) => a.date.localeCompare(b.date));
+  return items;
+}
+
+function fmtDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function fmtRelative(isoStr) {
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+```
+
+- [ ] **Step 3: Implement renderDashboard**
+
+Replace the empty `renderDashboard()` with:
+
+```javascript
+function renderDashboard() {
+  const container = document.getElementById('view-dashboard');
+  const weekItems = getUpcomingTransactions(7);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(today);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  monthEnd.setHours(23, 59, 59, 999);
+
+  // Month items: everything from day 8 to end of month
+  const monthItems = getUpcomingTransactions(Math.ceil((monthEnd - today) / 86400000))
+    .filter(i => new Date(i.date + 'T00:00:00') >= weekEnd);
+
+  function renderSection(title, icon, items) {
+    const total = items.reduce((s, i) => s + (i.direction === 'expense' ? -i.amount : i.amount), 0);
+    let html = '<div class="section"><div class="section-header"><div class="section-title">';
+    html += '<div class="section-icon icon-default">' + icon + '</div>';
+    html += '<span class="section-name">' + title + '</span></div>';
+    html += '<span class="section-total" style="color:' + (total >= 0 ? 'var(--accent)' : 'var(--red)') + '">' + (total >= 0 ? '+' : '') + fmtMoney(total) + '</span></div>';
+    if (items.length === 0) {
+      html += '<div style="padding:20px 16px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--text-dim)">Nothing upcoming</div>';
+    } else {
+      items.forEach(i => {
+        const isIncome = i.direction === 'income';
+        html += '<div class="tx-row' + (isIncome ? ' income-row' : '') + '">';
+        html += '<div><div class="tx-name">' + escHtml(i.name) + '</div>';
+        html += '<div class="tx-meta"><span>' + fmtDate(i.date) + '</span>';
+        if (i.frequency) html += '<span class="freq-badge">' + i.frequency.toUpperCase() + '</span>';
+        if (!i.frequency) html += '<span class="freq-badge">ONE-OFF</span>';
+        html += '</div></div>';
+        html += '<div class="tx-amount' + (isIncome ? ' income' : '') + '">' + (isIncome ? '+' : '') + fmtMoney(i.amount) + '</div>';
+        html += '<button class="tx-btn" onclick="markPaid(\'' + (i.recurringId || '') + '\',\'' + (i.oneoffId || '') + '\',\'' + i.date + '\')">' + (isIncome ? 'Received' : 'Paid') + '</button>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+    return html;
+  }
+
+  let html = '';
+  html += renderSection('Upcoming This Week', '7', weekItems);
+  html += renderSection('Upcoming This Month', '30', monthItems);
+
+  // Quick add button
+  html += '<div class="quick-add-bar"><button class="quick-add-btn" onclick="showQuickAdd()">+ Quick Add</button></div>';
+  html += '<div id="quick-add-form"></div>';
+
+  container.innerHTML = html;
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+let quickAddVisible = false;
+
+function showQuickAdd() {
+  quickAddVisible = !quickAddVisible;
+  const container = document.getElementById('quick-add-form');
+  if (!quickAddVisible) { container.innerHTML = ''; return; }
+  const today = toDateStr(new Date());
+  container.innerHTML = '<div class="inline-form">' +
+    '<div class="form-field"><label>Name</label><input class="form-input" id="qa-name" placeholder="Description" style="width:160px"></div>' +
+    '<div class="form-field"><label>Amount</label><input class="form-input" id="qa-amount" type="number" step="0.01" min="0" placeholder="0.00" style="width:100px"></div>' +
+    '<div class="form-field"><label>Type</label><div class="dir-toggle" id="qa-dir">' +
+    '<button class="active expense-active" onclick="setQaDir(\'expense\')">Expense</button>' +
+    '<button onclick="setQaDir(\'income\')">Income</button></div></div>' +
+    '<div class="form-field"><label>Date</label><input class="form-input" id="qa-date" type="date" value="' + today + '" style="width:130px"></div>' +
+    '<div class="form-field" style="justify-content:flex-end"><button class="form-btn" onclick="submitQuickAdd()">Add</button></div>' +
+    '<div class="form-field" style="justify-content:flex-end"><button class="form-btn cancel" onclick="showQuickAdd()">Cancel</button></div>' +
+    '</div>';
+  document.getElementById('qa-name').focus();
+}
+
+let qaDirection = 'expense';
+
+function setQaDir(dir) {
+  qaDirection = dir;
+  const btns = document.querySelectorAll('#qa-dir button');
+  btns.forEach(b => {
+    const isThis = b.textContent.toLowerCase() === dir;
+    b.className = isThis ? ('active' + (dir === 'expense' ? ' expense-active' : '')) : '';
+  });
+}
+
+async function submitQuickAdd() {
+  const name = document.getElementById('qa-name').value.trim();
+  const amount = parseFloat(document.getElementById('qa-amount').value);
+  const date = document.getElementById('qa-date').value;
+  if (!name || !amount || !date) { showToast('Fill in all fields', 'error'); return; }
+
+  appData.oneoffs.push({
+    id: generateId(),
+    name: name,
+    amount: amount,
+    direction: qaDirection,
+    date: date,
+    paid: false
+  });
+  quickAddVisible = false;
+  await encryptAndSave();
+  renderAll();
+  showToast('Added ' + name, 'success');
+}
+```
+
+- [ ] **Step 4: Add the markPaid function**
+
+Add after `submitQuickAdd`:
+
+```javascript
+// ══════════════════════════════════════════════════════════════════════════
+// ── MARK PAID / RECEIVED ─────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+async function markPaid(recurringId, oneoffId, date) {
+  let entry;
+  if (recurringId) {
+    const r = appData.recurring.find(x => x.id === recurringId);
+    if (!r) return;
+    entry = {
+      id: generateId(),
+      name: r.name,
+      amount: parseFloat(r.amount) || 0,
+      direction: r.direction,
+      paidAt: new Date().toISOString(),
+      recurringId: r.id
+    };
+    // Advance nextDue past the paid date
+    while (r.nextDue <= date) {
+      r.nextDue = advanceDate(r.nextDue, r.frequency);
+    }
+  } else if (oneoffId) {
+    const o = appData.oneoffs.find(x => x.id === oneoffId);
+    if (!o) return;
+    entry = {
+      id: generateId(),
+      name: o.name,
+      amount: parseFloat(o.amount) || 0,
+      direction: o.direction,
+      paidAt: new Date().toISOString()
+    };
+    o.paid = true;
+  }
+
+  if (!entry) return;
+
+  // Adjust balance
+  if (entry.direction === 'expense') {
+    appData.balance -= entry.amount;
+  } else {
+    appData.balance += entry.amount;
+  }
+
+  appData.history.push(entry);
+  await encryptAndSave();
+  renderAll();
+  showToast((entry.direction === 'income' ? 'Received' : 'Paid') + ': ' + entry.name, 'success');
+}
+```
+
+- [ ] **Step 5: Verify in browser**
+
+1. Set a password on fresh load
+2. Dashboard should show "Upcoming This Week" and "Upcoming This Month" sections, both empty with "Nothing upcoming"
+3. Click "+ Quick Add" — form should appear with name, amount, type toggle, date fields
+4. Add a one-off expense: "Test expense", $50, today's date
+5. Should appear in "Upcoming This Week"
+6. Click "Paid" — balance should update to -$50.00, item should disappear from upcoming
+7. Refresh, unlock — balance should persist at -$50.00
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add cacheflow.html
+git commit -m "feat: add dashboard view with upcoming sections and quick-add"
+```
+
+---
+
+### Task 4: Transactions View — 45-Day Feed with Paid Toggle
+
+Implement the Transactions tab: chronological feed grouped by date, paid history toggle, add recurring form, click-to-edit with inline panel.
+
+**Files:**
+- Modify: `cacheflow.html`
+
+- [ ] **Step 1: Add transactions-specific CSS**
+
+Add before closing `</style>`:
+
+```css
+  /* ── TRANSACTIONS VIEW ── */
+  .tx-toolbar{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2)}
+  .tx-toolbar-left{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted)}
+  .toggle-switch{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--text-dim);cursor:pointer}
+  .toggle-track{width:28px;height:14px;border-radius:7px;background:var(--border);position:relative;transition:background .2s}
+  .toggle-track.on{background:var(--accent-dim)}
+  .toggle-knob{width:10px;height:10px;border-radius:50%;background:var(--text-dim);position:absolute;top:2px;left:2px;transition:all .2s}
+  .toggle-track.on .toggle-knob{left:16px;background:var(--accent)}
+  .date-group-header{padding:5px 16px;background:var(--surface2);font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);border-bottom:1px solid var(--border)}
+
+  /* ── EDIT PANEL ── */
+  .edit-panel{padding:0 16px 12px 16px;background:var(--surface);border-bottom:1px solid var(--border);animation:fadeUp .15s ease}
+  .edit-panel .inline-form{padding:8px 0;border:none;background:transparent}
+  .edit-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+  .enabled-toggle{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--text-dim);cursor:pointer;padding:6px 0}
+```
+
+- [ ] **Step 2: Implement renderTransactions**
+
+Replace the empty `renderTransactions()` with:
+
+```javascript
+let showPaidHistory = false;
+let editingTxId = null;
+
+function renderTransactions() {
+  const container = document.getElementById('view-transactions');
+  const items = getUpcomingTransactions(45);
+
+  let html = '<div class="section">';
+  // Toolbar
+  html += '<div class="tx-toolbar">';
+  html += '<div class="tx-toolbar-left">Next 45 Days</div>';
+  html += '<div class="toggle-switch" onclick="togglePaidHistory()">';
+  html += '<span>Show paid</span>';
+  html += '<div class="toggle-track' + (showPaidHistory ? ' on' : '') + '"><div class="toggle-knob"></div></div>';
+  html += '</div></div>';
+
+  // Merge paid history if toggle is on
+  let allItems = [...items.map(i => ({ ...i, isPaid: false }))];
+  if (showPaidHistory) {
+    appData.history.forEach(h => {
+      allItems.push({
+        type: 'history',
+        name: h.name,
+        amount: h.amount,
+        direction: h.direction,
+        date: h.paidAt.slice(0, 10),
+        paidAt: h.paidAt,
+        isPaid: true,
+        frequency: null
+      });
+    });
+    allItems.sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  // Group by date
+  let lastDate = '';
+  const today = toDateStr(new Date());
+  allItems.forEach(i => {
+    if (i.date !== lastDate) {
+      lastDate = i.date;
+      const label = i.date === today ? 'Today \u00b7 ' + fmtDate(i.date) : fmtDate(i.date);
+      html += '<div class="date-group-header">' + label + '</div>';
+    }
+    const isIncome = i.direction === 'income';
+    const rowClass = 'tx-row' + (isIncome && !i.isPaid ? ' income-row' : '') + (i.isPaid ? ' paid-row' : '');
+    const rid = i.recurringId || '';
+    const oid = i.oneoffId || '';
+    const clickable = !i.isPaid && rid;
+
+    html += '<div class="' + rowClass + '"' + (clickable ? ' style="cursor:pointer" onclick="toggleEditTx(\'' + rid + '\')"' : '') + '>';
+    html += '<div><div class="tx-name">' + escHtml(i.name) + '</div>';
+    html += '<div class="tx-meta">';
+    if (i.isPaid) {
+      html += '<span class="paid-badge">paid ' + fmtRelative(i.paidAt) + '</span>';
+    } else {
+      html += '<span>' + fmtDate(i.date) + '</span>';
+    }
+    if (i.frequency) html += '<span class="freq-badge">' + i.frequency.toUpperCase() + '</span>';
+    if (!i.frequency && !i.isPaid) html += '<span class="freq-badge">ONE-OFF</span>';
+    html += '</div></div>';
+    html += '<div class="tx-amount' + (isIncome ? ' income' : '') + '">' + (isIncome ? '+' : '') + fmtMoney(i.amount) + '</div>';
+    if (!i.isPaid) {
+      html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\')">' + (isIncome ? 'Received' : 'Paid') + '</button>';
+    } else {
+      html += '<div></div>';
+    }
+    html += '</div>';
+
+    // Inline edit panel for recurring
+    if (clickable && editingTxId === rid) {
+      html += renderEditPanel(rid);
+    }
+  });
+
+  if (allItems.length === 0) {
+    html += '<div style="padding:24px 16px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--text-dim)">No upcoming transactions</div>';
+  }
+
+  // Add recurring button
+  html += '<div style="padding:12px 16px;border-top:1px solid var(--border)">';
+  html += '<button class="tx-btn" onclick="toggleAddRecurring()" style="width:100%;padding:8px;text-align:center">+ Add Recurring</button>';
+  html += '</div>';
+  html += '<div id="add-recurring-form"></div>';
+
+  html += '</div>'; // close section
+  container.innerHTML = html;
+}
+
+function togglePaidHistory() {
+  showPaidHistory = !showPaidHistory;
+  renderTransactions();
+}
+
+function toggleEditTx(recurringId) {
+  editingTxId = editingTxId === recurringId ? null : recurringId;
+  renderTransactions();
+}
+
+function renderEditPanel(recurringId) {
+  const r = appData.recurring.find(x => x.id === recurringId);
+  if (!r) return '';
+  const freqOptions = ['weekly', 'biweekly', 'monthly', 'quarterly', 'annual'];
+  let html = '<div class="edit-panel" onclick="event.stopPropagation()"><div class="edit-row">';
+  html += '<div class="form-field"><label>Name</label><input class="form-input" id="edit-name-' + r.id + '" value="' + escAttr(r.name) + '" style="width:160px"></div>';
+  html += '<div class="form-field"><label>Amount</label><input class="form-input" id="edit-amount-' + r.id + '" type="number" step="0.01" value="' + r.amount + '" style="width:100px"></div>';
+  html += '<div class="form-field"><label>Frequency</label><select class="form-select" id="edit-freq-' + r.id + '">';
+  freqOptions.forEach(f => { html += '<option value="' + f + '"' + (r.frequency === f ? ' selected' : '') + '>' + f.charAt(0).toUpperCase() + f.slice(1) + '</option>'; });
+  html += '</select></div>';
+  html += '<div class="form-field"><label>Next Due</label><input class="form-input" id="edit-due-' + r.id + '" type="date" value="' + r.nextDue + '" style="width:130px"></div>';
+  html += '</div>';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">';
+  html += '<div class="enabled-toggle" onclick="toggleEnabled(\'' + r.id + '\')">';
+  html += '<div class="toggle-track' + (r.enabled ? ' on' : '') + '"><div class="toggle-knob"></div></div>';
+  html += '<span>' + (r.enabled ? 'Enabled' : 'Disabled') + '</span></div>';
+  html += '<div style="display:flex;gap:6px">';
+  html += '<button class="form-btn" onclick="saveEditTx(\'' + r.id + '\')">Save</button>';
+  html += '<button class="form-btn cancel" onclick="editingTxId=null;renderTransactions()">Cancel</button>';
+  html += '<button class="tx-btn danger" onclick="deleteRecurring(\'' + r.id + '\')">Delete</button>';
+  html += '</div></div></div>';
+  return html;
+}
+
+function escAttr(s) {
+  return s.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function saveEditTx(id) {
+  const r = appData.recurring.find(x => x.id === id);
+  if (!r) return;
+  r.name = document.getElementById('edit-name-' + id).value.trim();
+  r.amount = parseFloat(document.getElementById('edit-amount-' + id).value) || 0;
+  r.frequency = document.getElementById('edit-freq-' + id).value;
+  r.nextDue = document.getElementById('edit-due-' + id).value;
+  editingTxId = null;
+  await encryptAndSave();
+  renderAll();
+  showToast('Updated ' + r.name, 'success');
+}
+
+async function toggleEnabled(id) {
+  const r = appData.recurring.find(x => x.id === id);
+  if (!r) return;
+  r.enabled = !r.enabled;
+  await encryptAndSave();
+  renderAll();
+}
+
+async function deleteRecurring(id) {
+  const r = appData.recurring.find(x => x.id === id);
+  if (!r) return;
+  if (!confirm('Delete "' + r.name + '"? This cannot be undone.')) return;
+  appData.recurring = appData.recurring.filter(x => x.id !== id);
+  editingTxId = null;
+  await encryptAndSave();
+  renderAll();
+  showToast('Deleted ' + r.name);
+}
+```
+
+- [ ] **Step 3: Add the "Add Recurring" inline form**
+
+Add after `deleteRecurring`:
+
+```javascript
+let addRecurringVisible = false;
+
+function toggleAddRecurring() {
+  addRecurringVisible = !addRecurringVisible;
+  const container = document.getElementById('add-recurring-form');
+  if (!container) return;
+  if (!addRecurringVisible) { container.innerHTML = ''; return; }
+  const today = toDateStr(new Date());
+  container.innerHTML = '<div class="inline-form">' +
+    '<div class="form-field"><label>Name</label><input class="form-input" id="ar-name" placeholder="Description" style="width:160px"></div>' +
+    '<div class="form-field"><label>Amount</label><input class="form-input" id="ar-amount" type="number" step="0.01" min="0" placeholder="0.00" style="width:100px"></div>' +
+    '<div class="form-field"><label>Frequency</label><select class="form-select" id="ar-freq">' +
+    '<option value="weekly">Weekly</option><option value="biweekly">Biweekly</option>' +
+    '<option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option>' +
+    '<option value="annual">Annual</option></select></div>' +
+    '<div class="form-field"><label>Type</label><div class="dir-toggle" id="ar-dir">' +
+    '<button class="active expense-active" onclick="setArDir(\'expense\')">Expense</button>' +
+    '<button onclick="setArDir(\'income\')">Income</button></div></div>' +
+    '<div class="form-field"><label>Next Due</label><input class="form-input" id="ar-due" type="date" value="' + today + '" style="width:130px"></div>' +
+    '<div class="form-field" style="justify-content:flex-end"><button class="form-btn" onclick="submitAddRecurring()">Add</button></div>' +
+    '<div class="form-field" style="justify-content:flex-end"><button class="form-btn cancel" onclick="toggleAddRecurring()">Cancel</button></div>' +
+    '</div>';
+  document.getElementById('ar-name').focus();
+}
+
+let arDirection = 'expense';
+
+function setArDir(dir) {
+  arDirection = dir;
+  const btns = document.querySelectorAll('#ar-dir button');
+  btns.forEach(b => {
+    const isThis = b.textContent.toLowerCase() === dir;
+    b.className = isThis ? ('active' + (dir === 'expense' ? ' expense-active' : '')) : '';
+  });
+}
+
+async function submitAddRecurring() {
+  const name = document.getElementById('ar-name').value.trim();
+  const amount = parseFloat(document.getElementById('ar-amount').value);
+  const freq = document.getElementById('ar-freq').value;
+  const due = document.getElementById('ar-due').value;
+  if (!name || !amount || !due) { showToast('Fill in all fields', 'error'); return; }
+
+  appData.recurring.push({
+    id: generateId(),
+    name: name,
+    amount: amount,
+    frequency: freq,
+    direction: arDirection,
+    nextDue: due,
+    enabled: true,
+    sourceId: null,
+    category: null,
+    _liabId: null
+  });
+  addRecurringVisible = false;
+  await encryptAndSave();
+  renderAll();
+  showToast('Added ' + name, 'success');
+}
+```
+
+- [ ] **Step 4: Verify in browser**
+
+1. Switch to Transactions tab — should show empty state "No upcoming transactions"
+2. Click "+ Add Recurring" — form appears
+3. Add: "Test Bill", $100, Monthly, Expense, today's date
+4. Transaction appears in the feed grouped under today's date
+5. Click the row — edit panel expands with all fields populated
+6. Change amount to $150, click Save — amount updates
+7. Toggle Enabled off — item disappears from feed (but still in data)
+8. Click "Paid" on another test item — disappears, balance updates
+9. Toggle "Show paid" — paid items reappear with strikethrough and "paid Xm ago" badge
+10. Refresh + unlock — all data persists
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add cacheflow.html
+git commit -m "feat: add transactions view with 45-day feed, edit, and paid toggle"
+```
+
+---
+
+### Task 5: Forecast View — 12-Month Projection Table
+
+Implement the Forecast tab: a table projecting income, expenses, and running balance for each of the next 12 months.
+
+**Files:**
+- Modify: `cacheflow.html`
+
+- [ ] **Step 1: Add forecast CSS**
+
+Add before closing `</style>`:
+
+```css
+  /* ── FORECAST TABLE ── */
+  .forecast-table{width:100%;border-collapse:collapse}
+  .forecast-table th{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:10px 14px;text-align:right;border-bottom:1px solid var(--border);background:var(--surface2)}
+  .forecast-table th:first-child{text-align:left}
+  .forecast-table td{font-family:var(--mono);font-size:13px;padding:10px 14px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03)}
+  .forecast-table td:first-child{text-align:left;color:var(--text-muted);font-size:12px}
+  .forecast-table tr:nth-child(even) td{background:var(--surface2)}
+  .forecast-table tr:nth-child(odd) td{background:var(--surface)}
+  .forecast-table tr.current-month td{border-left:2px solid var(--accent)}
+  .forecast-table tr.negative-balance td{background:var(--red-glow)}
+  .forecast-table .f-income{color:var(--accent)}
+  .forecast-table .f-expense{color:var(--red)}
+  .forecast-table .f-net-pos{color:var(--accent)}
+  .forecast-table .f-net-neg{color:var(--red)}
+  .forecast-table .f-bal-pos{color:var(--text);font-weight:500}
+  .forecast-table .f-bal-neg{color:var(--red);font-weight:500}
+```
+
+- [ ] **Step 2: Implement renderForecast**
+
+Replace the empty `renderForecast()` with:
+
+```javascript
+function renderForecast() {
+  const container = document.getElementById('view-forecast');
+  const now = new Date();
+  const currentMonthKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+
+  // Calculate monthly recurring totals
+  let monthlyIncome = 0, monthlyExpense = 0;
+  appData.recurring.filter(r => r.enabled).forEach(r => {
+    const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+    if (r.direction === 'income') monthlyIncome += monthly;
+    else monthlyExpense += monthly;
+  });
+
+  // Build per-month one-off totals
+  const oneoffByMonth = {};
+  appData.oneoffs.filter(o => !o.paid).forEach(o => {
+    const key = o.date.slice(0, 7); // YYYY-MM
+    if (!oneoffByMonth[key]) oneoffByMonth[key] = { income: 0, expense: 0 };
+    if (o.direction === 'income') oneoffByMonth[key].income += parseFloat(o.amount) || 0;
+    else oneoffByMonth[key].expense += parseFloat(o.amount) || 0;
+  });
+
+  let html = '<div class="section"><div class="section-header"><div class="section-title">';
+  html += '<div class="section-icon icon-default">12</div>';
+  html += '<span class="section-name">12-Month Forecast</span></div></div>';
+  html += '<table class="forecast-table"><thead><tr>';
+  html += '<th>Month</th><th>Income</th><th>Expenses</th><th>Net</th><th>Balance</th>';
+  html += '</tr></thead><tbody>';
+
+  let runningBalance = appData.balance;
+
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const monthKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const isCurrent = monthKey === currentMonthKey;
+
+    // For current month, prorate based on remaining days
+    let incomeThisMonth = monthlyIncome;
+    let expenseThisMonth = monthlyExpense;
+
+    if (i === 0) {
+      // Current month: prorate remaining portion
+      const totalDays = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      const remainingDays = totalDays - now.getDate() + 1;
+      const fraction = remainingDays / totalDays;
+      incomeThisMonth = monthlyIncome * fraction;
+      expenseThisMonth = monthlyExpense * fraction;
+    }
+
+    // Add one-offs
+    const oo = oneoffByMonth[monthKey];
+    if (oo) {
+      incomeThisMonth += oo.income;
+      expenseThisMonth += oo.expense;
+    }
+
+    const net = incomeThisMonth - expenseThisMonth;
+    runningBalance += net;
+    const isNegBal = runningBalance < 0;
+
+    let rowClass = '';
+    if (isCurrent) rowClass += ' current-month';
+    if (isNegBal) rowClass += ' negative-balance';
+
+    html += '<tr class="' + rowClass.trim() + '">';
+    html += '<td>' + label + '</td>';
+    html += '<td class="f-income">' + fmtMoney(incomeThisMonth) + '</td>';
+    html += '<td class="f-expense">' + fmtMoney(expenseThisMonth) + '</td>';
+    html += '<td class="' + (net >= 0 ? 'f-net-pos' : 'f-net-neg') + '">' + (net >= 0 ? '+' : '') + fmtMoney(net) + '</td>';
+    html += '<td class="' + (runningBalance >= 0 ? 'f-bal-pos' : 'f-bal-neg') + '">' + fmtMoney(runningBalance) + '</td>';
+    html += '</tr>';
+  }
+
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+```
+
+- [ ] **Step 3: Verify in browser**
+
+1. Add a few recurring transactions (mix of income and expenses) if not already present
+2. Switch to Forecast tab
+3. Expected: 12-month table with columns: Month, Income, Expenses, Net, Balance
+4. Current month should have left green border accent
+5. If any future month has negative projected balance, entire row should have red-glow background
+6. Current month should be prorated based on remaining days
+7. Numbers should flow logically — each month's balance = previous balance + net
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add cacheflow.html
+git commit -m "feat: add 12-month forecast view with running balance projection"
+```
+
+---
+
+### Task 6: Settings Modal, Cache Import, Export, and Balance Editor
+
+Add the settings modal with: change password, import from Cache, export JSON, clear data, and an inline balance editor on the header.
+
+**Files:**
+- Modify: `cacheflow.html`
+
+- [ ] **Step 1: Add settings modal CSS**
+
+Add before closing `</style>`:
+
+```css
+  /* ── SETTINGS MODAL ── */
+  #settings-modal{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease}
+  #settings-modal.hidden{display:none}
+  .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:32px 36px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:20px;animation:fadeUp .2s ease}
+  .settings-title{font-family:var(--serif);font-size:20px;font-weight:400;letter-spacing:-.3px}
+  .settings-section{display:flex;flex-direction:column;gap:8px}
+  .settings-section-label{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim)}
+  .settings-help{font-family:var(--mono);font-size:10px;color:var(--text-dim);line-height:1.5}
+  .settings-btn{background:transparent;border:1px solid var(--border-light);color:var(--text-muted);font-family:var(--mono);font-size:11px;padding:9px 14px;border-radius:4px;cursor:pointer;transition:all .15s;width:100%;text-align:center}
+  .settings-btn:hover{border-color:var(--accent-dim);color:var(--accent)}
+  .settings-btn.danger{border-color:var(--red-dim);color:var(--red)}
+  .settings-btn.danger:hover{background:var(--red-glow)}
+  .settings-divider{border:none;border-top:1px solid var(--border);margin:4px 0}
+  .import-preview{font-family:var(--mono);font-size:11px;color:var(--text-muted);padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;margin-top:8px}
+
+  /* ── BALANCE EDITOR ── */
+  .balance-value.editable{cursor:pointer}
+  .balance-value.editable:hover{text-decoration:underline;text-decoration-style:dashed;text-underline-offset:4px;text-decoration-color:var(--text-dim)}
+  .balance-edit-input{background:var(--surface2);border:1px solid var(--accent-dim);border-radius:4px;color:var(--accent);font-family:var(--serif);font-size:32px;letter-spacing:-1px;padding:2px 8px;outline:none;width:200px;text-align:right}
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:600px){
+    header{flex-direction:column;align-items:flex-start;gap:12px;padding:16px 16px 12px}
+    .header-right{width:100%;justify-content:space-between}
+    .summary-bar{grid-template-columns:1fr}
+    .summary-item{border-right:none;border-bottom:1px solid var(--border);padding:10px 16px}
+    .summary-item:last-child{border-bottom:none}
+    .tab-nav{padding:0 8px}
+    .tab-btn{padding:10px 12px;font-size:9px}
+    .view{padding:16px 12px 60px}
+    .tx-row{grid-template-columns:1fr auto auto;gap:6px;padding:8px 12px}
+    .inline-form{flex-direction:column}
+    .settings-card{max-width:calc(100vw - 32px);padding:24px 20px}
+    .lock-card{max-width:calc(100vw - 32px);padding:24px 20px}
+    .forecast-table th,.forecast-table td{padding:8px 8px;font-size:11px}
+  }
+```
+
+- [ ] **Step 2: Add settings modal HTML after the `#app` div but before the toast**
+
+Insert before `<div class="toast" id="toast"></div>`:
+
+```html
+<!-- ══ SETTINGS MODAL ══ -->
+<div id="settings-modal" class="hidden" onclick="if(event.target===this)closeSettings()">
+  <div class="settings-card">
+    <div class="settings-title">Settings</div>
+
+    <div class="settings-section">
+      <div class="settings-section-label">Balance</div>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="settings-balance" type="number" step="0.01" style="flex:1">
+        <button class="form-btn" onclick="saveBalance()">Update</button>
+      </div>
+      <div class="settings-help">Set your current checking account balance.</div>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <div class="settings-section-label">Import from Cache</div>
+      <button class="settings-btn" id="import-cache-btn" onclick="document.getElementById('import-file').click()">Import JSON from Cache</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleCacheImport(event)">
+      <div id="import-status" class="settings-help"></div>
+      <div id="import-preview"></div>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <div class="settings-section-label">Change Password</div>
+      <button class="settings-btn" onclick="closeSettings();showChangePassword()">Change Password</button>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <div class="settings-section-label">Export / Clear</div>
+      <div style="display:flex;gap:8px">
+        <button class="settings-btn" onclick="exportJSON()" style="flex:1">Export JSON</button>
+        <button class="settings-btn danger" onclick="clearAllData()" style="flex:1">Clear All Data</button>
+      </div>
+      <div class="settings-help">Export saves an unencrypted backup. Clear permanently removes all data.</div>
+    </div>
+
+    <hr class="settings-divider">
+    <button class="settings-btn" onclick="closeSettings()">Close</button>
+  </div>
+</div>
+```
+
+- [ ] **Step 3: Add settings, import, export, and balance JS**
+
+Add after the `submitAddRecurring` function:
+
+```javascript
+// ══════════════════════════════════════════════════════════════════════════
+// ── SETTINGS ─────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+function openSettings() {
+  document.getElementById('settings-balance').value = appData.balance;
+  document.getElementById('import-status').textContent = appData.importedAt
+    ? 'Last imported: ' + new Date(appData.importedAt).toLocaleDateString()
+    : '';
+  document.getElementById('import-preview').innerHTML = '';
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+
+async function saveBalance() {
+  const val = parseFloat(document.getElementById('settings-balance').value);
+  if (isNaN(val)) { showToast('Enter a valid number', 'error'); return; }
+  appData.balance = val;
+  await encryptAndSave();
+  renderAll();
+  showToast('Balance updated', 'success');
+}
+
+// ── CACHE IMPORT ──────────────────────────────────────────────────────────
+
+let pendingImportItems = null;
+
+function calcNextDue(frequency) {
+  const today = new Date();
+  const d = new Date(today);
+  // Set to tomorrow to avoid immediate due
+  d.setDate(d.getDate() + 1);
+  return toDateStr(d);
+}
+
+async function handleCacheImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+
+    if (!json.recurring || !Array.isArray(json.recurring)) {
+      showToast('No recurring data found in file', 'error');
+      return;
+    }
+
+    // Filter out zero-amount items
+    const items = json.recurring.filter(r => parseFloat(r.amount) > 0);
+    const incomeCount = items.filter(r => r.direction === 'income').length;
+    const expenseCount = items.filter(r => r.direction === 'expense').length;
+
+    pendingImportItems = items;
+    const preview = document.getElementById('import-preview');
+    preview.innerHTML = '<div class="import-preview">Found ' + items.length + ' recurring items (' +
+      incomeCount + ' income, ' + expenseCount + ' expenses)<br><br>' +
+      '<button class="form-btn" onclick="confirmImport()">Confirm Import</button> ' +
+      '<button class="form-btn cancel" onclick="cancelImport()">Cancel</button></div>';
+  } catch (e) {
+    showToast('Invalid JSON file: ' + e.message, 'error');
+  }
+}
+
+async function confirmImport() {
+  if (!pendingImportItems) return;
+
+  pendingImportItems.forEach(item => {
+    const existing = appData.recurring.find(r => r.sourceId === item.id);
+    if (existing) {
+      // Update existing
+      existing.name = item.name;
+      existing.amount = parseFloat(item.amount);
+      existing.frequency = item.frequency;
+      existing.direction = item.direction;
+    } else {
+      // Add new
+      appData.recurring.push({
+        id: generateId(),
+        name: item.name,
+        amount: parseFloat(item.amount),
+        frequency: item.frequency,
+        direction: item.direction,
+        nextDue: calcNextDue(item.frequency),
+        enabled: true,
+        sourceId: item.id,
+        category: null,
+        _liabId: item._liabId || null
+      });
+    }
+  });
+
+  appData.importedAt = new Date().toISOString();
+  pendingImportItems = null;
+  await encryptAndSave();
+  renderAll();
+  document.getElementById('import-preview').innerHTML = '';
+  document.getElementById('import-status').textContent = 'Last imported: ' + new Date(appData.importedAt).toLocaleDateString();
+  showToast('Imported successfully', 'success');
+}
+
+function cancelImport() {
+  pendingImportItems = null;
+  document.getElementById('import-preview').innerHTML = '';
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cacheflow-' + toDateStr(new Date()) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  closeSettings();
+  showToast('Exported cacheflow backup', 'success');
+}
+
+// ── CLEAR ALL DATA ────────────────────────────────────────────────────────
+
+async function clearAllData() {
+  if (!confirm('Are you sure? This will permanently delete all your data.')) return;
+  if (!confirm('Really? This cannot be undone.')) return;
+  localStorage.removeItem(STORAGE_ENC);
+  localStorage.removeItem(STORAGE_META);
+  sessionKey = null;
+  appData = { balance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  closeSettings();
+  isFirstRun = true;
+  showLockScreen('set');
+  showToast('All data cleared');
+}
+```
+
+- [ ] **Step 4: Make balance clickable to edit inline**
+
+Update the `renderAll` function's balance display section. Replace the balance rendering lines:
+
+```javascript
+  // Balance display
+  const bal = appData.balance;
+  const balEl = document.getElementById('balanceDisplay');
+  balEl.textContent = fmtMoney(bal);
+  balEl.className = 'balance-value editable' + (bal < 0 ? ' negative' : '');
+  balEl.onclick = startBalanceEdit;
+```
+
+Add the inline balance edit functions:
+
+```javascript
+function startBalanceEdit() {
+  const balEl = document.getElementById('balanceDisplay');
+  const current = appData.balance;
+  balEl.onclick = null;
+  balEl.className = 'balance-value';
+  balEl.innerHTML = '<input class="balance-edit-input" id="balance-edit" type="number" step="0.01" value="' + current + '">';
+  const input = document.getElementById('balance-edit');
+  input.focus();
+  input.select();
+  input.onkeydown = async function(e) {
+    if (e.key === 'Enter') {
+      const val = parseFloat(input.value);
+      if (!isNaN(val)) {
+        appData.balance = val;
+        await encryptAndSave();
+      }
+      renderAll();
+    } else if (e.key === 'Escape') {
+      renderAll();
+    }
+  };
+  input.onblur = function() { renderAll(); };
+}
+```
+
+- [ ] **Step 5: Verify in browser**
+
+1. Click the gear icon — settings modal opens with balance input, import button, change password, export, clear
+2. Enter a balance (e.g., 5000) and click Update — header balance updates
+3. Click the balance number in the header — should become an editable input, type new value, press Enter — updates
+4. Click "Import JSON from Cache" — select the Cache export file
+5. Should show preview: "Found N recurring items (X income, Y expenses)" with Confirm/Cancel
+6. Click Confirm — transactions populate, summary bar updates with monthly figures
+7. Switch to Transactions tab — all imported items should appear in the 45-day feed
+8. Switch to Forecast — 12-month projection should reflect imported recurring items
+9. Click Export — downloads a JSON file
+10. Test Clear All Data — double confirm → resets to first-run state
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add cacheflow.html
+git commit -m "feat: add settings modal with Cache import, export, and balance editor"
+```
+
+---
+
+### Task 7: Polish and Edge Cases
+
+Final polish: empty state improvements, keyboard shortcuts, focus management, and edge case fixes.
+
+**Files:**
+- Modify: `cacheflow.html`
+
+- [ ] **Step 1: Add first-run welcome state to Dashboard**
+
+Update `renderDashboard()` — after the `let html = '';` line, add a check:
+
+```javascript
+  if (appData.recurring.length === 0 && appData.oneoffs.length === 0) {
+    html += '<div class="section"><div style="padding:32px 24px;text-align:center">';
+    html += '<div style="font-family:var(--serif);font-size:20px;margin-bottom:8px">Welcome to Cache Flow</div>';
+    html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);line-height:1.6;max-width:400px;margin:0 auto">';
+    html += 'Get started by importing your recurring transactions from Cache (Settings → Import), or add them manually from the Transactions tab.</div>';
+    html += '<div style="margin-top:16px;display:flex;gap:8px;justify-content:center">';
+    html += '<button class="form-btn" onclick="openSettings()">Import from Cache</button>';
+    html += '<button class="form-btn cancel" onclick="switchTab(\'transactions\')">Add Manually</button>';
+    html += '</div></div></div>';
+    html += '<div class="quick-add-bar"><button class="quick-add-btn" onclick="showQuickAdd()">+ Quick Add</button></div>';
+    html += '<div id="quick-add-form"></div>';
+    container.innerHTML = html;
+    return;
+  }
+```
+
+- [ ] **Step 2: Add keyboard shortcut for lock (Ctrl+L)**
+
+Add after the Escape key handler:
+
+```javascript
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 'l' && !isLocked) {
+    e.preventDefault();
+    lockApp();
+  }
+});
+```
+
+- [ ] **Step 3: Handle corrupt localStorage gracefully**
+
+Update the boot function to wrap localStorage reads in try/catch:
+
+```javascript
+(function boot() {
+  try {
+    const hasEncrypted = !!localStorage.getItem(STORAGE_ENC);
+    if (hasEncrypted) {
+      // Validate that meta is also present
+      const meta = JSON.parse(localStorage.getItem(STORAGE_META) || '{}');
+      if (!meta.salt) {
+        if (confirm('Data appears corrupted (missing encryption metadata). Clear and start fresh?')) {
+          localStorage.removeItem(STORAGE_ENC);
+          localStorage.removeItem(STORAGE_META);
+          isFirstRun = true;
+          showLockScreen('set');
+          return;
+        }
+      }
+      showLockScreen('unlock');
+    } else {
+      isFirstRun = true;
+      showLockScreen('set');
+    }
+  } catch (e) {
+    if (confirm('Error loading data: ' + e.message + '. Clear and start fresh?')) {
+      localStorage.removeItem(STORAGE_ENC);
+      localStorage.removeItem(STORAGE_META);
+    }
+    isFirstRun = true;
+    showLockScreen('set');
+  }
+})();
+```
+
+- [ ] **Step 4: Ensure appData has all required fields after decrypt**
+
+Add a data migration/validation step in `submitUnlock`, right after `appData = JSON.parse(plain);`:
+
+```javascript
+    // Ensure all fields exist (forward compatibility)
+    appData.balance = appData.balance ?? 0;
+    appData.recurring = appData.recurring || [];
+    appData.oneoffs = appData.oneoffs || [];
+    appData.history = appData.history || [];
+    appData.settings = appData.settings || { currency: 'USD' };
+    appData.importedAt = appData.importedAt ?? null;
+```
+
+- [ ] **Step 5: Verify full flow end-to-end**
+
+1. Fresh load (clear localStorage first) → welcome state on Dashboard with Import/Add buttons
+2. Set password → import Cache JSON → Dashboard populates with upcoming items
+3. Set balance to $5000 → mark a few items paid → balance updates correctly
+4. Transactions tab: full 45-day feed, edit a transaction, toggle paid history
+5. Forecast tab: 12 months projecting forward from current balance
+6. Lock (Ctrl+L) → unlock with password → all data intact
+7. Wait 15 minutes (or temporarily set IDLE_TIMEOUT to 5000 for testing) → auto-locks
+8. Export → valid JSON backup
+9. Responsive: resize to mobile width → layout stacks properly
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add cacheflow.html
+git commit -m "feat: add welcome state, keyboard shortcuts, and edge case handling"
+```
+
+---
+
+### Summary
+
+| Task | What it builds | Commits |
+|------|---------------|---------|
+| 1 | HTML shell + CSS + lock screen + encryption | 1 |
+| 2 | Header + summary bar + tab nav + balance display | 1 |
+| 3 | Dashboard view + upcoming sections + quick add + mark paid | 1 |
+| 4 | Transactions view + 45-day feed + edit panel + paid toggle | 1 |
+| 5 | Forecast view + 12-month projection table | 1 |
+| 6 | Settings modal + Cache import + export + balance editor | 1 |
+| 7 | Polish: welcome state, keyboard shortcuts, error handling | 1 |
+
+Total: 7 tasks, 7 commits, 1 file (`cacheflow.html`)
