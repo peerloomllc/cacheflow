@@ -16,3 +16,7 @@ Each item: `- [x] Description` with metadata tags and completion date.
 - [x] Search/filter transactions on Transactions tab `[feature]` `[small]` `[high]` — 2026-04-04
 - [x] Remove "Add Recurring" button from Transactions page `[refactor]` `[small]` `[medium]` — 2026-04-04
 - [x] Transactions page grouped by month with expand/collapse `[feature]` `[medium]` `[high]` — 2026-04-04
+- [x] Transactions page should forecast out 6 months with +/- controls to increase/decrease the horizon `[feature]` `[medium]` `[high]` — 2026-04-04
+- [x] Add slider at top of Forecast page to adjust forecast horizon by monthly intervals, with graph and table updating dynamically `[feature]` `[medium]` `[high]` — 2026-04-04
+- [x] Add line chart to Forecast page showing balance projections as time series (individual income/expense items and overall balance) `[feature]` `[large]` `[high]` — 2026-04-04
+- [x] Animate transaction removal (slide-out on paid/skip), month/week collapse/expand, and edit panel toggle without full page re-render `[polish]` `[medium]` `[medium]` — 2026-04-04

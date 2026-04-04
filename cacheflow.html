@@ -29,6 +29,12 @@
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  @keyframes slideOut{from{opacity:1;max-height:60px;transform:translateX(0)}to{opacity:0;max-height:0;padding-top:0;padding-bottom:0;transform:translateX(40px)}}
+  .tx-removing{animation:slideOut .3s ease forwards;overflow:hidden;pointer-events:none}
+  .collapse-body{overflow:hidden;transition:max-height .25s ease, opacity .2s ease}
+  .collapse-arrow{transition:transform .2s ease;display:inline-block}
+  .fc-row-new{animation:fadeUp .4s ease both}
+  .fc-row-out{animation:slideOut .3s ease forwards;overflow:hidden;pointer-events:none}
 
   /* ── LOCK SCREEN ── */
   #lock-screen{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center;animation:fadeIn .25s ease}
@@ -142,7 +148,10 @@
 
   /* ── TRANSACTIONS VIEW ── */
   .tx-toolbar{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2)}
-  .tx-toolbar-left{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted)}
+  .tx-toolbar-left{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);display:flex;align-items:center;gap:8px}
+  .horizon-btn{width:22px;height:22px;border-radius:4px;border:1px solid var(--border-light);background:var(--surface);color:var(--text-muted);font-family:var(--mono);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;line-height:1}
+  .horizon-btn:hover{border-color:var(--accent-dim);color:var(--accent)}
+  .horizon-btn:disabled{opacity:.3;cursor:not-allowed;border-color:var(--border)}
   .toggle-switch{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--text-dim);cursor:pointer}
   .toggle-track{width:28px;height:14px;border-radius:7px;background:var(--border);position:relative;transition:background .2s}
   .toggle-track.on{background:var(--accent-dim)}
@@ -898,16 +907,25 @@ function renderDashboard() {
 let showPaidHistory = false;
 let editingTxId = null;
 let txSearchQuery = '';
+let txHorizonMonths = 6;
+let fcHorizonMonths = 12;
 let collapsedMonths = {};
 let collapsedWeeks = {};
 
 function renderTransactions() {
   const container = document.getElementById('view-transactions');
-  const items = getUpcomingTransactions(45);
+  const horizonDays = Math.round(txHorizonMonths * 30.44);
+  const items = getUpcomingTransactions(horizonDays);
 
   let html = '<div class="section">';
   html += '<div class="tx-toolbar">';
-  html += '<div class="tx-toolbar-left">Next 45 Days</div>';
+  html += '<div class="tx-toolbar-left">';
+  html += '<button class="horizon-btn" onclick="event.stopPropagation();setHorizon(1)"' + (txHorizonMonths <= 1 ? ' disabled' : '') + '>&laquo;</button>';
+  html += '<button class="horizon-btn" onclick="event.stopPropagation();adjustHorizon(-1)"' + (txHorizonMonths <= 1 ? ' disabled' : '') + '>&minus;</button>';
+  html += '<span>Next ' + txHorizonMonths + ' Month' + (txHorizonMonths !== 1 ? 's' : '') + '</span>';
+  html += '<button class="horizon-btn" onclick="event.stopPropagation();adjustHorizon(1)"' + (txHorizonMonths >= 24 ? ' disabled' : '') + '>+</button>';
+  html += '<button class="horizon-btn" onclick="event.stopPropagation();setHorizon(24)"' + (txHorizonMonths >= 24 ? ' disabled' : '') + '>&raquo;</button>';
+  html += '</div>';
   html += '<div style="display:flex;align-items:center;gap:12px">';
   html += '<div class="toggle-switch" onclick="togglePaidHistory()">';
   html += '<span>Show paid</span>';
@@ -959,12 +977,12 @@ function renderTransactions() {
     const collapsed = !!collapsedMonths[monthKey];
     const arrow = collapsed ? '\u25b6' : '\u25bc';
 
-    html += '<div class="month-group-header" onclick="toggleMonth(\'' + monthKey + '\')" style="cursor:pointer">';
-    html += '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:8px">' + arrow + '</span>' + monthLabel + '</div>';
+    html += '<div class="month-group-header" onclick="toggleMonth(\'' + monthKey + '\')" style="cursor:pointer" data-month-header="' + monthKey + '">';
+    html += '<div style="display:flex;align-items:center;gap:8px"><span class="collapse-arrow" style="font-size:8px">' + arrow + '</span>' + monthLabel + '</div>';
     html += '<span style="color:' + (monthTotal >= 0 ? 'var(--accent)' : 'var(--red)') + '">' + (monthTotal >= 0 ? '+' : '') + fmtMoney(monthTotal) + '</span>';
     html += '</div>';
-
-    if (!collapsed) {
+    html += '<div class="collapse-body" data-month-body="' + monthKey + '"' + (collapsed ? ' style="display:none"' : '') + '>';
+    {
       const weekGroups = {};
       items.forEach(i => {
         const itemDate = new Date(i.date + 'T00:00:00');
@@ -985,12 +1003,12 @@ function renderTransactions() {
         const wCollapsed = !!collapsedWeeks[weekKey];
         const wArrow = wCollapsed ? '\u25b6' : '\u25bc';
 
-        html += '<div class="week-group-header" onclick="toggleWeek(\'' + weekKey + '\')">';
-        html += '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:7px">' + wArrow + '</span>' + wLabel + '</div>';
+        html += '<div class="week-group-header" onclick="toggleWeek(\'' + weekKey + '\')" data-week-header="' + weekKey + '">';
+        html += '<div style="display:flex;align-items:center;gap:6px"><span class="collapse-arrow" style="font-size:7px">' + wArrow + '</span>' + wLabel + '</div>';
         html += '<span style="color:' + (weekTotal >= 0 ? 'var(--accent)' : 'var(--red)') + '">' + (weekTotal >= 0 ? '+' : '') + fmtMoney(weekTotal) + '</span>';
         html += '</div>';
-
-        if (!wCollapsed) {
+        html += '<div class="collapse-body" data-week-body="' + weekKey + '"' + (wCollapsed ? ' style="display:none"' : '') + '>';
+        {
           wg.items.forEach(i => {
             const isIncome = i.direction === 'income';
             const rowClass = 'tx-row' + (isIncome && !i.isPaid ? ' income-row' : '') + (i.isPaid ? ' paid-row' : '');
@@ -998,7 +1016,8 @@ function renderTransactions() {
             const oid = i.oneoffId || '';
             const clickable = !i.isPaid && rid;
 
-            html += '<div class="' + rowClass + '"' + (clickable ? ' style="cursor:pointer" onclick="toggleEditTx(\'' + rid + '\')"' : '') + '>';
+            const txKey = (rid || oid) + '-' + i.date;
+            html += '<div class="' + rowClass + '" data-tx-key="' + txKey + '"' + (clickable ? ' style="cursor:pointer" onclick="toggleEditTx(\'' + rid + '\')"' : '') + '>';
             html += '<div><div class="tx-name">' + escHtml(i.name) + '</div>';
             html += '<div class="tx-meta">';
             if (i.isPaid) {
@@ -1011,20 +1030,22 @@ function renderTransactions() {
             html += '</div></div>';
             html += '<div class="tx-amount' + (isIncome ? ' income' : '') + '">' + (isIncome ? '+' : '') + fmtMoney(i.amount) + '</div>';
             if (!i.isPaid) {
-              html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\')">' + (isIncome ? 'Received' : 'Paid') + '</button>';
-              html += '<button class="tx-btn danger" onclick="event.stopPropagation();skipTransaction(\'' + rid + '\',\'' + oid + '\')" title="Remove without affecting balance">&#10005;</button>';
+              html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\',this)">' + (isIncome ? 'Received' : 'Paid') + '</button>';
+              html += '<button class="tx-btn danger" onclick="event.stopPropagation();skipTransaction(\'' + rid + '\',\'' + oid + '\',this)" title="Remove without affecting balance">&#10005;</button>';
             } else {
               html += '<div></div><div></div>';
             }
             html += '</div>';
 
-            if (clickable && editingTxId === rid) {
-              html += renderEditPanel(rid);
+            if (clickable) {
+              html += '<div class="edit-panel-wrap" data-edit-for="' + rid + '"' + (editingTxId !== rid ? ' style="display:none"' : '') + '>' + renderEditPanel(rid) + '</div>';
             }
           });
         }
+        html += '</div>'; // close week body
       });
     }
+    html += '</div>'; // close month body
   });
 
   if (allItems.length === 0) {
@@ -1037,14 +1058,36 @@ function renderTransactions() {
   if (searchEl && txSearchQuery) { searchEl.focus(); searchEl.selectionStart = searchEl.selectionEnd = searchEl.value.length; }
 }
 
+function toggleCollapse(body, arrow, collapsed) {
+  if (collapsed) {
+    body.style.display = 'none';
+    arrow.textContent = '\u25b6';
+  } else {
+    body.style.display = '';
+    arrow.textContent = '\u25bc';
+  }
+}
+
 function toggleWeek(key) {
   collapsedWeeks[key] = !collapsedWeeks[key];
-  renderTransactions();
+  const header = document.querySelector('[data-week-header="' + key + '"]');
+  const body = document.querySelector('[data-week-body="' + key + '"]');
+  if (header && body) {
+    toggleCollapse(body, header.querySelector('.collapse-arrow'), collapsedWeeks[key]);
+  } else {
+    renderTransactions();
+  }
 }
 
 function toggleMonth(key) {
   collapsedMonths[key] = !collapsedMonths[key];
-  renderTransactions();
+  const header = document.querySelector('[data-month-header="' + key + '"]');
+  const body = document.querySelector('[data-month-body="' + key + '"]');
+  if (header && body) {
+    toggleCollapse(body, header.querySelector('.collapse-arrow'), collapsedMonths[key]);
+  } else {
+    renderTransactions();
+  }
 }
 
 function togglePaidHistory() {
@@ -1052,9 +1095,39 @@ function togglePaidHistory() {
   renderTransactions();
 }
 
-function toggleEditTx(recurringId) {
-  editingTxId = editingTxId === recurringId ? null : recurringId;
+function adjustHorizon(delta) {
+  txHorizonMonths = Math.max(1, Math.min(24, txHorizonMonths + delta));
   renderTransactions();
+}
+
+function setHorizon(value) {
+  txHorizonMonths = Math.max(1, Math.min(24, value));
+  renderTransactions();
+}
+
+function adjustFcHorizon(delta) {
+  fcHorizonMonths = Math.max(1, Math.min(24, fcHorizonMonths + delta));
+  renderForecast();
+}
+
+function setFcHorizon(value) {
+  fcHorizonMonths = Math.max(1, Math.min(24, value));
+  renderForecast();
+}
+
+function toggleEditTx(recurringId) {
+  const wasOpen = editingTxId === recurringId;
+  // Close previous
+  if (editingTxId) {
+    const prev = document.querySelector('[data-edit-for="' + editingTxId + '"]');
+    if (prev) prev.style.display = 'none';
+  }
+  editingTxId = wasOpen ? null : recurringId;
+  // Open new
+  if (editingTxId) {
+    const panel = document.querySelector('[data-edit-for="' + editingTxId + '"]');
+    if (panel) panel.style.display = '';
+  }
 }
 
 function escAttr(s) {
@@ -1071,7 +1144,7 @@ function renderEditPanel(recurringId) {
   html += '</div>';
   html += '<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">';
   html += '<button class="form-btn" onclick="saveEditTx(\'' + r.id + '\')">Save</button>';
-  html += '<button class="form-btn cancel" onclick="editingTxId=null;renderTransactions()">Cancel</button>';
+  html += '<button class="form-btn cancel" onclick="event.stopPropagation();var p=this.closest(\'[data-edit-for]\');if(p)p.style.display=\'none\';editingTxId=null">Cancel</button>';
   html += '</div></div>';
   return html;
 }
@@ -1096,17 +1169,49 @@ async function toggleEnabled(id) {
   renderAll();
 }
 
-async function skipTransaction(recurringId, oneoffId) {
-  if (recurringId) {
-    const r = appData.recurring.find(x => x.id === recurringId);
-    if (!r) return;
-    r.nextDue = advanceDate(r.nextDue, r.frequency);
-  } else if (oneoffId) {
-    appData.oneoffs = appData.oneoffs.filter(x => x.id !== oneoffId);
-  }
-  await encryptAndSave();
-  renderAll();
-  showToast('Skipped', 'success');
+function animateRowOut(btn, callback) {
+  const row = btn ? btn.closest('.tx-row') : null;
+  if (!row) { callback(); return; }
+  row.classList.add('tx-removing');
+  row.addEventListener('animationend', () => {
+    row.remove();
+    callback();
+  }, { once: true });
+}
+
+function renderSummaryAndBalance() {
+  const bal = appData.balance;
+  const balEl = document.getElementById('balanceDisplay');
+  balEl.textContent = fmtMoney(bal);
+  balEl.className = 'balance-value editable' + (bal < 0 ? ' negative' : '');
+
+  let monthlyIncome = 0, monthlyExpense = 0;
+  appData.recurring.filter(r => r.enabled).forEach(r => {
+    const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+    if (r.direction === 'income') monthlyIncome += monthly;
+    else monthlyExpense += monthly;
+  });
+  document.getElementById('sumIncome').textContent = fmtMoney(monthlyIncome);
+  document.getElementById('sumExpense').textContent = fmtMoney(monthlyExpense);
+  const net = monthlyIncome - monthlyExpense;
+  const netEl = document.getElementById('sumNet');
+  netEl.textContent = (net >= 0 ? '+' : '') + fmtMoney(net);
+  netEl.className = 's-value ' + (net >= 0 ? 'net-pos' : 'net-neg');
+}
+
+async function skipTransaction(recurringId, oneoffId, btn) {
+  animateRowOut(btn, async () => {
+    if (recurringId) {
+      const r = appData.recurring.find(x => x.id === recurringId);
+      if (!r) return;
+      r.nextDue = advanceDate(r.nextDue, r.frequency);
+    } else if (oneoffId) {
+      appData.oneoffs = appData.oneoffs.filter(x => x.id !== oneoffId);
+    }
+    await encryptAndSave();
+    renderSummaryAndBalance();
+    showToast('Skipped', 'success');
+  });
 }
 
 async function deleteRecurring(id) {
@@ -1204,57 +1309,216 @@ function renderForecast() {
     else oneoffByMonth[key].expense += parseFloat(o.amount) || 0;
   });
 
-  let html = '<div class="section"><div class="section-header"><div class="section-title">';
-  html += '<div class="section-icon icon-default">12</div>';
-  html += '<span class="section-name">12-Month Forecast</span></div></div>';
-  html += '<table class="forecast-table"><thead><tr>';
-  html += '<th>Month</th><th>Income</th><th>Expenses</th><th>Net</th><th>Balance</th>';
-  html += '</tr></thead><tbody>';
-
+  // ── Compute forecast data ──
+  const months = [];
   let runningBalance = appData.balance;
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < fcHorizonMonths; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
     const monthKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const shortLabel = d.toLocaleDateString('en-US', { month: 'short' }) + (d.getMonth() === 0 || i === 0 ? ' ' + d.getFullYear().toString().slice(2) : '');
     const isCurrent = monthKey === currentMonthKey;
 
-    let incomeThisMonth = monthlyIncome;
-    let expenseThisMonth = monthlyExpense;
-
+    let inc = monthlyIncome, exp = monthlyExpense;
     if (i === 0) {
       const totalDays = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-      const remainingDays = totalDays - now.getDate() + 1;
-      const fraction = remainingDays / totalDays;
-      incomeThisMonth = monthlyIncome * fraction;
-      expenseThisMonth = monthlyExpense * fraction;
+      const fraction = (totalDays - now.getDate() + 1) / totalDays;
+      inc = monthlyIncome * fraction;
+      exp = monthlyExpense * fraction;
     }
-
     const oo = oneoffByMonth[monthKey];
-    if (oo) {
-      incomeThisMonth += oo.income;
-      expenseThisMonth += oo.expense;
-    }
+    if (oo) { inc += oo.income; exp += oo.expense; }
 
-    const net = incomeThisMonth - expenseThisMonth;
+    const net = inc - exp;
     runningBalance += net;
-    const isNegBal = runningBalance < 0;
-
-    let rowClass = '';
-    if (isCurrent) rowClass += ' current-month';
-    if (isNegBal) rowClass += ' negative-balance';
-
-    html += '<tr class="' + rowClass.trim() + '">';
-    html += '<td>' + label + '</td>';
-    html += '<td class="f-income">' + fmtMoney(incomeThisMonth) + '</td>';
-    html += '<td class="f-expense">' + fmtMoney(expenseThisMonth) + '</td>';
-    html += '<td class="' + (net >= 0 ? 'f-net-pos' : 'f-net-neg') + '">' + (net >= 0 ? '+' : '') + fmtMoney(net) + '</td>';
-    html += '<td class="' + (runningBalance >= 0 ? 'f-bal-pos' : 'f-bal-neg') + '">' + fmtMoney(runningBalance) + '</td>';
-    html += '</tr>';
+    months.push({ label, shortLabel, isCurrent, inc, exp, net, balance: runningBalance });
   }
 
-  html += '</tbody></table></div>';
-  container.innerHTML = html;
+  // ── Granular balance projection ──
+  const horizonDays = Math.round(fcHorizonMonths * 30.44);
+  const txItems = getUpcomingTransactions(horizonDays);
+  const txByDate = {};
+  txItems.forEach(t => {
+    if (!txByDate[t.date]) txByDate[t.date] = 0;
+    txByDate[t.date] += t.direction === 'income' ? t.amount : -t.amount;
+  });
+
+  // Build daily balance series, then sample to weekly if horizon > 6 months
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dailyBal = [];
+  let bal = appData.balance;
+  for (let d = 0; d <= horizonDays; d++) {
+    const dt = new Date(today); dt.setDate(dt.getDate() + d);
+    const key = toDateStr(dt);
+    if (txByDate[key]) bal += txByDate[key];
+    dailyBal.push({ date: dt, balance: bal });
+  }
+
+  // Sample: daily if <= 6 months, weekly if > 6
+  const sampleInterval = fcHorizonMonths <= 6 ? 1 : 7;
+  const balPoints = [];
+  for (let i = 0; i < dailyBal.length; i += sampleInterval) {
+    balPoints.push(dailyBal[i]);
+  }
+  if (balPoints[balPoints.length - 1] !== dailyBal[dailyBal.length - 1]) {
+    balPoints.push(dailyBal[dailyBal.length - 1]);
+  }
+
+  // ── Chart ──
+  const W = 800, H = 250, PAD_L = 60, PAD_R = 20, PAD_T = 20, PAD_B = 52;
+  const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
+  const allBalVals = balPoints.map(p => p.balance);
+  const allMonthlyVals = months.reduce((a, m) => { a.push(m.inc, m.exp); return a; }, []);
+  const allVals = [...allBalVals, ...allMonthlyVals, 0];
+  const rawMin = Math.min(...allVals), rawMax = Math.max(...allVals);
+
+  // Nice rounded tick values
+  function niceStep(range, ticks) {
+    const rough = range / ticks;
+    const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+    const norm = rough / mag;
+    const nice = norm <= 1.5 ? 1 : norm <= 3 ? 2 : norm <= 7 ? 5 : 10;
+    return nice * mag;
+  }
+  const rawRange = rawMax - rawMin || 1;
+  const step = niceStep(rawRange, 4);
+  const minV = Math.floor(rawMin / step) * step;
+  const maxV = Math.ceil(rawMax / step) * step;
+  const range = maxV - minV || 1;
+
+  // X helpers: balance line uses date-based positioning, monthly lines use index-based
+  const startTime = balPoints[0].date.getTime();
+  const endTime = balPoints[balPoints.length - 1].date.getTime();
+  const timeSpan = endTime - startTime || 1;
+  function cxDate(dt) { return PAD_L + ((dt.getTime() - startTime) / timeSpan) * chartW; }
+  function cxMonth(i) { return PAD_L + (months.length > 1 ? (i / (months.length - 1)) * chartW : chartW / 2); }
+  function cy(v) { return PAD_T + (1 - (v - minV) / range) * chartH; }
+
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;padding:16px 8px 8px">';
+
+  // Zero line
+  if (minV < 0 && maxV > 0) {
+    const y0 = cy(0).toFixed(1);
+    svg += '<line x1="' + PAD_L + '" y1="' + y0 + '" x2="' + (W - PAD_R) + '" y2="' + y0 + '" stroke="var(--border-light)" stroke-width="1" stroke-dasharray="3,3" />';
+  }
+
+  // Grid lines at nice intervals
+  for (let v = minV; v <= maxV + step * 0.01; v += step) {
+    const gy = cy(v).toFixed(1);
+    svg += '<line x1="' + PAD_L + '" y1="' + gy + '" x2="' + (W - PAD_R) + '" y2="' + gy + '" stroke="var(--border)" stroke-width="0.5" />';
+    svg += '<text x="' + (PAD_L - 6) + '" y="' + (parseFloat(gy) + 3) + '" text-anchor="end" fill="var(--text-dim)" font-family="var(--mono)" font-size="8">' + fmtMoney(v) + '</text>';
+  }
+
+  // X-axis labels (month markers)
+  const xLabelY = PAD_T + chartH + 14;
+  const labelStep = months.length <= 12 ? 1 : months.length <= 18 ? 2 : 3;
+  months.forEach((m, i) => {
+    if (i % labelStep === 0 || i === months.length - 1) {
+      svg += '<text x="' + cxMonth(i).toFixed(1) + '" y="' + xLabelY + '" text-anchor="middle" fill="var(--text-dim)" font-family="var(--mono)" font-size="8">' + m.shortLabel + '</text>';
+    }
+  });
+
+  // Monthly income/expense dashed lines
+  const incPts = months.map((m, i) => cxMonth(i).toFixed(1) + ',' + cy(m.inc).toFixed(1)).join(' ');
+  const expPts = months.map((m, i) => cxMonth(i).toFixed(1) + ',' + cy(m.exp).toFixed(1)).join(' ');
+  svg += '<polyline points="' + incPts + '" fill="none" stroke="var(--accent-dim)" stroke-width="1.5" stroke-dasharray="4,3" />';
+  svg += '<polyline points="' + expPts + '" fill="none" stroke="var(--red-dim)" stroke-width="1.5" stroke-dasharray="4,3" />';
+
+  // Granular balance line
+  const balPts = balPoints.map(p => cxDate(p.date).toFixed(1) + ',' + cy(p.balance).toFixed(1)).join(' ');
+  svg += '<polyline points="' + balPts + '" fill="none" stroke="var(--gold)" stroke-width="1.5" />';
+
+  // Legend (centered, below x-axis labels)
+  const legendY = H - 6;
+  const legendCx = W / 2;
+  svg += '<text x="' + (legendCx - 80) + '" y="' + legendY + '" text-anchor="middle" fill="var(--gold)" font-family="var(--mono)" font-size="8">\u2014 Balance</text>';
+  svg += '<text x="' + legendCx + '" y="' + legendY + '" text-anchor="middle" fill="var(--accent-dim)" font-family="var(--mono)" font-size="8">- - Income</text>';
+  svg += '<text x="' + (legendCx + 80) + '" y="' + legendY + '" text-anchor="middle" fill="var(--red-dim)" font-family="var(--mono)" font-size="8">- - Expenses</text>';
+
+  svg += '</svg>';
+
+  // ── Build / update HTML ──
+  // Create shell once, then surgically update chart + table + controls
+  if (!document.getElementById('fc-chart')) {
+    let html = '<div class="section"><div class="section-header"><div class="section-title">';
+    html += '<div class="section-icon icon-default" id="fc-icon">' + fcHorizonMonths + '</div>';
+    html += '<span class="section-name">Forecast</span></div>';
+    html += '<div id="fc-controls" class="tx-toolbar-left" style="gap:6px"></div>';
+    html += '</div>';
+    html += '<div id="fc-chart"></div>';
+    html += '<table class="forecast-table"><thead><tr>';
+    html += '<th>Month</th><th>Income</th><th>Expenses</th><th>Net</th><th>Balance</th>';
+    html += '</tr></thead><tbody id="fc-tbody"></tbody></table></div>';
+    container.innerHTML = html;
+  }
+
+  // Update controls
+  let ctrlHtml = '';
+  ctrlHtml += '<button class="horizon-btn" onclick="setFcHorizon(1)"' + (fcHorizonMonths <= 1 ? ' disabled' : '') + '>&laquo;</button>';
+  ctrlHtml += '<button class="horizon-btn" onclick="adjustFcHorizon(-1)"' + (fcHorizonMonths <= 1 ? ' disabled' : '') + '>&minus;</button>';
+  ctrlHtml += '<span>' + fcHorizonMonths + ' Mo</span>';
+  ctrlHtml += '<button class="horizon-btn" onclick="adjustFcHorizon(1)"' + (fcHorizonMonths >= 24 ? ' disabled' : '') + '>+</button>';
+  ctrlHtml += '<button class="horizon-btn" onclick="setFcHorizon(24)"' + (fcHorizonMonths >= 24 ? ' disabled' : '') + '>&raquo;</button>';
+  document.getElementById('fc-controls').innerHTML = ctrlHtml;
+  document.getElementById('fc-icon').textContent = fcHorizonMonths;
+
+  // Update chart
+  document.getElementById('fc-chart').innerHTML = svg;
+
+  // Update table rows — animate only added/removed rows
+  const tbody = document.getElementById('fc-tbody');
+  const prevCount = tbody.children.length;
+  const newCount = months.length;
+
+  function buildRow(m, cls) {
+    let rowClass = cls || '';
+    if (m.isCurrent) rowClass += ' current-month';
+    if (m.balance < 0) rowClass += ' negative-balance';
+    let h = '<tr class="' + rowClass.trim() + '">';
+    h += '<td>' + m.label + '</td>';
+    h += '<td class="f-income">' + fmtMoney(m.inc) + '</td>';
+    h += '<td class="f-expense">' + fmtMoney(m.exp) + '</td>';
+    h += '<td class="' + (m.net >= 0 ? 'f-net-pos' : 'f-net-neg') + '">' + (m.net >= 0 ? '+' : '') + fmtMoney(m.net) + '</td>';
+    h += '<td class="' + (m.balance >= 0 ? 'f-bal-pos' : 'f-bal-neg') + '">' + fmtMoney(m.balance) + '</td>';
+    h += '</tr>';
+    return h;
+  }
+
+  if (prevCount === 0) {
+    // First render — no animation
+    tbody.innerHTML = months.map(m => buildRow(m, '')).join('');
+  } else if (newCount > prevCount) {
+    // Update existing rows in place, animate new ones in
+    for (let i = 0; i < prevCount; i++) {
+      tbody.children[i].outerHTML = buildRow(months[i], '');
+    }
+    for (let i = prevCount; i < newCount; i++) {
+      tbody.insertAdjacentHTML('beforeend', buildRow(months[i], 'fc-row-new'));
+    }
+  } else if (newCount < prevCount) {
+    // Animate removed rows out, then update remaining
+    const toRemove = prevCount - newCount;
+    let removed = 0;
+    for (let i = prevCount - 1; i >= newCount; i--) {
+      const row = tbody.children[i];
+      row.classList.add('fc-row-out');
+      row.addEventListener('animationend', () => {
+        row.remove();
+        removed++;
+        if (removed === toRemove) {
+          for (let j = 0; j < newCount; j++) {
+            tbody.children[j].outerHTML = buildRow(months[j], '');
+          }
+        }
+      }, { once: true });
+    }
+  } else {
+    // Same count — just update values
+    for (let i = 0; i < newCount; i++) {
+      tbody.children[i].outerHTML = buildRow(months[i], '');
+    }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1434,47 +1698,49 @@ function startBalanceEdit() {
 // ── MARK PAID / RECEIVED ─────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-async function markPaid(recurringId, oneoffId, date) {
-  let entry;
-  if (recurringId) {
-    const r = appData.recurring.find(x => x.id === recurringId);
-    if (!r) return;
-    entry = {
-      id: generateId(),
-      name: r.name,
-      amount: parseFloat(r.amount) || 0,
-      direction: r.direction,
-      paidAt: new Date().toISOString(),
-      recurringId: r.id
-    };
-    while (r.nextDue <= date) {
-      r.nextDue = advanceDate(r.nextDue, r.frequency);
+async function markPaid(recurringId, oneoffId, date, btn) {
+  animateRowOut(btn, async () => {
+    let entry;
+    if (recurringId) {
+      const r = appData.recurring.find(x => x.id === recurringId);
+      if (!r) return;
+      entry = {
+        id: generateId(),
+        name: r.name,
+        amount: parseFloat(r.amount) || 0,
+        direction: r.direction,
+        paidAt: new Date().toISOString(),
+        recurringId: r.id
+      };
+      while (r.nextDue <= date) {
+        r.nextDue = advanceDate(r.nextDue, r.frequency);
+      }
+    } else if (oneoffId) {
+      const o = appData.oneoffs.find(x => x.id === oneoffId);
+      if (!o) return;
+      entry = {
+        id: generateId(),
+        name: o.name,
+        amount: parseFloat(o.amount) || 0,
+        direction: o.direction,
+        paidAt: new Date().toISOString()
+      };
+      o.paid = true;
     }
-  } else if (oneoffId) {
-    const o = appData.oneoffs.find(x => x.id === oneoffId);
-    if (!o) return;
-    entry = {
-      id: generateId(),
-      name: o.name,
-      amount: parseFloat(o.amount) || 0,
-      direction: o.direction,
-      paidAt: new Date().toISOString()
-    };
-    o.paid = true;
-  }
 
-  if (!entry) return;
+    if (!entry) return;
 
-  if (entry.direction === 'expense') {
-    appData.balance -= entry.amount;
-  } else {
-    appData.balance += entry.amount;
-  }
+    if (entry.direction === 'expense') {
+      appData.balance -= entry.amount;
+    } else {
+      appData.balance += entry.amount;
+    }
 
-  appData.history.push(entry);
-  await encryptAndSave();
-  renderAll();
-  showToast((entry.direction === 'income' ? 'Received' : 'Paid') + ': ' + entry.name, 'success');
+    appData.history.push(entry);
+    await encryptAndSave();
+    renderSummaryAndBalance();
+    showToast((entry.direction === 'income' ? 'Received' : 'Paid') + ': ' + entry.name, 'success');
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════════════

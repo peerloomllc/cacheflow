@@ -16,15 +16,11 @@ Each item: `- [ ] Description` with metadata tags: `[type]` `[complexity]` `[pri
 ### Recurring Cash Flow Page
 - [ ] Add a dedicated Recurring Cash Flow tab/page (like Cache's Cash Flow page) for managing all recurring income/expenses setup `[feature]` `[large]` `[high]`
 
-### Transactions Page Overhaul
-- [ ] Transactions page should forecast out 6 months with +/- controls to increase/decrease the horizon `[feature]` `[medium]` `[high]`
-
 ### UX Improvements
-- [ ] Animate individual element removal on delete/paid/received instead of full page re-render; same for "Show Paid" toggle `[polish]` `[medium]` `[medium]`
+- [ ] Animate "Show Paid" toggle (staggered fade-in for history rows) `[polish]` `[small]` `[low]`
+- [ ] Font sizes too small on 1440p desktop monitors; review and adjust for better readability `[polish]` `[medium]` `[medium]`
 
 ### Forecast Page Enhancements
-- [ ] Add line chart to Forecast page showing balance projections as time series (individual income/expense items and overall balance) `[feature]` `[large]` `[high]`
-- [ ] Add slider at top of Forecast page to adjust forecast horizon by monthly intervals, with graph and table updating dynamically `[feature]` `[medium]` `[high]`
 
 ### Bitcoin Integration
 - [ ] Add Bitcoin price tracker banner at top (with live API calls), matching Cache's BTC ticker bar `[feature]` `[large]` `[high]`
