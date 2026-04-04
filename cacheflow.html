@@ -176,6 +176,43 @@
   .forecast-table .f-net-neg{color:var(--red)}
   .forecast-table .f-bal-pos{color:var(--text);font-weight:500}
   .forecast-table .f-bal-neg{color:var(--red);font-weight:500}
+
+  /* ── SETTINGS MODAL ── */
+  #settings-modal{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease}
+  #settings-modal.hidden{display:none}
+  .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:32px 36px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:20px;animation:fadeUp .2s ease}
+  .settings-title{font-family:var(--serif);font-size:20px;font-weight:400;letter-spacing:-.3px}
+  .settings-section{display:flex;flex-direction:column;gap:8px}
+  .settings-section-label{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim)}
+  .settings-help{font-family:var(--mono);font-size:10px;color:var(--text-dim);line-height:1.5}
+  .settings-btn{background:transparent;border:1px solid var(--border-light);color:var(--text-muted);font-family:var(--mono);font-size:11px;padding:9px 14px;border-radius:4px;cursor:pointer;transition:all .15s;width:100%;text-align:center}
+  .settings-btn:hover{border-color:var(--accent-dim);color:var(--accent)}
+  .settings-btn.danger{border-color:var(--red-dim);color:var(--red)}
+  .settings-btn.danger:hover{background:var(--red-glow)}
+  .settings-divider{border:none;border-top:1px solid var(--border);margin:4px 0}
+  .import-preview{font-family:var(--mono);font-size:11px;color:var(--text-muted);padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;margin-top:8px}
+
+  /* ── BALANCE EDITOR ── */
+  .balance-value.editable{cursor:pointer}
+  .balance-value.editable:hover{text-decoration:underline;text-decoration-style:dashed;text-underline-offset:4px;text-decoration-color:var(--text-dim)}
+  .balance-edit-input{background:var(--surface2);border:1px solid var(--accent-dim);border-radius:4px;color:var(--accent);font-family:var(--serif);font-size:32px;letter-spacing:-1px;padding:2px 8px;outline:none;width:200px;text-align:right}
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:600px){
+    header{flex-direction:column;align-items:flex-start;gap:12px;padding:16px 16px 12px}
+    .header-right{width:100%;justify-content:space-between}
+    .summary-bar{grid-template-columns:1fr}
+    .summary-item{border-right:none;border-bottom:1px solid var(--border);padding:10px 16px}
+    .summary-item:last-child{border-bottom:none}
+    .tab-nav{padding:0 8px}
+    .tab-btn{padding:10px 12px;font-size:9px}
+    .view{padding:16px 12px 60px}
+    .tx-row{grid-template-columns:1fr auto auto;gap:6px;padding:8px 12px}
+    .inline-form{flex-direction:column}
+    .settings-card{max-width:calc(100vw - 32px);padding:24px 20px}
+    .lock-card{max-width:calc(100vw - 32px);padding:24px 20px}
+    .forecast-table th,.forecast-table td{padding:8px 8px;font-size:11px}
+  }
 </style>
 </head>
 <body>
@@ -260,6 +297,53 @@
   <div id="view-dashboard" class="view active"></div>
   <div id="view-transactions" class="view"></div>
   <div id="view-forecast" class="view"></div>
+</div>
+
+<!-- ══ SETTINGS MODAL ══ -->
+<div id="settings-modal" class="hidden" onclick="if(event.target===this)closeSettings()">
+  <div class="settings-card">
+    <div class="settings-title">Settings</div>
+
+    <div class="settings-section">
+      <div class="settings-section-label">Balance</div>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="settings-balance" type="number" step="0.01" style="flex:1">
+        <button class="form-btn" onclick="saveBalance()">Update</button>
+      </div>
+      <div class="settings-help">Set your current checking account balance.</div>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <div class="settings-section-label">Import from Cache</div>
+      <button class="settings-btn" id="import-cache-btn" onclick="document.getElementById('import-file').click()">Import JSON from Cache</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleCacheImport(event)">
+      <div id="import-status" class="settings-help"></div>
+      <div id="import-preview"></div>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <div class="settings-section-label">Change Password</div>
+      <button class="settings-btn" onclick="closeSettings();showChangePassword()">Change Password</button>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+      <div class="settings-section-label">Export / Clear</div>
+      <div style="display:flex;gap:8px">
+        <button class="settings-btn" onclick="exportJSON()" style="flex:1">Export JSON</button>
+        <button class="settings-btn danger" onclick="clearAllData()" style="flex:1">Clear All Data</button>
+      </div>
+      <div class="settings-help">Export saves an unencrypted backup. Clear permanently removes all data.</div>
+    </div>
+
+    <hr class="settings-divider">
+    <button class="settings-btn" onclick="closeSettings()">Close</button>
+  </div>
 </div>
 
 <!-- ══ TOAST ══ -->
@@ -656,7 +740,8 @@ function renderAll() {
   const bal = appData.balance;
   const balEl = document.getElementById('balanceDisplay');
   balEl.textContent = fmtMoney(bal);
-  balEl.classList.toggle('negative', bal < 0);
+  balEl.className = 'balance-value editable' + (bal < 0 ? ' negative' : '');
+  balEl.onclick = startBalanceEdit;
 
   // Summary bar
   let monthlyIncome = 0, monthlyExpense = 0;
@@ -1015,9 +1100,165 @@ function renderForecast() {
   container.innerHTML = html;
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// ── SETTINGS ─────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
 function openSettings() {
-  // Will be implemented in Task 6
-  showToast('Settings coming soon');
+  document.getElementById('settings-balance').value = appData.balance;
+  document.getElementById('import-status').textContent = appData.importedAt
+    ? 'Last imported: ' + new Date(appData.importedAt).toLocaleDateString()
+    : '';
+  document.getElementById('import-preview').innerHTML = '';
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+
+async function saveBalance() {
+  const val = parseFloat(document.getElementById('settings-balance').value);
+  if (isNaN(val)) { showToast('Enter a valid number', 'error'); return; }
+  appData.balance = val;
+  await encryptAndSave();
+  renderAll();
+  showToast('Balance updated', 'success');
+}
+
+// ── CACHE IMPORT ──────────────────────────────────────────────────────────
+
+let pendingImportItems = null;
+
+function calcNextDue(frequency) {
+  const today = new Date();
+  const d = new Date(today);
+  d.setDate(d.getDate() + 1);
+  return toDateStr(d);
+}
+
+async function handleCacheImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+
+    if (!json.recurring || !Array.isArray(json.recurring)) {
+      showToast('No recurring data found in file', 'error');
+      return;
+    }
+
+    const items = json.recurring.filter(r => parseFloat(r.amount) > 0);
+    const incomeCount = items.filter(r => r.direction === 'income').length;
+    const expenseCount = items.filter(r => r.direction === 'expense').length;
+
+    pendingImportItems = items;
+    const preview = document.getElementById('import-preview');
+    preview.innerHTML = '<div class="import-preview">Found ' + items.length + ' recurring items (' +
+      incomeCount + ' income, ' + expenseCount + ' expenses)<br><br>' +
+      '<button class="form-btn" onclick="confirmImport()">Confirm Import</button> ' +
+      '<button class="form-btn cancel" onclick="cancelImport()">Cancel</button></div>';
+  } catch (e) {
+    showToast('Invalid JSON file: ' + e.message, 'error');
+  }
+}
+
+async function confirmImport() {
+  if (!pendingImportItems) return;
+
+  pendingImportItems.forEach(item => {
+    const existing = appData.recurring.find(r => r.sourceId === item.id);
+    if (existing) {
+      existing.name = item.name;
+      existing.amount = parseFloat(item.amount);
+      existing.frequency = item.frequency;
+      existing.direction = item.direction;
+    } else {
+      appData.recurring.push({
+        id: generateId(),
+        name: item.name,
+        amount: parseFloat(item.amount),
+        frequency: item.frequency,
+        direction: item.direction,
+        nextDue: calcNextDue(item.frequency),
+        enabled: true,
+        sourceId: item.id,
+        category: null,
+        _liabId: item._liabId || null
+      });
+    }
+  });
+
+  appData.importedAt = new Date().toISOString();
+  pendingImportItems = null;
+  await encryptAndSave();
+  renderAll();
+  document.getElementById('import-preview').innerHTML = '';
+  document.getElementById('import-status').textContent = 'Last imported: ' + new Date(appData.importedAt).toLocaleDateString();
+  showToast('Imported successfully', 'success');
+}
+
+function cancelImport() {
+  pendingImportItems = null;
+  document.getElementById('import-preview').innerHTML = '';
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cacheflow-' + toDateStr(new Date()) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  closeSettings();
+  showToast('Exported cacheflow backup', 'success');
+}
+
+// ── CLEAR ALL DATA ────────────────────────────────────────────────────────
+
+async function clearAllData() {
+  if (!confirm('Are you sure? This will permanently delete all your data.')) return;
+  if (!confirm('Really? This cannot be undone.')) return;
+  localStorage.removeItem(STORAGE_ENC);
+  localStorage.removeItem(STORAGE_META);
+  sessionKey = null;
+  appData = { balance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  closeSettings();
+  isFirstRun = true;
+  showLockScreen('set');
+  showToast('All data cleared');
+}
+
+// ── INLINE BALANCE EDITOR ─────────────────────────────────────────────────
+
+function startBalanceEdit() {
+  const balEl = document.getElementById('balanceDisplay');
+  const current = appData.balance;
+  balEl.onclick = null;
+  balEl.className = 'balance-value';
+  balEl.innerHTML = '<input class="balance-edit-input" id="balance-edit" type="number" step="0.01" value="' + current + '">';
+  const input = document.getElementById('balance-edit');
+  input.focus();
+  input.select();
+  input.onkeydown = async function(e) {
+    if (e.key === 'Enter') {
+      const val = parseFloat(input.value);
+      if (!isNaN(val)) {
+        appData.balance = val;
+        await encryptAndSave();
+      }
+      renderAll();
+    } else if (e.key === 'Escape') {
+      renderAll();
+    }
+  };
+  input.onblur = function() { renderAll(); };
 }
 
 // ══════════════════════════════════════════════════════════════════════════
