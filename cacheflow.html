@@ -380,7 +380,10 @@ let appData = {
 // ══════════════════════════════════════════════════════════════════════════
 
 function buf2b64(buf) {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const bytes = new Uint8Array(buf);
+  let str = '';
+  for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+  return btoa(str);
 }
 function b642buf(b64) {
   const bin = atob(b64);
@@ -661,7 +664,7 @@ function advanceDate(dateStr, frequency) {
 }
 
 function toDateStr(d) {
-  return d.toISOString().slice(0, 10);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
 function getUpcomingTransactions(daysAhead) {
@@ -691,7 +694,7 @@ function getUpcomingTransactions(daysAhead) {
 
   appData.oneoffs.filter(o => !o.paid).forEach(o => {
     const d = new Date(o.date + 'T00:00:00');
-    if (d >= today && d <= endDate) {
+    if (d <= endDate) {
       items.push({
         type: 'oneoff',
         oneoffId: o.id,
@@ -699,7 +702,8 @@ function getUpcomingTransactions(daysAhead) {
         amount: parseFloat(o.amount) || 0,
         direction: o.direction,
         frequency: null,
-        date: o.date
+        date: d < today ? toDateStr(today) : o.date,
+        overdue: d < today
       });
     }
   });
@@ -802,6 +806,7 @@ function renderDashboard() {
         html += '<div class="tx-meta"><span>' + fmtDate(i.date) + '</span>';
         if (i.frequency) html += '<span class="freq-badge">' + i.frequency.toUpperCase() + '</span>';
         if (!i.frequency) html += '<span class="freq-badge">ONE-OFF</span>';
+        if (i.overdue) html += '<span class="freq-badge" style="border-color:var(--red-dim);color:var(--red)">OVERDUE</span>';
         html += '</div></div>';
         html += '<div class="tx-amount' + (isIncome ? ' income' : '') + '">' + (isIncome ? '+' : '') + fmtMoney(i.amount) + '</div>';
         html += '<button class="tx-btn" onclick="markPaid(\'' + (i.recurringId || '') + '\',\'' + (i.oneoffId || '') + '\',\'' + i.date + '\')">' + (isIncome ? 'Received' : 'Paid') + '</button>';
@@ -1155,9 +1160,8 @@ async function saveBalance() {
 
 let pendingImportItems = null;
 
-function calcNextDue(frequency) {
-  const today = new Date();
-  const d = new Date(today);
+function calcNextDue() {
+  const d = new Date();
   d.setDate(d.getDate() + 1);
   return toDateStr(d);
 }
