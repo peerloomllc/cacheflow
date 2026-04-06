@@ -162,6 +162,7 @@
   .tx-btn{background:none;border:1px solid var(--border-light);color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:3px;cursor:pointer;transition:all .15s;white-space:nowrap}
   .tx-btn:hover{color:var(--accent);border-color:var(--accent-dim)}
   .tx-btn.danger:hover{color:var(--red);border-color:var(--red-dim)}
+  .tx-btn.undo:hover{color:var(--yellow,#e2b93d);border-color:var(--yellow,#e2b93d)}
 
   /* ── QUICK ADD / INLINE FORMS ── */
   .quick-add-bar{display:flex;justify-content:center;padding:16px}
@@ -1732,6 +1733,7 @@ function renderTransactions() {
     appData.history.forEach(h => {
       allItems.push({
         type: 'history',
+        historyId: h.id,
         name: h.name,
         amount: h.amount,
         direction: h.direction,
@@ -1838,7 +1840,8 @@ function renderTransactions() {
               html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\',this)">' + btnLabel + '</button>';
               html += '<button class="tx-btn danger" onclick="event.stopPropagation();skipTransaction(\'' + rid + '\',\'' + oid + '\',this)" title="Remove without affecting balance">&#10005;</button>';
             } else {
-              html += '<div></div><div></div>';
+              html += '<button class="tx-btn undo" onclick="event.stopPropagation();undoPaid(\'' + i.historyId + '\',this)" title="Undo this payment">Undo</button>';
+              html += '<div></div>';
             }
             html += '</div>';
 
@@ -2782,63 +2785,131 @@ function startBtcBalanceEdit() {
 // ══════════════════════════════════════════════════════════════════════════
 
 async function markPaid(recurringId, oneoffId, date, btn) {
-  animateRowOut(btn, async () => {
-    let entry;
-    if (recurringId) {
-      const r = appData.recurring.find(x => x.id === recurringId);
-      if (!r) return;
-      entry = {
-        id: generateId(),
-        name: r.name,
-        amount: parseFloat(r.amount) || 0,
-        direction: r.direction,
-        paidAt: new Date().toISOString(),
-        recurringId: r.id
-      };
-      while (r.nextDue <= date) {
-        r.nextDue = advanceDate(r.nextDue, r.frequency);
-      }
-    } else if (oneoffId) {
-      const o = appData.oneoffs.find(x => x.id === oneoffId);
-      if (!o) return;
-      entry = {
-        id: generateId(),
-        name: o.name,
-        amount: parseFloat(o.amount) || 0,
-        direction: o.direction,
-        paidAt: new Date().toISOString()
-      };
-      o.paid = true;
+  const inlineRender = showPaidHistory;
+  const row = btn ? btn.closest('.tx-row') : null;
+
+  if (!inlineRender) {
+    // Slide-out animation when paid history is hidden
+    const done = new Promise(resolve => animateRowOut(btn, resolve));
+    await done;
+  }
+
+  let entry;
+  if (recurringId) {
+    const r = appData.recurring.find(x => x.id === recurringId);
+    if (!r) return;
+    entry = {
+      id: generateId(),
+      name: r.name,
+      amount: parseFloat(r.amount) || 0,
+      direction: r.direction,
+      paidAt: new Date().toISOString(),
+      recurringId: r.id,
+      prevNextDue: r.nextDue
+    };
+    while (r.nextDue <= date) {
+      r.nextDue = advanceDate(r.nextDue, r.frequency);
     }
+  } else if (oneoffId) {
+    const o = appData.oneoffs.find(x => x.id === oneoffId);
+    if (!o) return;
+    entry = {
+      id: generateId(),
+      name: o.name,
+      amount: parseFloat(o.amount) || 0,
+      direction: o.direction,
+      paidAt: new Date().toISOString(),
+      oneoffId: o.id
+    };
+    o.paid = true;
+  }
 
-    if (!entry) return;
+  if (!entry) return;
 
-    let toastMsg;
-    if (entry.direction === 'expense') {
-      appData.balance -= entry.amount;
-      toastMsg = 'Paid: ' + entry.name;
-    } else if (entry.direction === 'income') {
-      appData.balance += entry.amount;
-      toastMsg = 'Received: ' + entry.name;
-    } else if (entry.direction === 'btc-income') {
-      appData.btcBalance += Math.round(entry.amount);
-      entry.btcPriceAtTime = btcPrice;
-      toastMsg = 'Received: ' + entry.name + ' — +' + fmtSats(Math.round(entry.amount));
-    } else if (entry.direction === 'btc-buy') {
-      if (!btcPrice) { showToast('BTC price unavailable — cannot process', 'error'); return; }
-      const satsReceived = Math.round((entry.amount / btcPrice) * 1e8);
-      appData.balance -= entry.amount;
-      appData.btcBalance += satsReceived;
-      entry.satsReceived = satsReceived;
-      entry.btcPriceAtTime = btcPrice;
-      toastMsg = 'DCA: -' + fmtMoney(entry.amount) + ' → +' + fmtSats(satsReceived);
-    }
+  let toastMsg;
+  if (entry.direction === 'expense') {
+    appData.balance -= entry.amount;
+    toastMsg = 'Paid: ' + entry.name;
+  } else if (entry.direction === 'income') {
+    appData.balance += entry.amount;
+    toastMsg = 'Received: ' + entry.name;
+  } else if (entry.direction === 'btc-income') {
+    appData.btcBalance += Math.round(entry.amount);
+    entry.btcPriceAtTime = btcPrice;
+    toastMsg = 'Received: ' + entry.name + ' — +' + fmtSats(Math.round(entry.amount));
+  } else if (entry.direction === 'btc-buy') {
+    if (!btcPrice) { showToast('BTC price unavailable — cannot process', 'error'); return; }
+    const satsReceived = Math.round((entry.amount / btcPrice) * 1e8);
+    appData.balance -= entry.amount;
+    appData.btcBalance += satsReceived;
+    entry.satsReceived = satsReceived;
+    entry.btcPriceAtTime = btcPrice;
+    toastMsg = 'DCA: -' + fmtMoney(entry.amount) + ' → +' + fmtSats(satsReceived);
+  }
 
-    appData.history.push(entry);
-    await encryptAndSave();
+  appData.history.push(entry);
+
+  if (inlineRender && row) {
+    row.style.transition = 'opacity .25s ease, background .25s ease';
+    row.style.opacity = '0.3';
+    row.style.background = 'rgba(168,208,141,0.15)';
+    await new Promise(r => setTimeout(r, 250));
+  }
+
+  await encryptAndSave();
+  if (inlineRender) {
+    renderAll();
+  } else {
     renderSummaryAndBalance();
-    showToast(toastMsg, 'success');
-  });
+  }
+  showToast(toastMsg, 'success');
+}
+
+async function undoPaid(historyId, btn) {
+  const row = btn ? btn.closest('.tx-row') : null;
+  const idx = appData.history.findIndex(h => h.id === historyId);
+  if (idx === -1) return;
+  const entry = appData.history[idx];
+
+  // Reverse balance change
+  if (entry.direction === 'expense') {
+    appData.balance += entry.amount;
+  } else if (entry.direction === 'income') {
+    appData.balance -= entry.amount;
+  } else if (entry.direction === 'btc-income') {
+    appData.btcBalance -= Math.round(entry.amount);
+  } else if (entry.direction === 'btc-buy') {
+    appData.balance += entry.amount;
+    appData.btcBalance -= (entry.satsReceived || 0);
+  }
+
+  // Restore recurring nextDue
+  if (entry.recurringId) {
+    const r = appData.recurring.find(x => x.id === entry.recurringId);
+    if (r && entry.prevNextDue) {
+      r.nextDue = entry.prevNextDue;
+    }
+  }
+
+  // Restore one-off as unpaid
+  if (entry.oneoffId) {
+    const o = appData.oneoffs.find(x => x.id === entry.oneoffId);
+    if (o) o.paid = false;
+  }
+
+  appData.history.splice(idx, 1);
+
+  // Flash the row to confirm, then re-render in place
+  if (row) {
+    row.style.transition = 'opacity .25s ease, background .25s ease';
+    row.style.opacity = '0.3';
+    row.style.background = 'rgba(168,208,141,0.15)';
+    await new Promise(r => setTimeout(r, 250));
+  }
+
+  await encryptAndSave();
+  renderAll();
+  showToast('Undid: ' + entry.name, 'success');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
