@@ -13,7 +13,7 @@
     --border:#252a25; --border-light:#2e352e;
     --accent:#a8d08d; --accent-dim:#6a9e52; --accent-glow:rgba(168,208,141,0.12);
     --red:#e07070; --red-dim:#a84f4f; --red-glow:rgba(224,112,112,0.10);
-    --gold:#d4a843;
+    --gold:#d4a843; --btc:#f7931a; --btc-glow:rgba(247,147,26,0.10);
     --text:#e8ede8; --text-muted:#7a8a7a; --text-dim:#4a5a4a;
     --mono:'DM Mono',monospace; --serif:'DM Serif Display',serif; --sans:'DM Sans',sans-serif;
     --radius:6px;
@@ -35,6 +35,20 @@
   .collapse-arrow{transition:transform .2s ease;display:inline-block}
   .fc-row-new{animation:fadeUp .4s ease both}
   .fc-row-out{animation:slideOut .3s ease forwards;overflow:hidden;pointer-events:none}
+
+  /* ── BTC TICKER BAR ── */
+  .btc-bar{position:fixed;top:0;left:0;right:0;z-index:55;display:flex;align-items:center;justify-content:center;gap:12px;padding:8px 32px;border-bottom:1px solid var(--border);background:rgba(247,147,26,0.04)}
+  .btc-bar-left{display:flex;align-items:center;gap:12px}
+  .btc-logo{font-size:14px;color:var(--btc)}
+  .btc-price-label{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim)}
+  .btc-price-val{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--btc)}
+  .btc-price-val.loading{color:var(--text-dim);animation:pulse 1.5s ease-in-out infinite}
+  .btc-bar-right{font-family:var(--mono);font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:8px}
+  .btc-refresh{background:none;border:1px solid var(--border-light);color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:3px;cursor:pointer;transition:all .15s}
+  .btc-refresh:hover{color:var(--btc);border-color:var(--btc)}
+  .btc-refresh.spinning{animation:spin .7s linear infinite}
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
   /* ── LOCK SCREEN ── */
   #lock-screen{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center;animation:fadeIn .25s ease}
@@ -73,8 +87,20 @@
   .header-right{display:flex;align-items:flex-end;gap:16px}
   .balance-display{text-align:right}
   .balance-label{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:2px}
-  .balance-value{font-family:var(--serif);font-size:36px;letter-spacing:-1px;color:var(--accent);text-shadow:0 0 40px rgba(168,208,141,.3);transition:all .4s}
+  .balance-value{font-family:var(--serif);font-size:32px;letter-spacing:-1px;color:var(--accent);text-shadow:0 0 40px rgba(168,208,141,.3);transition:all .4s}
   .balance-value.negative{color:var(--red);text-shadow:0 0 40px rgba(224,112,112,.3)}
+  .balance-sub-lines{margin-top:6px;display:flex;flex-direction:column;gap:3px;text-align:right}
+  .balance-sub{display:flex;align-items:baseline;justify-content:flex-end;gap:6px}
+  .balance-sub .sub-label{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim)}
+  .balance-sub .sub-value{font-family:var(--mono);font-size:16px;letter-spacing:-.3px;color:var(--text-muted);transition:all .3s}
+  .balance-sub .sub-value.editable{cursor:pointer}
+  .balance-sub .sub-value.editable:hover{text-decoration:underline;text-decoration-style:dashed;text-underline-offset:3px;text-decoration-color:var(--text-dim)}
+  .balance-sub .sub-value.negative{color:var(--red)}
+  .btc-sub .sub-label{color:var(--btc)}
+  .btc-sub .sub-value{color:var(--btc)}
+  .balance-sub .sub-fiat{font-family:var(--mono);font-size:11px;color:var(--text-dim)}
+  .balance-edit-input{background:var(--surface2);border:1px solid var(--accent-dim);border-radius:4px;color:var(--accent);font-family:var(--mono);font-size:16px;padding:2px 8px;outline:none;width:140px;text-align:right}
+  .btc-balance-edit-input{background:var(--surface2);border:1px solid var(--btc);border-radius:4px;color:var(--btc);font-family:var(--mono);font-size:16px;padding:2px 8px;outline:none;width:140px;text-align:right}
   /* ── SUMMARY BAR ── */
   .summary-bar{position:fixed;top:0;left:0;right:0;z-index:50;display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border);background:var(--surface)}
   .summary-item{padding:14px 24px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px}
@@ -113,6 +139,8 @@
   .tx-row:hover{background:rgba(255,255,255,.015)}
   .tx-row.income-row{background:rgba(168,208,141,0.04);border-left:2px solid var(--accent)}
   .tx-row.income-row:hover{background:rgba(168,208,141,0.07)}
+  .tx-row.btc-row{background:rgba(247,147,26,0.04);border-left:2px solid var(--btc)}
+  .tx-row.btc-row:hover{background:rgba(247,147,26,0.07)}
   .tx-row.paid-row{opacity:.5}
   .tx-row.paid-fade-in{animation:fadeUp .6s ease both}
   .tx-row.paid-row .tx-name{text-decoration:line-through;color:var(--text-dim)}
@@ -146,6 +174,7 @@
   .dir-toggle button{background:none;border:none;color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:6px 10px;cursor:pointer;transition:all .15s}
   .dir-toggle button.active{background:var(--accent-glow);color:var(--accent)}
   .dir-toggle button.active.expense-active{background:var(--red-glow);color:var(--red)}
+  .dir-toggle button.active.btc-active{background:var(--btc-glow);color:var(--btc)}
 
   /* ── TRANSACTIONS VIEW ── */
   .tx-toolbar{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px}
@@ -205,9 +234,6 @@
   .import-preview{font-family:var(--mono);font-size:11px;color:var(--text-muted);padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;margin-top:8px}
 
   /* ── BALANCE EDITOR ── */
-  .balance-value.editable{cursor:pointer}
-  .balance-value.editable:hover{text-decoration:underline;text-decoration-style:dashed;text-underline-offset:4px;text-decoration-color:var(--text-dim)}
-  .balance-edit-input{background:var(--surface2);border:1px solid var(--accent-dim);border-radius:4px;color:var(--accent);font-family:var(--serif);font-size:32px;letter-spacing:-1px;padding:2px 8px;outline:none;width:200px;text-align:right}
 
   /* ── SAVE BAR (bottom menu) ── */
   .save-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 48px;background:rgba(13,15,14,.95);border-top:1px solid var(--border);backdrop-filter:blur(12px)}
@@ -284,6 +310,10 @@
     .header-left{display:flex;flex-direction:column;align-items:center}
     .header-right{justify-content:center}
     .balance-display{text-align:center}
+    .balance-sub-lines{align-items:center}
+    .balance-sub{justify-content:center}
+    .balance-value{font-size:26px}
+    .balance-sub .sub-value{font-size:14px}
     .summary-bar{grid-template-columns:1fr 1fr 1fr}
     .summary-item{padding:8px 4px;gap:1px}
     .s-label{font-size:7px;letter-spacing:1px}
@@ -312,6 +342,10 @@
     .rec-table th,.rec-table td{padding:5px 4px;font-size:10px}
     .rec-inline-input{font-size:10px;padding:3px 4px}
     .rec-inline-select{font-size:9px;padding:3px 3px}
+    .btc-bar{padding:6px 12px;gap:8px}
+    .btc-price-val{font-size:12px}
+    .btc-bar-right{font-size:9px;gap:6px}
+    .btc-refresh{padding:2px 6px;font-size:9px}
     .rec-inline-amount{width:100%}
     .rec-due-input{width:100%}
   }
@@ -358,6 +392,17 @@
 
 <!-- ══ APP (hidden until unlocked) ══ -->
 <div id="app" style="display:none">
+  <div class="btc-bar" id="btcBar">
+    <div class="btc-bar-left">
+      <span class="btc-logo">₿</span>
+      <span class="btc-price-label">BTC / USD</span>
+      <span class="btc-price-val loading" id="btcPriceDisplay">Fetching…</span>
+    </div>
+    <div class="btc-bar-right">
+      <span id="btcPriceAge">—</span>
+      <button class="btc-refresh" id="btcRefreshBtn" onclick="fetchBtcPrice(true)">↻ Refresh</button>
+    </div>
+  </div>
   <header>
     <div class="header-left">
       <h1>Cache <span>Flow</span></h1>
@@ -365,8 +410,19 @@
     </div>
     <div class="header-right">
       <div class="balance-display">
-        <div class="balance-label">Balance</div>
-        <div class="balance-value" id="balanceDisplay">—</div>
+        <div class="balance-label">Total Balance</div>
+        <div class="balance-value" id="combinedDisplay">—</div>
+        <div class="balance-sub-lines">
+          <div class="balance-sub cash-sub">
+            <span class="sub-label">Cash</span>
+            <span class="sub-value editable" id="balanceDisplay">—</span>
+          </div>
+          <div class="balance-sub btc-sub">
+            <span class="sub-label">₿</span>
+            <span class="sub-value editable" id="btcBalanceDisplay">—</span>
+            <span class="sub-fiat" id="btcFiatDisplay"></span>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -411,6 +467,15 @@
         <button class="form-btn" onclick="saveBalance()">Update</button>
       </div>
       <div class="settings-help">Set your current checking account balance.</div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-label" style="color:var(--btc)">Bitcoin Balance</div>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="settings-btc-balance" type="number" step="1" min="0" style="flex:1" placeholder="satoshis">
+        <button class="form-btn" onclick="saveBtcBalance()" style="border-color:var(--btc);color:var(--btc)">Update</button>
+      </div>
+      <div class="settings-help">Your Bitcoin balance in satoshis (1 BTC = 100,000,000 sats).</div>
     </div>
 
     <hr class="settings-divider">
@@ -519,6 +584,7 @@ let isChangingPw  = false;
 
 let appData = {
   balance: 0,
+  btcBalance: 0,
   recurring: [],
   oneoffs: [],
   history: [],
@@ -620,18 +686,22 @@ function hideLockScreen() {
   document.getElementById('lock-set-pw').value = '';
   document.getElementById('lock-set-pw2').value = '';
   requestAnimationFrame(setStickyOffsets);
+  if (!btcFetchedAt) startBtcTicker();
 }
 
 function setStickyOffsets() {
+  const btcBar = document.getElementById('btcBar');
   const header = document.querySelector('#app > header');
   const summary = document.querySelector('.summary-bar');
   const tabNav = document.querySelector('.tab-nav');
+  const bH = btcBar.offsetHeight;
   const hH = header.offsetHeight;
   const sH = summary.offsetHeight;
   const tH = tabNav.offsetHeight;
-  summary.style.top = hH + 'px';
-  tabNav.style.top = (hH + sH) + 'px';
-  document.querySelectorAll('.view').forEach(v => v.style.paddingTop = (hH + sH + tH + 24) + 'px');
+  header.style.top = bH + 'px';
+  summary.style.top = (bH + hH) + 'px';
+  tabNav.style.top = (bH + hH + sH) + 'px';
+  document.querySelectorAll('.view').forEach(v => v.style.paddingTop = (bH + hH + sH + tH + 24) + 'px');
 }
 window.addEventListener('resize', () => { if (document.getElementById('app').style.display !== 'none') setStickyOffsets(); });
 
@@ -669,6 +739,7 @@ async function submitUnlock() {
     appData = JSON.parse(plain);
     // Ensure all fields exist (forward compatibility)
     appData.balance = appData.balance ?? 0;
+    appData.btcBalance = appData.btcBalance ?? 0;
     appData.recurring = appData.recurring || [];
     appData.oneoffs = appData.oneoffs || [];
     appData.history = appData.history || [];
@@ -756,7 +827,7 @@ function lockApp() {
   sessionKey = null;
   isLocked = true;
   clearIdleTimer();
-  appData = { balance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
   showLockScreen('unlock');
 }
 
@@ -806,6 +877,19 @@ function fmtMoney(n) {
   const abs = Math.abs(n);
   const str = abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return (n < 0 ? '-' : '') + '$' + str;
+}
+
+function satsToFiat(sats) {
+  if (!btcPrice || !sats) return 0;
+  return (sats / 1e8) * btcPrice;
+}
+
+function fmtSats(sats) {
+  return Number(sats).toLocaleString() + ' sats';
+}
+
+function combinedBalance() {
+  return appData.balance + satsToFiat(appData.btcBalance);
 }
 
 function normalizeToMonthly(amount, frequency) {
@@ -920,20 +1004,39 @@ function switchTab(tab) {
 // ── RENDER ───────────────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-function renderAll() {
-  // Balance display
+function renderBalanceHeader() {
+  // Combined balance
+  const combined = combinedBalance();
+  const combEl = document.getElementById('combinedDisplay');
+  combEl.textContent = fmtMoney(combined);
+  combEl.className = 'balance-value' + (combined < 0 ? ' negative' : '');
+
+  // Cash sub-line
   const bal = appData.balance;
   const balEl = document.getElementById('balanceDisplay');
   balEl.textContent = fmtMoney(bal);
-  balEl.className = 'balance-value editable' + (bal < 0 ? ' negative' : '');
+  balEl.className = 'sub-value editable' + (bal < 0 ? ' negative' : '');
   balEl.onclick = startBalanceEdit;
+
+  // BTC sub-line
+  const btcEl = document.getElementById('btcBalanceDisplay');
+  btcEl.textContent = fmtSats(appData.btcBalance);
+  btcEl.className = 'sub-value editable';
+  btcEl.onclick = startBtcBalanceEdit;
+  const btcFiat = satsToFiat(appData.btcBalance);
+  document.getElementById('btcFiatDisplay').textContent = btcFiat > 0 ? '≈ ' + fmtMoney(btcFiat) : '';
+}
+
+function renderAll() {
+  renderBalanceHeader();
 
   // Summary bar
   let monthlyIncome = 0, monthlyExpense = 0;
   appData.recurring.filter(r => r.enabled).forEach(r => {
     const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
     if (r.direction === 'income') monthlyIncome += monthly;
-    else monthlyExpense += monthly;
+    else if (r.direction === 'expense' || r.direction === 'btc-buy') monthlyExpense += monthly;
+    // btc-income excluded from fiat summary — reflected in combined balance
   });
   document.getElementById('sumIncome').textContent = fmtMoney(monthlyIncome);
   document.getElementById('sumExpense').textContent = fmtMoney(monthlyExpense);
@@ -972,7 +1075,7 @@ function renderDashboard() {
 // ── RECURRING PAGE ──────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-let recCollapsed = { income: false, expense: false };
+let recCollapsed = { income: false, expense: false, btc: false };
 let recEditingId = null;
 
 function renderRecurring() {
@@ -983,21 +1086,32 @@ function renderRecurring() {
   // Income section
   html += '<div class="section" style="margin-bottom:16px" id="rec-section-income"></div>';
 
+  // Bitcoin section
+  html += '<div class="section" style="margin-bottom:16px" id="rec-section-btc"></div>';
+
   // Expense section
   html += '<div class="section" style="margin-bottom:16px" id="rec-section-expense"></div>';
 
   container.innerHTML = html;
   rebuildRecSection('income');
+  rebuildRecSection('btc');
   rebuildRecSection('expense');
+}
+
+function recSectionTotal(items) {
+  return items.filter(r => r.enabled).reduce((s, r) => {
+    const mo = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+    return s + (r.direction === 'btc-income' ? satsToFiat(mo) : mo);
+  }, 0);
 }
 
 function rebuildRecSection(dir) {
   const wrap = document.getElementById('rec-section-' + dir);
   if (!wrap) return;
-  const label = dir === 'income' ? 'Income' : 'Expenses';
-  const color = dir === 'income' ? 'var(--accent)' : 'var(--red)';
-  const items = appData.recurring.filter(r => r.direction === dir);
-  const total = items.filter(r => r.enabled).reduce((s, r) => s + normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency), 0);
+  const label = dir === 'btc' ? 'Bitcoin' : (dir === 'income' ? 'Income' : 'Expenses');
+  const color = dir === 'btc' ? 'var(--btc)' : (dir === 'income' ? 'var(--accent)' : 'var(--red)');
+  const items = dir === 'btc' ? appData.recurring.filter(r => r.direction.startsWith('btc-')) : appData.recurring.filter(r => r.direction === dir);
+  const total = recSectionTotal(items);
   const collapsed = recCollapsed[dir];
   const arrow = collapsed ? '\u25b6' : '\u25bc';
 
@@ -1008,7 +1122,12 @@ function rebuildRecSection(dir) {
   html += '</div>';
   html += '<div class="collapse-body" data-rec-body-' + dir + '' + (collapsed ? ' style="display:none"' : '') + '>';
   html += '<div class="rec-add-bar">';
-  html += '<button class="rec-add-btn" onclick="addRecurringItem(\'' + dir + '\')">+ Add ' + dir + '</button>';
+  if (dir === 'btc') {
+    html += '<button class="rec-add-btn" style="color:var(--btc)" onclick="addRecurringItem(\'btc-income\')">+ BTC Income</button>';
+    html += '<button class="rec-add-btn" style="color:var(--btc)" onclick="addRecurringItem(\'btc-buy\')">+ BTC Buy (DCA)</button>';
+  } else {
+    html += '<button class="rec-add-btn" onclick="addRecurringItem(\'' + dir + '\')">+ Add ' + dir + '</button>';
+  }
   html += '</div>';
   if (items.length) {
     html += '<div class="rec-table-wrap"><table class="rec-table">';
@@ -1031,20 +1150,21 @@ function rebuildRecSection(dir) {
 }
 
 function updateRecSectionTotals(dir) {
-  const color = dir === 'income' ? 'var(--accent)' : 'var(--red)';
-  const items = appData.recurring.filter(r => r.direction === dir);
-  const total = items.filter(r => r.enabled).reduce((s, r) => s + normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency), 0);
+  const color = dir === 'btc' ? 'var(--btc)' : (dir === 'income' ? 'var(--accent)' : 'var(--red)');
+  const items = dir === 'btc' ? appData.recurring.filter(r => r.direction.startsWith('btc-')) : appData.recurring.filter(r => r.direction === dir);
+  const total = recSectionTotal(items);
   const totalEl = document.querySelector('[data-rec-total-' + dir + ']');
   if (totalEl) { totalEl.textContent = items.length ? fmtMoney(total) + '/mo' : ''; totalEl.style.color = color; }
 }
 
 function buildRecRow(r) {
   const mo = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+  const isBtc = r.direction.startsWith('btc-');
   const isIncome = r.direction === 'income';
   const editing = recEditingId === r.id;
   const amt = parseFloat(r.amount) || 0;
-  const amtDisplay = amt > 0 ? fmtMoney(amt) : '<span style="color:var(--text-dim)">--</span>';
-  const moColor = isIncome ? 'var(--accent)' : 'var(--red)';
+  const amtDisplay = amt > 0 ? (r.direction === 'btc-income' ? fmtSats(amt) : fmtMoney(amt)) : '<span style="color:var(--text-dim)">--</span>';
+  const moColor = isBtc ? 'var(--btc)' : (isIncome ? 'var(--accent)' : 'var(--red)');
 
   let html = '<tr data-rec-row="' + r.id + '" class="' + (!r.enabled ? 'rec-disabled' : '') + '">';
 
@@ -1072,13 +1192,18 @@ function buildRecRow(r) {
 
   // Amount
   if (editing) {
-    html += '<td class="r"><input class="rec-inline-input rec-inline-amount" id="rec-amt-' + r.id + '" type="number" step="0.01" min="0" value="' + r.amount + '" onkeydown="if(event.key===\'Enter\')saveRecEdit(\'' + r.id + '\');if(event.key===\'Escape\')cancelRecEdit()"></td>';
+    html += '<td class="r"><input class="rec-inline-input rec-inline-amount" id="rec-amt-' + r.id + '" type="number" step="' + (r.direction === 'btc-income' ? '1' : '0.01') + '" min="0" value="' + r.amount + '" onkeydown="if(event.key===\'Enter\')saveRecEdit(\'' + r.id + '\');if(event.key===\'Escape\')cancelRecEdit()"></td>';
   } else {
     html += '<td class="r rec-amt-cell" onclick="startRecEdit(\'' + r.id + '\')">' + amtDisplay + '</td>';
   }
 
   // Monthly
-  html += '<td class="r" style="color:' + moColor + '">' + (isIncome ? '+' : '') + fmtMoney(mo) + '</td>';
+  if (r.direction === 'btc-income') {
+    const moFiat = satsToFiat(mo);
+    html += '<td class="r" style="color:' + moColor + '">' + fmtSats(Math.round(mo)) + (moFiat > 0 ? '<br><span style="font-size:9px;color:var(--text-dim)">≈ ' + fmtMoney(moFiat) + '</span>' : '') + '</td>';
+  } else {
+    html += '<td class="r" style="color:' + moColor + '">' + (isIncome ? '+' : '') + fmtMoney(mo) + '</td>';
+  }
 
   // Start Date (nextDue)
   if (editing) {
@@ -1154,12 +1279,12 @@ async function saveRecEdit(id) {
   const endEl = document.getElementById('rec-end-' + id);
   if (nameEl) r.name = nameEl.value.trim();
   if (freqEl) r.frequency = freqEl.value;
-  if (amtEl) r.amount = parseFloat(amtEl.value) || 0;
+  if (amtEl) r.amount = r.direction === 'btc-income' ? (parseInt(amtEl.value, 10) || 0) : (parseFloat(amtEl.value) || 0);
   if (dueEl) r.nextDue = dueEl.value;
   if (endEl) r.endDate = endEl.value || null;
   recEditingId = null;
   swapRecRow(id);
-  updateRecSectionTotals(r.direction);
+  updateRecSectionTotals(r.direction.startsWith('btc-') ? 'btc' : r.direction);
   renderSummaryAndBalance();
   await encryptAndSave();
   showToast('Updated ' + r.name, 'success');
@@ -1171,7 +1296,7 @@ async function toggleRecEnabled(id) {
   r.enabled = !r.enabled;
   // Surgical: swap row, update totals
   swapRecRow(id);
-  updateRecSectionTotals(r.direction);
+  updateRecSectionTotals(r.direction.startsWith('btc-') ? 'btc' : r.direction);
   renderSummaryAndBalance();
   await encryptAndSave();
 }
@@ -1193,7 +1318,8 @@ async function addRecurringItem(dir) {
     _liabId: null
   };
   // Prepend so new items appear at top
-  const dirItems = appData.recurring.filter(r => r.direction === dir);
+  const sectionKey = dir.startsWith('btc-') ? 'btc' : dir;
+  const dirItems = dir.startsWith('btc-') ? appData.recurring.filter(r => r.direction.startsWith('btc-')) : appData.recurring.filter(r => r.direction === dir);
   const firstIdx = appData.recurring.indexOf(dirItems[0]);
   if (firstIdx >= 0) {
     appData.recurring.splice(firstIdx, 0, newItem);
@@ -1203,14 +1329,14 @@ async function addRecurringItem(dir) {
   recEditingId = newId;
 
   // Surgical: prepend row if table exists, otherwise rebuild section
-  const tbody = document.querySelector('[data-rec-tbody-' + dir + ']');
+  const tbody = document.querySelector('[data-rec-tbody-' + sectionKey + ']');
   if (tbody) {
     const tmp = document.createElement('tbody');
     tmp.innerHTML = buildRecRow(newItem);
     tbody.prepend(tmp.firstChild);
-    updateRecSectionTotals(dir);
+    updateRecSectionTotals(sectionKey);
   } else {
-    rebuildRecSection(dir);
+    rebuildRecSection(sectionKey);
   }
   await encryptAndSave();
   setTimeout(() => {
@@ -1225,6 +1351,7 @@ async function deleteRecurringItem(id) {
   const name = r.name || '(unnamed)';
   if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
   const dir = r.direction;
+  const sectionKey = dir.startsWith('btc-') ? 'btc' : dir;
   if (recEditingId === id) recEditingId = null;
 
   // Animate row out, then remove from data
@@ -1237,18 +1364,18 @@ async function deleteRecurringItem(id) {
       if (tableWrap) tableWrap.style.overflowX = '';
       appData.recurring = appData.recurring.filter(x => x.id !== id);
       row.remove();
-      updateRecSectionTotals(dir);
+      updateRecSectionTotals(sectionKey);
       renderSummaryAndBalance();
       // If no items left, rebuild section to remove empty table
-      const remaining = appData.recurring.filter(x => x.direction === dir);
-      if (!remaining.length) rebuildRecSection(dir);
+      const remaining = sectionKey === 'btc' ? appData.recurring.filter(x => x.direction.startsWith('btc-')) : appData.recurring.filter(x => x.direction === dir);
+      if (!remaining.length) rebuildRecSection(sectionKey);
       await encryptAndSave();
       showToast('Deleted ' + name);
     }, { once: true });
   } else {
     appData.recurring = appData.recurring.filter(x => x.id !== id);
-    rebuildRecSection(dir);
-    updateRecSectionTotals(dir);
+    rebuildRecSection(sectionKey);
+    updateRecSectionTotals(sectionKey);
     renderSummaryAndBalance();
     await encryptAndSave();
     showToast('Deleted ' + name);
@@ -1328,7 +1455,11 @@ function renderTransactions() {
     const items = monthGroups[monthKey];
     const d = new Date(monthKey + '-01T00:00:00');
     const monthLabel = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    const monthTotal = items.reduce((s, i) => s + (i.direction === 'expense' ? -i.amount : i.amount), 0);
+    const monthTotal = items.reduce((s, i) => {
+      if (i.direction === 'expense' || i.direction === 'btc-buy') return s - i.amount;
+      if (i.direction === 'btc-income') return s + satsToFiat(i.amount);
+      return s + i.amount;
+    }, 0);
     const collapsed = !!collapsedMonths[monthKey];
     const arrow = collapsed ? '\u25b6' : '\u25bc';
 
@@ -1354,7 +1485,11 @@ function renderTransactions() {
         const sun = new Date(wg.mon);
         sun.setDate(sun.getDate() + 6);
         const wLabel = wg.mon.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' \u2013 ' + sun.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const weekTotal = wg.items.reduce((s, i) => s + (i.direction === 'expense' ? -i.amount : i.amount), 0);
+        const weekTotal = wg.items.reduce((s, i) => {
+          if (i.direction === 'expense' || i.direction === 'btc-buy') return s - i.amount;
+          if (i.direction === 'btc-income') return s + satsToFiat(i.amount);
+          return s + i.amount;
+        }, 0);
         const wCollapsed = !!collapsedWeeks[weekKey];
         const wArrow = wCollapsed ? '\u25b6' : '\u25bc';
 
@@ -1365,8 +1500,9 @@ function renderTransactions() {
         html += '<div class="collapse-body" data-week-body="' + weekKey + '"' + (wCollapsed ? ' style="display:none"' : '') + '>';
         {
           wg.items.forEach(i => {
-            const isIncome = i.direction === 'income';
-            const rowClass = 'tx-row' + (isIncome && !i.isPaid ? ' income-row' : '') + (i.isPaid ? ' paid-row' : '');
+            const isBtc = i.direction.startsWith('btc-');
+            const isIncome = i.direction === 'income' || i.direction === 'btc-income';
+            const rowClass = 'tx-row' + (isBtc && !i.isPaid ? ' btc-row' : (isIncome && !i.isPaid ? ' income-row' : '')) + (i.isPaid ? ' paid-row' : '');
             const rid = i.recurringId || '';
             const oid = i.oneoffId || '';
             const clickable = !i.isPaid && rid;
@@ -1383,9 +1519,17 @@ function renderTransactions() {
             if (i.frequency) html += '<span class="freq-badge">' + i.frequency.toUpperCase() + '</span>';
             if (!i.frequency && !i.isPaid) html += '<span class="freq-badge">ONE-OFF</span>';
             html += '</div></div>';
-            html += '<div class="tx-amount' + (isIncome ? ' income' : '') + '">' + (isIncome ? '+' : '') + fmtMoney(i.amount) + '</div>';
+            const amtColor = isBtc ? ' style="color:var(--btc)"' : (isIncome ? ' class="tx-amount income"' : ' class="tx-amount"');
+            if (i.direction === 'btc-income') {
+              html += '<div class="tx-amount"' + amtColor + '>+' + fmtSats(i.amount) + '</div>';
+            } else if (i.direction === 'btc-buy') {
+              html += '<div class="tx-amount"' + amtColor + '>' + fmtMoney(i.amount) + ' <span style="font-size:10px">DCA</span></div>';
+            } else {
+              html += '<div' + (isIncome ? ' class="tx-amount income"' : ' class="tx-amount"') + '>' + (isIncome ? '+' : '') + fmtMoney(i.amount) + '</div>';
+            }
             if (!i.isPaid) {
-              html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\',this)">' + (isIncome ? 'Received' : 'Paid') + '</button>';
+              const btnLabel = isBtc ? 'Received' : (isIncome ? 'Received' : 'Paid');
+              html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\',this)">' + btnLabel + '</button>';
               html += '<button class="tx-btn danger" onclick="event.stopPropagation();skipTransaction(\'' + rid + '\',\'' + oid + '\',this)" title="Remove without affecting balance">&#10005;</button>';
             } else {
               html += '<div></div><div></div>';
@@ -1590,16 +1734,14 @@ function animateRowOut(btn, callback) {
 }
 
 function renderSummaryAndBalance() {
-  const bal = appData.balance;
-  const balEl = document.getElementById('balanceDisplay');
-  balEl.textContent = fmtMoney(bal);
-  balEl.className = 'balance-value editable' + (bal < 0 ? ' negative' : '');
+  renderBalanceHeader();
 
   let monthlyIncome = 0, monthlyExpense = 0;
   appData.recurring.filter(r => r.enabled).forEach(r => {
     const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
     if (r.direction === 'income') monthlyIncome += monthly;
-    else monthlyExpense += monthly;
+    else if (r.direction === 'expense' || r.direction === 'btc-buy') monthlyExpense += monthly;
+    // btc-income excluded from fiat summary — reflected in combined balance
   });
   document.getElementById('sumIncome').textContent = fmtMoney(monthlyIncome);
   document.getElementById('sumExpense').textContent = fmtMoney(monthlyExpense);
@@ -1657,7 +1799,9 @@ function toggleAddRecurring() {
     '<option value="annual">Annual</option></select></div>' +
     '<div class="form-field"><label>Type</label><div class="dir-toggle" id="ar-dir">' +
     '<button class="active expense-active" onclick="setArDir(\'expense\')">Expense</button>' +
-    '<button onclick="setArDir(\'income\')">Income</button></div></div>' +
+    '<button onclick="setArDir(\'income\')">Income</button>' +
+    '<button onclick="setArDir(\'btc-income\')">₿ Income</button>' +
+    '<button onclick="setArDir(\'btc-buy\')">₿ Buy</button></div></div>' +
     '<div class="form-field"><label>Next Due</label><input class="form-input" id="ar-due" type="date" value="' + today + '" style="width:130px"></div>' +
     '<div class="form-field" style="justify-content:flex-end"><button class="form-btn" onclick="submitAddRecurring()">Add</button></div>' +
     '<div class="form-field" style="justify-content:flex-end"><button class="form-btn cancel" onclick="toggleAddRecurring()">Cancel</button></div>' +
@@ -1667,16 +1811,30 @@ function toggleAddRecurring() {
 
 function setArDir(dir) {
   arDirection = dir;
-  const btns = document.querySelectorAll('#ar-dir button');
-  btns.forEach(b => {
-    const isThis = b.textContent.toLowerCase() === dir;
-    b.className = isThis ? ('active' + (dir === 'expense' ? ' expense-active' : '')) : '';
+  const dirLabels = { expense: 'expense', income: 'income', 'btc-income': '₿ income', 'btc-buy': '₿ buy' };
+  document.querySelectorAll('#ar-dir button').forEach(b => {
+    const isThis = b.textContent.toLowerCase() === dirLabels[dir];
+    const cls = dir === 'expense' ? ' expense-active' : (dir.startsWith('btc-') ? ' btc-active' : '');
+    b.className = isThis ? ('active' + cls) : '';
   });
+  // Update amount field label/step
+  const amtInput = document.getElementById('ar-amount');
+  const amtLabel = amtInput?.parentElement?.querySelector('label');
+  if (amtInput && amtLabel) {
+    if (dir === 'btc-income') {
+      amtLabel.textContent = 'Amount (sats)';
+      amtInput.step = '1'; amtInput.placeholder = '0';
+    } else {
+      amtLabel.textContent = 'Amount';
+      amtInput.step = '0.01'; amtInput.placeholder = '0.00';
+    }
+  }
 }
 
 async function submitAddRecurring() {
   const name = document.getElementById('ar-name').value.trim();
-  const amount = parseFloat(document.getElementById('ar-amount').value);
+  const rawAmt = document.getElementById('ar-amount').value;
+  const amount = arDirection === 'btc-income' ? parseInt(rawAmt, 10) : parseFloat(rawAmt);
   const freq = document.getElementById('ar-freq').value;
   const due = document.getElementById('ar-due').value;
   if (!name || !amount || !due) { showToast('Fill in all fields', 'error'); return; }
@@ -1709,7 +1867,8 @@ function renderForecast() {
   appData.recurring.filter(r => r.enabled).forEach(r => {
     const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
     if (r.direction === 'income') monthlyIncome += monthly;
-    else monthlyExpense += monthly;
+    else if (r.direction === 'expense' || r.direction === 'btc-buy') monthlyExpense += monthly;
+    // btc-income excluded from fiat summary — reflected in combined balance
   });
 
   const oneoffByMonth = {};
@@ -1722,7 +1881,7 @@ function renderForecast() {
 
   // ── Compute forecast data ──
   const months = [];
-  let runningBalance = appData.balance;
+  let runningBalance = combinedBalance();
 
   for (let i = 0; i < fcHorizonMonths; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
@@ -1752,13 +1911,15 @@ function renderForecast() {
   const txByDate = {};
   txItems.forEach(t => {
     if (!txByDate[t.date]) txByDate[t.date] = 0;
-    txByDate[t.date] += t.direction === 'income' ? t.amount : -t.amount;
+    if (t.direction === 'income') txByDate[t.date] += t.amount;
+    else if (t.direction === 'expense' || t.direction === 'btc-buy') txByDate[t.date] -= t.amount;
+    else if (t.direction === 'btc-income') txByDate[t.date] += satsToFiat(t.amount);
   });
 
   // Build daily balance series, then sample to weekly if horizon > 6 months
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const dailyBal = [];
-  let bal = appData.balance;
+  let bal = combinedBalance();
   for (let d = 0; d <= horizonDays; d++) {
     const dt = new Date(today); dt.setDate(dt.getDate() + d);
     const key = toDateStr(dt);
@@ -1938,6 +2099,7 @@ function renderForecast() {
 
 function openSettings() {
   document.getElementById('settings-balance').value = appData.balance;
+  document.getElementById('settings-btc-balance').value = appData.btcBalance;
   document.getElementById('import-status').textContent = appData.importedAt
     ? 'Last imported: ' + new Date(appData.importedAt).toLocaleDateString()
     : '';
@@ -1998,10 +2160,20 @@ async function saveBalance() {
   showToast('Balance updated', 'success');
 }
 
+async function saveBtcBalance() {
+  const val = parseInt(document.getElementById('settings-btc-balance').value, 10);
+  if (isNaN(val) || val < 0) { showToast('Enter a valid satoshi amount', 'error'); return; }
+  appData.btcBalance = val;
+  await encryptAndSave();
+  renderAll();
+  showToast('Bitcoin balance updated', 'success');
+}
+
 // ── CACHE IMPORT ──────────────────────────────────────────────────────────
 
 let pendingImportItems = null;
 let pendingImportBalance = null;
+let pendingImportBtcBalance = null;
 
 function calcNextDue() {
   const d = new Date();
@@ -2029,9 +2201,14 @@ async function handleCacheImport(event) {
 
     pendingImportItems = items;
     pendingImportBalance = (typeof json.balance === 'number') ? json.balance : null;
+    const btcEntries = json.data?.bitcoin;
+    if (Array.isArray(btcEntries) && btcEntries.length) {
+      pendingImportBtcBalance = btcEntries.filter(e => !e._autoCollateral).reduce((s, e) => s + (parseInt(e.value, 10) || 0), 0);
+    }
     const preview = document.getElementById('import-preview');
     let summary = 'Found ' + items.length + ' recurring items (' + incomeCount + ' income, ' + expenseCount + ' expenses)';
     if (pendingImportBalance !== null) summary += '<br>Balance: ' + fmtMoney(pendingImportBalance);
+    if (pendingImportBtcBalance !== null) summary += '<br>BTC Balance: ' + fmtSats(pendingImportBtcBalance);
     preview.innerHTML = '<div class="import-preview">' + summary + '<br><br>' +
       '<div style="display:flex;justify-content:center;gap:8px;margin-top:4px">' +
       '<button class="form-btn" onclick="confirmImport()">Confirm Import</button>' +
@@ -2072,6 +2249,10 @@ async function confirmImport() {
     appData.balance = pendingImportBalance;
     pendingImportBalance = null;
   }
+  if (pendingImportBtcBalance !== null) {
+    appData.btcBalance = pendingImportBtcBalance;
+    pendingImportBtcBalance = null;
+  }
   appData.importedAt = new Date().toISOString();
   pendingImportItems = null;
   await encryptAndSave();
@@ -2085,6 +2266,7 @@ async function confirmImport() {
 function cancelImport() {
   pendingImportItems = null;
   pendingImportBalance = null;
+  pendingImportBtcBalance = null;
   document.getElementById('import-preview').innerHTML = '';
 }
 
@@ -2110,7 +2292,7 @@ async function clearAllData() {
   localStorage.removeItem(STORAGE_ENC);
   localStorage.removeItem(STORAGE_META);
   sessionKey = null;
-  appData = { balance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
   closeSettings();
   isFirstRun = true;
   showLockScreen('set');
@@ -2123,7 +2305,7 @@ function startBalanceEdit() {
   const balEl = document.getElementById('balanceDisplay');
   const current = appData.balance;
   balEl.onclick = null;
-  balEl.className = 'balance-value';
+  balEl.className = 'sub-value';
   balEl.innerHTML = '<input class="balance-edit-input" id="balance-edit" type="number" step="0.01" value="' + current + '">';
   const input = document.getElementById('balance-edit');
   input.focus();
@@ -2133,6 +2315,30 @@ function startBalanceEdit() {
       const val = parseFloat(input.value);
       if (!isNaN(val)) {
         appData.balance = val;
+        await encryptAndSave();
+      }
+      renderAll();
+    } else if (e.key === 'Escape') {
+      renderAll();
+    }
+  };
+  input.onblur = function() { renderAll(); };
+}
+
+function startBtcBalanceEdit() {
+  const btcEl = document.getElementById('btcBalanceDisplay');
+  const current = appData.btcBalance;
+  btcEl.onclick = null;
+  btcEl.className = 'sub-value';
+  btcEl.innerHTML = '<input class="btc-balance-edit-input" id="btc-balance-edit" type="number" step="1" min="0" value="' + current + '" placeholder="sats">';
+  const input = document.getElementById('btc-balance-edit');
+  input.focus();
+  input.select();
+  input.onkeydown = async function(e) {
+    if (e.key === 'Enter') {
+      const val = parseInt(input.value, 10);
+      if (!isNaN(val) && val >= 0) {
+        appData.btcBalance = val;
         await encryptAndSave();
       }
       renderAll();
@@ -2179,16 +2385,31 @@ async function markPaid(recurringId, oneoffId, date, btn) {
 
     if (!entry) return;
 
+    let toastMsg;
     if (entry.direction === 'expense') {
       appData.balance -= entry.amount;
-    } else {
+      toastMsg = 'Paid: ' + entry.name;
+    } else if (entry.direction === 'income') {
       appData.balance += entry.amount;
+      toastMsg = 'Received: ' + entry.name;
+    } else if (entry.direction === 'btc-income') {
+      appData.btcBalance += Math.round(entry.amount);
+      entry.btcPriceAtTime = btcPrice;
+      toastMsg = 'Received: ' + entry.name + ' — +' + fmtSats(Math.round(entry.amount));
+    } else if (entry.direction === 'btc-buy') {
+      if (!btcPrice) { showToast('BTC price unavailable — cannot process', 'error'); return; }
+      const satsReceived = Math.round((entry.amount / btcPrice) * 1e8);
+      appData.balance -= entry.amount;
+      appData.btcBalance += satsReceived;
+      entry.satsReceived = satsReceived;
+      entry.btcPriceAtTime = btcPrice;
+      toastMsg = 'DCA: -' + fmtMoney(entry.amount) + ' → +' + fmtSats(satsReceived);
     }
 
     appData.history.push(entry);
     await encryptAndSave();
     renderSummaryAndBalance();
-    showToast((entry.direction === 'income' ? 'Received' : 'Paid') + ': ' + entry.name, 'success');
+    showToast(toastMsg, 'success');
   });
 }
 
@@ -2245,6 +2466,63 @@ async function submitQuickAdd() {
   await encryptAndSave();
   renderAll();
   showToast('Added ' + name, 'success');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── BTC PRICE TICKER ─────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+let btcPrice = null;
+let btcFetchedAt = null;
+
+async function fetchBtcPrice(manual) {
+  const btn = document.getElementById('btcRefreshBtn');
+  const disp = document.getElementById('btcPriceDisplay');
+  btn.classList.add('spinning');
+  disp.className = 'btc-price-val loading';
+  disp.textContent = 'Fetching…';
+  let price = null;
+
+  try {
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', {cache:'no-store'});
+    if (r.ok) { const j = await r.json(); price = j?.bitcoin?.usd; }
+  } catch(_){}
+
+  if (!price) {
+    try {
+      const r = await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot', {cache:'no-store'});
+      if (r.ok) { const j = await r.json(); price = parseFloat(j?.data?.amount); }
+    } catch(_){}
+  }
+
+  btn.classList.remove('spinning');
+  if (price && price > 0) {
+    btcPrice = price;
+    btcFetchedAt = new Date();
+    disp.className = 'btc-price-val';
+    disp.textContent = '$' + price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    updateBtcAge();
+    if (document.getElementById('combinedDisplay')) renderBalanceHeader();
+    if (manual) showToast('BTC price updated', 'success');
+  } else {
+    disp.className = 'btc-price-val';
+    disp.style.color = 'var(--text-dim)';
+    disp.textContent = 'Unavailable';
+    document.getElementById('btcPriceAge').textContent = 'API unreachable';
+    if (manual) showToast('Could not fetch BTC price', 'error');
+  }
+}
+
+function updateBtcAge() {
+  if (!btcFetchedAt) return;
+  const mins = Math.floor((Date.now() - btcFetchedAt) / 60000);
+  document.getElementById('btcPriceAge').textContent = mins < 1 ? 'Just updated' : 'Updated ' + mins + 'm ago';
+}
+
+function startBtcTicker() {
+  fetchBtcPrice(false);
+  setInterval(() => fetchBtcPrice(false), 5 * 60 * 1000);
+  setInterval(updateBtcAge, 30000);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
