@@ -20,3 +20,5 @@ Each item: `- [x] Description` with metadata tags and completion date.
 - [x] Add slider at top of Forecast page to adjust forecast horizon by monthly intervals, with graph and table updating dynamically `[feature]` `[medium]` `[high]` — 2026-04-04
 - [x] Add line chart to Forecast page showing balance projections as time series (individual income/expense items and overall balance) `[feature]` `[large]` `[high]` — 2026-04-04
 - [x] Animate transaction removal (slide-out on paid/skip), month/week collapse/expand, and edit panel toggle without full page re-render `[polish]` `[medium]` `[medium]` — 2026-04-04
+- [x] Animate "Show Paid" toggle (staggered fade-in for history rows) `[polish]` `[small]` `[low]` — 2026-04-05
+- [x] Font sizes too small on 1440p desktop monitors; review and adjust for better readability `[polish]` `[medium]` `[medium]` — 2026-04-05

@@ -17,8 +17,6 @@ Each item: `- [ ] Description` with metadata tags: `[type]` `[complexity]` `[pri
 - [ ] Add a dedicated Recurring Cash Flow tab/page (like Cache's Cash Flow page) for managing all recurring income/expenses setup `[feature]` `[large]` `[high]`
 
 ### UX Improvements
-- [ ] Animate "Show Paid" toggle (staggered fade-in for history rows) `[polish]` `[small]` `[low]`
-- [ ] Font sizes too small on 1440p desktop monitors; review and adjust for better readability `[polish]` `[medium]` `[medium]`
 
 ### Forecast Page Enhancements
 
