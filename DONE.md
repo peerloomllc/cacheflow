@@ -33,3 +33,11 @@ Each item: `- [x] Description` with metadata tags and completion date.
 - [x] Add side-by-side pie charts on Dashboard showing income and expense breakdowns by category `[feature]` `[large]` `[high]` — 2026-04-06
 - [x] Add BTC vs Fiat allocation visualization (donut/bar showing % of combined balance in BTC vs cash) `[feature]` `[medium]` `[medium]` — 2026-04-06
 - [x] Add cash runway indicator ("X days until balance hits zero" based on current burn rate) `[feature]` `[medium]` `[medium]` — 2026-04-06
+- [x] Guided tutorial walkthrough (same method as Cache app) highlighting Bitcoin-based features (BTC balances, price ticker, recurring BTC transactions) `[feature]` `[large]` `[high]` — 2026-04-06
+- [x] CacheFlow JSON backup import/restore in Settings `[feature]` `[medium]` `[high]` — 2026-04-06
+- [x] Move Cache import to Dashboard empty state only (first-run onboarding) `[refactor]` `[small]` `[medium]` — 2026-04-06
+- [x] Remove redundant balance fields from Settings (header supports inline editing) `[refactor]` `[small]` `[low]` — 2026-04-06
+- [x] Fix mobile bottom menu centering `[bug]` `[small]` `[medium]` — 2026-04-06
+- [x] Make header/footer bars fully opaque (no scroll-through bleed) `[polish]` `[small]` `[low]` — 2026-04-06
+- [x] Hyperlink Cache on Dashboard welcome page `[polish]` `[small]` `[low]` — 2026-04-06
+- [x] Dark/Light mode option (same as Cache app) `[feature]` `[medium]` `[medium]` — 2026-04-06
