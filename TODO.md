@@ -13,10 +13,8 @@ Each item: `- [ ] Description` with metadata tags: `[type]` `[complexity]` `[pri
 ### Dashboard Redesign
 - [ ] Add side-by-side pie charts on Dashboard showing income and expense breakdowns by category `[feature]` `[large]` `[high]`
 
-### Recurring Cash Flow Page
-- [ ] Add a dedicated Recurring Cash Flow tab/page (like Cache's Cash Flow page) for managing all recurring income/expenses setup `[feature]` `[large]` `[high]`
-
 ### UX Improvements
+- [ ] JSON import of recurring transactions from Cache export should import to the new Recurring tab (currently imports to Transactions tab) `[bug]` `[small]` `[medium]`
 
 ### Forecast Page Enhancements
 
