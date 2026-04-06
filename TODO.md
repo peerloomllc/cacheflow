@@ -13,11 +13,13 @@ Each item: `- [ ] Description` with metadata tags: `[type]` `[complexity]` `[pri
 ### Dashboard Redesign
 
 ### UX Improvements
-- [ ] Guided tutorial walkthrough (same method as Cache app) highlighting Bitcoin-based features (BTC balances, price ticker, recurring BTC transactions) `[feature]` `[large]` `[high]`
+- [ ] Undo option for recently paid transactions (when revealed through Show Paid toggle) `[feature]` `[medium]` `[medium]`
 
 ### Settings
-- [ ] Dark/Light mode option (same as Cache app) `[feature]` `[medium]` `[medium]`
 
 ### Forecast Page Enhancements
+
+### DevOps
+- [ ] Set up automated merging to website repo for automated updates `[feature]` `[medium]` `[high]`
 
 ### Bitcoin Integration

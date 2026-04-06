@@ -16,6 +16,14 @@
     --gold:#d4a843; --btc:#f7931a; --btc-glow:rgba(247,147,26,0.10);
     --text:#e8ede8; --text-muted:#7a8a7a; --text-dim:#4a5a4a;
     --mono:'DM Mono',monospace; --serif:'DM Serif Display',serif; --sans:'DM Sans',sans-serif;
+  }
+  [data-theme="light"] {
+    --bg:#f4f6f4; --surface:#ffffff; --surface2:#edf0ed;
+    --border:#d0d8d0; --border-light:#bec8be;
+    --accent:#3d7a22; --accent-dim:#5a9e3a; --accent-glow:rgba(61,122,34,0.10);
+    --red:#c0392b; --red-dim:#a83226; --red-glow:rgba(192,57,43,0.08);
+    --gold:#b8860b; --btc:#e67e00; --btc-glow:rgba(230,126,0,0.08);
+    --text:#1a1e1a; --text-muted:#5a6a5a; --text-dim:#8a9a8a;
     --radius:6px;
   }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -510,6 +518,16 @@
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleCacheImport(event)">
 
     <div class="settings-section">
+      <div class="settings-section-label" style="margin-bottom:8px">Theme</div>
+      <div style="display:flex;gap:8px">
+        <button class="settings-btn" id="theme-dark-btn" onclick="setThemeSetting('dark')" style="flex:1">&#127769; Dark</button>
+        <button class="settings-btn" id="theme-light-btn" onclick="setThemeSetting('light')" style="flex:1">&#9728; Light</button>
+      </div>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
       <div class="settings-section-label">Change Password</div>
       <button class="settings-btn" onclick="closeSettings();showChangePassword()">Change Password</button>
     </div>
@@ -619,6 +637,7 @@ let idleTimer     = null;
 let isLocked      = true;
 let isFirstRun    = false;
 let isChangingPw  = false;
+let theme = 'dark';
 
 let dashCharts = {};
 const CHART_PALETTE = [
@@ -811,6 +830,8 @@ async function submitUnlock() {
     appData.history = appData.history || [];
     appData.settings = appData.settings || { currency: 'USD' };
     appData.importedAt = appData.importedAt ?? null;
+    if (appData.settings.theme === 'light' || appData.settings.theme === 'dark') theme = appData.settings.theme;
+    applyTheme();
     setLockProgress('lock-progress', 'lock-progress-bar', 100, true);
     setTimeout(() => {
       setLockProgress('lock-progress', 'lock-progress-bar', 0, false);
@@ -1254,8 +1275,8 @@ function renderDashboard() {
         labels: hasData ? labels : ['No data'],
         datasets: [{
           data: hasData ? values : [1],
-          backgroundColor: hasData ? colors : ['#252a25'],
-          borderColor: '#0d0f0e',
+          backgroundColor: hasData ? colors : [themeColor('#252a25', '#d0d8d0')],
+          borderColor: themeColor('#0d0f0e', '#f4f6f4'),
           borderWidth: 3,
           hoverOffset: 6
         }]
@@ -1268,11 +1289,11 @@ function renderDashboard() {
           legend: { display: false },
           tooltip: {
             enabled: hasData,
-            backgroundColor: '#1a1e1a',
-            borderColor: '#2e352e',
+            backgroundColor: themeColor('#1a1e1a', '#ffffff'),
+            borderColor: themeColor('#2e352e', '#d0d8d0'),
             borderWidth: 1,
-            titleColor: '#e8ede8',
-            bodyColor: '#7a8a7a',
+            titleColor: themeColor('#e8ede8', '#1a1e1a'),
+            bodyColor: themeColor('#7a8a7a', '#5a6a5a'),
             padding: 10,
             callbacks: {
               label: function(c) {
@@ -1302,7 +1323,7 @@ function renderDashboard() {
   // BTC vs Fiat allocation chart
   var allocLabels = ['Fiat (Cash)', 'Bitcoin'];
   var allocValues = [fiatBal, Math.max(0, btcFiat)];
-  mkDoughnut('chartAlloc', 'legend-alloc', allocLabels, allocValues, ['#a8d08d', '#f7931a']);
+  mkDoughnut('chartAlloc', 'legend-alloc', allocLabels, allocValues, [themeColor('#a8d08d', '#3d7a22'), themeColor('#f7931a', '#e67e00')]);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -2432,7 +2453,33 @@ function renderForecast() {
 // ── SETTINGS ─────────────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#f4f6f4' : '#0d0f0e';
+}
+
+function themeColor(dark, light) { return theme === 'light' ? light : dark; }
+
+function updateThemeButtons() {
+  const dk = document.getElementById('theme-dark-btn');
+  const lt = document.getElementById('theme-light-btn');
+  dk.style.borderColor = theme === 'dark' ? 'var(--accent)' : '';
+  dk.style.color = theme === 'dark' ? 'var(--accent)' : '';
+  lt.style.borderColor = theme === 'light' ? 'var(--accent)' : '';
+  lt.style.color = theme === 'light' ? 'var(--accent)' : '';
+}
+
+async function setThemeSetting(t) {
+  theme = t;
+  applyTheme();
+  updateThemeButtons();
+  appData.settings.theme = theme;
+  renderAll();
+  await encryptAndSave();
+}
+
 function openSettings() {
+  updateThemeButtons();
   document.getElementById('settings-modal').classList.remove('hidden');
 }
 
@@ -2648,6 +2695,8 @@ async function confirmBackupImport() {
   appData.settings = d.settings || { currency: 'USD' };
   appData.importedAt = d.importedAt ?? null;
   appData.savedAt = null;
+  if (appData.settings.theme === 'light' || appData.settings.theme === 'dark') theme = appData.settings.theme;
+  applyTheme();
 
   pendingBackupData = null;
   await encryptAndSave();
@@ -2670,6 +2719,8 @@ async function clearAllData() {
   localStorage.removeItem(STORAGE_META);
   sessionKey = null;
   appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  theme = 'dark';
+  applyTheme();
   closeSettings();
   isFirstRun = true;
   showLockScreen('set');
