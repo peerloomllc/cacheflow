@@ -6,6 +6,7 @@ Each item: `- [x] Description` with metadata tags and completion date.
 
 ---
 
+- [x] Add a dedicated Recurring Cash Flow tab/page for managing all recurring income/expenses setup `[feature]` `[large]` `[high]` — 2026-04-05
 - [x] Add bottom menu bar matching Cache: About button, Settings button, Lock button, Save button, and same disclaimer text about data `[feature]` `[medium]` `[high]` — 2026-04-04
 - [x] Import JSON Confirm/Cancel buttons need to be horizontally centered `[bug]` `[small]` `[medium]` — 2026-04-04
 - [x] Top banners/menus (header, summary bar, tab nav) sticky/frozen on scroll `[polish]` `[small]` `[high]` — 2026-04-04

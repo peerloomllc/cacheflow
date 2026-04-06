@@ -93,7 +93,7 @@
   .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
 
   /* ── VIEWS ── */
-  .view{display:none;position:relative;z-index:10;max-width:900px;margin:0 auto;padding:24px 24px 80px}
+  .view{display:none;position:relative;z-index:10;max-width:1100px;margin:0 auto;padding:24px 24px 80px}
   .view.active{display:block}
 
   /* ── SECTIONS ── */
@@ -243,6 +243,41 @@
   .about-close-btn{background:transparent;border:1px solid var(--border-light);color:var(--text-muted);font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:9px 16px;border-radius:4px;cursor:pointer;transition:all .15s;width:100%}
   .about-close-btn:hover{border-color:var(--text-dim);color:var(--text)}
 
+  /* ── RECURRING PAGE ── */
+  .rec-section-header{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;transition:background .1s}
+  .rec-section-header:hover{background:var(--surface)}
+  .rec-section-arrow{font-size:9px;color:var(--text-dim);transition:transform .2s}
+  .rec-section-label{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);flex:1}
+  .rec-section-total{font-family:var(--mono);font-size:13px;font-weight:500}
+  .rec-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .rec-table{width:100%;border-collapse:collapse;table-layout:fixed}
+  .rec-table th{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+  .rec-table th.r{text-align:right}
+  .rec-table td{font-family:var(--mono);font-size:12px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle}
+  .rec-table td.r{text-align:right}
+  .rec-table tr:hover td{background:rgba(255,255,255,.015)}
+  .rec-table tr.rec-disabled td{opacity:.45}
+  .rec-name-cell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0}
+  .rec-inline-input{background:var(--surface);border:1px solid var(--border-light);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:12px;padding:4px 8px;outline:none;width:100%;transition:border-color .15s}
+  .rec-inline-input:focus{border-color:var(--accent-dim)}
+  .rec-inline-select{background:var(--surface);border:1px solid var(--border-light);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 6px;outline:none;cursor:pointer}
+  .rec-amt-cell{cursor:pointer;padding:4px 12px}
+  .rec-amt-cell:hover{background:rgba(168,208,141,.06);border-radius:3px}
+  .rec-inline-amount{width:80px;text-align:right}
+  .rec-delete-btn{background:none;border:none;color:var(--text-dim);font-size:13px;cursor:pointer;padding:2px 6px;border-radius:3px;transition:all .15s}
+  .rec-delete-btn:hover{color:var(--red);background:var(--red-glow)}
+  .rec-toggle{width:28px;height:14px;border-radius:7px;background:var(--border);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+  .rec-toggle.on{background:var(--accent-dim)}
+  .rec-toggle-knob{width:10px;height:10px;border-radius:50%;background:var(--text-dim);position:absolute;top:2px;left:2px;transition:all .2s}
+  .rec-toggle.on .rec-toggle-knob{left:16px;background:var(--accent)}
+  .rec-add-bar{padding:8px 16px;display:flex;gap:8px}
+  .rec-add-btn{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:6px 14px;border-radius:var(--radius);cursor:pointer;transition:all .15s}
+  .rec-add-btn:hover{color:var(--accent);border-color:var(--accent-dim)}
+  .rec-due-cell{font-family:var(--mono);font-size:11px;color:var(--text-muted)}
+  .rec-due-input{width:115px}
+  .rec-actions-cell{white-space:nowrap;padding-right:14px !important}
+  .rec-row-removing{animation:slideOut .3s ease forwards;overflow:hidden;pointer-events:none}
+
   /* ── RESPONSIVE ── */
   @media(max-width:600px){
     header{flex-direction:column;align-items:center;gap:8px;padding:16px 16px 12px;text-align:center}
@@ -274,6 +309,11 @@
     .about-card{max-width:calc(100vw - 32px);padding:24px 20px;max-height:80vh;gap:12px}
     .about-card .about-body{font-size:10px;line-height:1.5}
     .about-card .about-link{font-size:11px;padding:7px 10px}
+    .rec-table th,.rec-table td{padding:5px 4px;font-size:10px}
+    .rec-inline-input{font-size:10px;padding:3px 4px}
+    .rec-inline-select{font-size:9px;padding:3px 3px}
+    .rec-inline-amount{width:100%}
+    .rec-due-input{width:100%}
   }
 </style>
 </head>
@@ -348,11 +388,13 @@
 
   <div class="tab-nav">
     <button class="tab-btn active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>
+    <button class="tab-btn" data-tab="recurring" onclick="switchTab('recurring')">Recurring</button>
     <button class="tab-btn" data-tab="transactions" onclick="switchTab('transactions')">Transactions</button>
     <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')">Forecast</button>
   </div>
 
   <div id="view-dashboard" class="view active"></div>
+  <div id="view-recurring" class="view"></div>
   <div id="view-transactions" class="view"></div>
   <div id="view-forecast" class="view"></div>
 </div>
@@ -802,7 +844,9 @@ function getUpcomingTransactions(daysAhead) {
 
   appData.recurring.filter(r => r.enabled).forEach(r => {
     let due = r.nextDue;
+    const rEnd = r.endDate ? new Date(r.endDate + 'T00:00:00') : null;
     while (due && new Date(due + 'T00:00:00') <= endDate) {
+      if (rEnd && new Date(due + 'T00:00:00') > rEnd) break;
       if (new Date(due + 'T00:00:00') >= today) {
         items.push({
           type: 'recurring',
@@ -899,6 +943,7 @@ function renderAll() {
   netEl.className = 's-value ' + (net >= 0 ? 'net-pos' : 'net-neg');
 
   renderDashboard();
+  renderRecurring();
   renderTransactions();
   renderForecast();
 }
@@ -911,16 +956,303 @@ function renderDashboard() {
     html += '<div class="section"><div style="padding:32px 24px;text-align:center">';
     html += '<div style="font-family:var(--serif);font-size:20px;margin-bottom:8px">Welcome to Cache Flow</div>';
     html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);line-height:1.6;max-width:400px;margin:0 auto">';
-    html += 'Get started by importing your recurring transactions from Cache (Settings \u2192 Import), or add them manually from the Transactions tab.</div>';
+    html += 'Get started by importing your recurring transactions from Cache (Settings \u2192 Import), or add them manually from the Recurring tab.</div>';
     html += '<div style="margin-top:16px;display:flex;gap:8px;justify-content:center">';
     html += '<button class="form-btn" onclick="openSettings()">Import from Cache</button>';
-    html += '<button class="form-btn cancel" onclick="switchTab(\'transactions\')">Add Manually</button>';
+    html += '<button class="form-btn cancel" onclick="switchTab(\'recurring\')">Add Manually</button>';
     html += '</div></div></div>';
   } else {
     html += '<div style="padding:24px 16px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--text-dim)">Dashboard — charts coming soon</div>';
   }
 
   container.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── RECURRING PAGE ──────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+let recCollapsed = { income: false, expense: false };
+let recEditingId = null;
+
+function renderRecurring() {
+  const container = document.getElementById('view-recurring');
+
+  let html = '';
+
+  // Income section
+  html += '<div class="section" style="margin-bottom:16px" id="rec-section-income"></div>';
+
+  // Expense section
+  html += '<div class="section" style="margin-bottom:16px" id="rec-section-expense"></div>';
+
+  container.innerHTML = html;
+  rebuildRecSection('income');
+  rebuildRecSection('expense');
+}
+
+function rebuildRecSection(dir) {
+  const wrap = document.getElementById('rec-section-' + dir);
+  if (!wrap) return;
+  const label = dir === 'income' ? 'Income' : 'Expenses';
+  const color = dir === 'income' ? 'var(--accent)' : 'var(--red)';
+  const items = appData.recurring.filter(r => r.direction === dir);
+  const total = items.filter(r => r.enabled).reduce((s, r) => s + normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency), 0);
+  const collapsed = recCollapsed[dir];
+  const arrow = collapsed ? '\u25b6' : '\u25bc';
+
+  let html = '<div class="rec-section-header" onclick="toggleRecCollapse(\'' + dir + '\')">';
+  html += '<span class="rec-section-arrow">' + arrow + '</span>';
+  html += '<span class="rec-section-label">' + label + '</span>';
+  html += '<span class="rec-section-total" style="color:' + color + '" data-rec-total-' + dir + '>' + (items.length ? fmtMoney(total) + '/mo' : '') + '</span>';
+  html += '</div>';
+  html += '<div class="collapse-body" data-rec-body-' + dir + '' + (collapsed ? ' style="display:none"' : '') + '>';
+  html += '<div class="rec-add-bar">';
+  html += '<button class="rec-add-btn" onclick="addRecurringItem(\'' + dir + '\')">+ Add ' + dir + '</button>';
+  html += '</div>';
+  if (items.length) {
+    html += '<div class="rec-table-wrap"><table class="rec-table">';
+    html += '<colgroup><col style="width:36px"><col><col style="width:95px"><col style="width:85px"><col style="width:85px"><col style="width:110px"><col style="width:110px"><col style="width:110px"></colgroup>';
+    html += '<thead><tr>';
+    html += '<th></th>';
+    html += '<th>Name</th>';
+    html += '<th>Frequency</th>';
+    html += '<th class="r">Amount</th>';
+    html += '<th class="r">Monthly</th>';
+    html += '<th>Start Date</th>';
+    html += '<th>End Date</th>';
+    html += '<th></th>';
+    html += '</tr></thead><tbody data-rec-tbody-' + dir + '>';
+    items.forEach(r => { html += buildRecRow(r); });
+    html += '</tbody></table></div>';
+  }
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+function updateRecSectionTotals(dir) {
+  const color = dir === 'income' ? 'var(--accent)' : 'var(--red)';
+  const items = appData.recurring.filter(r => r.direction === dir);
+  const total = items.filter(r => r.enabled).reduce((s, r) => s + normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency), 0);
+  const totalEl = document.querySelector('[data-rec-total-' + dir + ']');
+  if (totalEl) { totalEl.textContent = items.length ? fmtMoney(total) + '/mo' : ''; totalEl.style.color = color; }
+}
+
+function buildRecRow(r) {
+  const mo = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+  const isIncome = r.direction === 'income';
+  const editing = recEditingId === r.id;
+  const amt = parseFloat(r.amount) || 0;
+  const amtDisplay = amt > 0 ? fmtMoney(amt) : '<span style="color:var(--text-dim)">--</span>';
+  const moColor = isIncome ? 'var(--accent)' : 'var(--red)';
+
+  let html = '<tr data-rec-row="' + r.id + '" class="' + (!r.enabled ? 'rec-disabled' : '') + '">';
+
+  // Enable toggle
+  html += '<td><div class="rec-toggle' + (r.enabled ? ' on' : '') + '" onclick="toggleRecEnabled(\'' + r.id + '\')">';
+  html += '<div class="rec-toggle-knob"></div></div></td>';
+
+  // Name
+  if (editing) {
+    html += '<td class="rec-name-cell"><input class="rec-inline-input" id="rec-name-' + r.id + '" value="' + escAttr(r.name) + '" placeholder="Name" onkeydown="if(event.key===\'Enter\')saveRecEdit(\'' + r.id + '\');if(event.key===\'Escape\')cancelRecEdit()"></td>';
+  } else {
+    html += '<td class="rec-name-cell" style="cursor:pointer" onclick="startRecEdit(\'' + r.id + '\')">' + escHtml(r.name || '(unnamed)') + '</td>';
+  }
+
+  // Frequency
+  if (editing) {
+    html += '<td><select class="rec-inline-select" id="rec-freq-' + r.id + '">';
+    ['weekly', 'biweekly', 'monthly', 'quarterly', 'annual'].forEach(f => {
+      html += '<option value="' + f + '"' + (r.frequency === f ? ' selected' : '') + '>' + f.charAt(0).toUpperCase() + f.slice(1) + '</option>';
+    });
+    html += '</select></td>';
+  } else {
+    html += '<td style="cursor:pointer" onclick="startRecEdit(\'' + r.id + '\')"><span class="freq-badge">' + r.frequency.toUpperCase() + '</span></td>';
+  }
+
+  // Amount
+  if (editing) {
+    html += '<td class="r"><input class="rec-inline-input rec-inline-amount" id="rec-amt-' + r.id + '" type="number" step="0.01" min="0" value="' + r.amount + '" onkeydown="if(event.key===\'Enter\')saveRecEdit(\'' + r.id + '\');if(event.key===\'Escape\')cancelRecEdit()"></td>';
+  } else {
+    html += '<td class="r rec-amt-cell" onclick="startRecEdit(\'' + r.id + '\')">' + amtDisplay + '</td>';
+  }
+
+  // Monthly
+  html += '<td class="r" style="color:' + moColor + '">' + (isIncome ? '+' : '') + fmtMoney(mo) + '</td>';
+
+  // Start Date (nextDue)
+  if (editing) {
+    html += '<td><input class="rec-inline-input rec-due-input" id="rec-due-' + r.id + '" type="date" value="' + (r.nextDue || '') + '" onkeydown="if(event.key===\'Enter\')saveRecEdit(\'' + r.id + '\');if(event.key===\'Escape\')cancelRecEdit()"></td>';
+  } else {
+    html += '<td class="rec-due-cell" style="cursor:pointer" onclick="startRecEdit(\'' + r.id + '\')">' + (r.nextDue ? fmtDate(r.nextDue) : '--') + '</td>';
+  }
+
+  // End Date
+  if (editing) {
+    html += '<td><input class="rec-inline-input rec-due-input" id="rec-end-' + r.id + '" type="date" value="' + (r.endDate || '') + '" onkeydown="if(event.key===\'Enter\')saveRecEdit(\'' + r.id + '\');if(event.key===\'Escape\')cancelRecEdit()"></td>';
+  } else {
+    html += '<td class="rec-due-cell" style="cursor:pointer" onclick="startRecEdit(\'' + r.id + '\')">' + (r.endDate ? fmtDate(r.endDate) : '--') + '</td>';
+  }
+
+  // Delete / Save buttons
+  if (editing) {
+    html += '<td class="rec-actions-cell"><button class="form-btn" style="padding:3px 8px;font-size:9px;margin-right:4px" onclick="saveRecEdit(\'' + r.id + '\')">Save</button>';
+    html += '<button class="form-btn cancel" style="padding:3px 8px;font-size:9px" onclick="cancelRecEdit()">Cancel</button></td>';
+  } else {
+    html += '<td><button class="rec-delete-btn" onclick="deleteRecurringItem(\'' + r.id + '\')" title="Delete">\u2715</button></td>';
+  }
+
+  html += '</tr>';
+  return html;
+}
+
+function swapRecRow(id) {
+  const r = appData.recurring.find(x => x.id === id);
+  if (!r) return;
+  const old = document.querySelector('[data-rec-row="' + id + '"]');
+  if (!old) { renderRecurring(); return; }
+  const tmp = document.createElement('tbody');
+  tmp.innerHTML = buildRecRow(r);
+  const newRow = tmp.firstChild;
+  old.replaceWith(newRow);
+}
+
+function toggleRecCollapse(dir) {
+  recCollapsed[dir] = !recCollapsed[dir];
+  const header = document.querySelector('#rec-section-' + dir + ' .rec-section-header');
+  const body = document.querySelector('[data-rec-body-' + dir + ']');
+  if (header && body) {
+    const arrow = header.querySelector('.rec-section-arrow');
+    toggleCollapse(body, arrow, recCollapsed[dir]);
+  } else {
+    rebuildRecSection(dir);
+  }
+}
+
+function startRecEdit(id) {
+  const prevId = recEditingId;
+  recEditingId = id;
+  if (prevId && prevId !== id) swapRecRow(prevId);
+  swapRecRow(id);
+  const nameEl = document.getElementById('rec-name-' + id);
+  if (nameEl) nameEl.focus();
+}
+
+function cancelRecEdit() {
+  const id = recEditingId;
+  recEditingId = null;
+  if (id) swapRecRow(id);
+}
+
+async function saveRecEdit(id) {
+  const r = appData.recurring.find(x => x.id === id);
+  if (!r) return;
+  const nameEl = document.getElementById('rec-name-' + id);
+  const freqEl = document.getElementById('rec-freq-' + id);
+  const amtEl = document.getElementById('rec-amt-' + id);
+  const dueEl = document.getElementById('rec-due-' + id);
+  const endEl = document.getElementById('rec-end-' + id);
+  if (nameEl) r.name = nameEl.value.trim();
+  if (freqEl) r.frequency = freqEl.value;
+  if (amtEl) r.amount = parseFloat(amtEl.value) || 0;
+  if (dueEl) r.nextDue = dueEl.value;
+  if (endEl) r.endDate = endEl.value || null;
+  recEditingId = null;
+  swapRecRow(id);
+  updateRecSectionTotals(r.direction);
+  renderSummaryAndBalance();
+  await encryptAndSave();
+  showToast('Updated ' + r.name, 'success');
+}
+
+async function toggleRecEnabled(id) {
+  const r = appData.recurring.find(x => x.id === id);
+  if (!r) return;
+  r.enabled = !r.enabled;
+  // Surgical: swap row, update totals
+  swapRecRow(id);
+  updateRecSectionTotals(r.direction);
+  renderSummaryAndBalance();
+  await encryptAndSave();
+}
+
+async function addRecurringItem(dir) {
+  const today = toDateStr(new Date());
+  const newId = generateId();
+  const newItem = {
+    id: newId,
+    name: '',
+    amount: 0,
+    frequency: 'monthly',
+    direction: dir,
+    nextDue: today,
+    endDate: null,
+    enabled: true,
+    sourceId: null,
+    category: null,
+    _liabId: null
+  };
+  // Prepend so new items appear at top
+  const dirItems = appData.recurring.filter(r => r.direction === dir);
+  const firstIdx = appData.recurring.indexOf(dirItems[0]);
+  if (firstIdx >= 0) {
+    appData.recurring.splice(firstIdx, 0, newItem);
+  } else {
+    appData.recurring.unshift(newItem);
+  }
+  recEditingId = newId;
+
+  // Surgical: prepend row if table exists, otherwise rebuild section
+  const tbody = document.querySelector('[data-rec-tbody-' + dir + ']');
+  if (tbody) {
+    const tmp = document.createElement('tbody');
+    tmp.innerHTML = buildRecRow(newItem);
+    tbody.prepend(tmp.firstChild);
+    updateRecSectionTotals(dir);
+  } else {
+    rebuildRecSection(dir);
+  }
+  await encryptAndSave();
+  setTimeout(() => {
+    const nameEl = document.getElementById('rec-name-' + newId);
+    if (nameEl) { nameEl.scrollIntoView({ block: 'nearest' }); nameEl.focus(); }
+  }, 30);
+}
+
+async function deleteRecurringItem(id) {
+  const r = appData.recurring.find(x => x.id === id);
+  if (!r) return;
+  const name = r.name || '(unnamed)';
+  if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
+  const dir = r.direction;
+  if (recEditingId === id) recEditingId = null;
+
+  // Animate row out, then remove from data
+  const row = document.querySelector('[data-rec-row="' + id + '"]');
+  if (row) {
+    const tableWrap = row.closest('.rec-table-wrap');
+    if (tableWrap) tableWrap.style.overflowX = 'hidden';
+    row.classList.add('rec-row-removing');
+    row.addEventListener('animationend', async () => {
+      if (tableWrap) tableWrap.style.overflowX = '';
+      appData.recurring = appData.recurring.filter(x => x.id !== id);
+      row.remove();
+      updateRecSectionTotals(dir);
+      renderSummaryAndBalance();
+      // If no items left, rebuild section to remove empty table
+      const remaining = appData.recurring.filter(x => x.direction === dir);
+      if (!remaining.length) rebuildRecSection(dir);
+      await encryptAndSave();
+      showToast('Deleted ' + name);
+    }, { once: true });
+  } else {
+    appData.recurring = appData.recurring.filter(x => x.id !== id);
+    rebuildRecSection(dir);
+    updateRecSectionTotals(dir);
+    renderSummaryAndBalance();
+    await encryptAndSave();
+    showToast('Deleted ' + name);
+  }
 }
 
 let showPaidHistory = false;
@@ -1356,6 +1688,7 @@ async function submitAddRecurring() {
     frequency: freq,
     direction: arDirection,
     nextDue: due,
+    endDate: null,
     enabled: true,
     sourceId: null,
     category: null,
@@ -1726,6 +2059,7 @@ async function confirmImport() {
         frequency: item.frequency,
         direction: item.direction,
         nextDue: calcNextDue(item.frequency),
+        endDate: null,
         enabled: true,
         sourceId: item.id,
         category: null,
