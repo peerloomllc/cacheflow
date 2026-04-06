@@ -14,7 +14,6 @@ Each item: `- [ ] Description` with metadata tags: `[type]` `[complexity]` `[pri
 - [ ] Add side-by-side pie charts on Dashboard showing income and expense breakdowns by category `[feature]` `[large]` `[high]`
 
 ### UX Improvements
-- [ ] JSON import of recurring transactions from Cache export should import to the new Recurring tab (currently imports to Transactions tab) `[bug]` `[small]` `[medium]`
 
 ### Forecast Page Enhancements
 

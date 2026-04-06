@@ -2075,8 +2075,9 @@ async function confirmImport() {
   appData.importedAt = new Date().toISOString();
   pendingImportItems = null;
   await encryptAndSave();
+  closeSettings();
+  switchTab('recurring');
   renderAll();
-  document.getElementById('import-preview').innerHTML = '';
   document.getElementById('import-status').textContent = 'Last imported: ' + new Date(appData.importedAt).toLocaleDateString();
   showToast('Imported successfully', 'success');
 }
