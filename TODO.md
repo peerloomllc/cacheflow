@@ -12,11 +12,12 @@ Each item: `- [ ] Description` with metadata tags: `[type]` `[complexity]` `[pri
 
 ### Dashboard Redesign
 - [ ] Add side-by-side pie charts on Dashboard showing income and expense breakdowns by category `[feature]` `[large]` `[high]`
+- [ ] Add BTC vs Fiat allocation visualization (donut/bar showing % of combined balance in BTC vs cash) `[feature]` `[medium]` `[medium]`
+- [ ] Add cash runway indicator ("X days until balance hits zero" based on current burn rate) `[feature]` `[medium]` `[medium]`
 
 ### UX Improvements
+- [ ] Guided tutorial walkthrough (same method as Cache app) highlighting Bitcoin-based features (BTC balances, price ticker, recurring BTC transactions) `[feature]` `[large]` `[high]`
 
 ### Forecast Page Enhancements
 
 ### Bitcoin Integration
-- [ ] Add Bitcoin price tracker banner at top (with live API calls), matching Cache's BTC ticker bar `[feature]` `[large]` `[high]`
-- [ ] Support dual balances: Cash balance and Bitcoin balance. Option to display combined balance as cash + cash equivalent of BTC holdings `[feature]` `[large]` `[high]`

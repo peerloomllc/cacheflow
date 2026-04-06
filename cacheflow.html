@@ -147,6 +147,7 @@
   .tx-name{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tx-meta{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px;display:flex;align-items:center;gap:6px}
   .freq-badge{border:1px solid var(--border-light);padding:1px 4px;border-radius:2px;letter-spacing:.5px;text-transform:uppercase}
+  .cat-badge{font-family:var(--mono);font-size:10px;letter-spacing:.3px;color:var(--text-muted)}
   .paid-badge{color:var(--accent-dim);letter-spacing:.5px}
   .tx-amount{font-family:var(--mono);font-size:13px;color:var(--text);text-align:right;white-space:nowrap}
   .tx-amount.income{color:var(--accent)}
@@ -163,6 +164,8 @@
   .form-field label{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)}
   .form-input{background:var(--surface);border:1px solid var(--border-light);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 8px;outline:none;transition:border-color .15s}
   .form-input:focus{border-color:var(--accent-dim)}
+  input[type="date"]{color-scheme:dark}
+  input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.7) sepia(0.3) hue-rotate(80deg);cursor:pointer}
   .form-select{background:var(--surface);border:1px solid var(--border-light);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 8px;outline:none;cursor:pointer}
   .form-btn{background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:10px;font-weight:500;padding:6px 14px;border:none;border-radius:3px;cursor:pointer;transition:background .15s}
   .form-btn:hover{background:#bfe0a0}
@@ -278,6 +281,9 @@
   .rec-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .rec-table{width:100%;border-collapse:collapse;table-layout:fixed}
   .rec-table th{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+  .rec-table th.sortable{cursor:pointer;user-select:none}
+  .rec-table th.sortable:hover{color:var(--text-muted)}
+  .sort-arrow{font-size:8px;margin-left:2px}
   .rec-table th.r{text-align:right}
   .rec-table td{font-family:var(--mono);font-size:12px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle}
   .rec-table td.r{text-align:right}
@@ -592,6 +598,27 @@ let appData = {
   importedAt: null,
   savedAt: null
 };
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── CATEGORIES ───────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+const CATEGORIES = {
+  expense: ['Housing','Transportation','Food & Dining','Utilities','Insurance','Healthcare','Entertainment','Subscriptions','Shopping','Education','Debt','Savings','Other'],
+  income: ['Salary','Freelance','Investment','Rental','Side Hustle','Gift','Other']
+};
+
+function getCategoriesForDir(dir) {
+  return (dir === 'income' || dir === 'btc-income') ? CATEGORIES.income : CATEGORIES.expense;
+}
+
+function buildCategoryOptions(dir, selected) {
+  let html = '<option value=""' + (!selected ? ' selected' : '') + '>Uncategorized</option>';
+  getCategoriesForDir(dir).forEach(c => {
+    html += '<option value="' + c + '"' + (selected === c ? ' selected' : '') + '>' + c + '</option>';
+  });
+  return html;
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 // ── CRYPTO HELPERS ───────────────────────────────────────────────────────
@@ -967,8 +994,7 @@ function getUpcomingTransactions(daysAhead) {
 }
 
 function fmtDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return dateStr.replace(/-/g, '/');
 }
 
 function fmtRelative(isoStr) {
@@ -1077,6 +1103,41 @@ function renderDashboard() {
 
 let recCollapsed = { income: false, expense: false, btc: false };
 let recEditingId = null;
+let recSortCol = null;
+let recSortAsc = true;
+
+function sortHeader(col, label) {
+  if (recSortCol !== col) return label;
+  return label + ' <span class="sort-arrow">' + (recSortAsc ? '\u25b2' : '\u25bc') + '</span>';
+}
+
+function getSortedItems(items) {
+  if (!recSortCol) return items;
+  const col = recSortCol;
+  const asc = recSortAsc;
+  return [...items].sort((a, b) => {
+    let va = a[col], vb = b[col];
+    if (col === 'amount') {
+      va = parseFloat(va) || 0; vb = parseFloat(vb) || 0;
+      return asc ? va - vb : vb - va;
+    }
+    va = (va || '').toString().toLowerCase();
+    vb = (vb || '').toString().toLowerCase();
+    if (va < vb) return asc ? -1 : 1;
+    if (va > vb) return asc ? 1 : -1;
+    return 0;
+  });
+}
+
+function sortRecSection(dir, col) {
+  if (recSortCol === col) {
+    recSortAsc = !recSortAsc;
+  } else {
+    recSortCol = col;
+    recSortAsc = true;
+  }
+  rebuildRecSection(dir);
+}
 
 function renderRecurring() {
   const container = document.getElementById('view-recurring');
@@ -1131,18 +1192,18 @@ function rebuildRecSection(dir) {
   html += '</div>';
   if (items.length) {
     html += '<div class="rec-table-wrap"><table class="rec-table">';
-    html += '<colgroup><col style="width:36px"><col><col style="width:95px"><col style="width:85px"><col style="width:85px"><col style="width:110px"><col style="width:110px"><col style="width:110px"></colgroup>';
+    html += '<colgroup><col style="width:36px"><col style="width:150px"><col style="width:110px"><col style="width:95px"><col style="width:85px"><col style="width:110px"><col style="width:110px"><col style="width:80px"></colgroup>';
     html += '<thead><tr>';
     html += '<th></th>';
-    html += '<th>Name</th>';
-    html += '<th>Frequency</th>';
-    html += '<th class="r">Amount</th>';
-    html += '<th class="r">Monthly</th>';
-    html += '<th>Start Date</th>';
-    html += '<th>End Date</th>';
+    html += '<th class="sortable" onclick="sortRecSection(\'' + dir + '\',\'name\')">' + sortHeader('name', 'Name') + '</th>';
+    html += '<th class="sortable" onclick="sortRecSection(\'' + dir + '\',\'category\')">' + sortHeader('category', 'Category') + '</th>';
+    html += '<th class="sortable" onclick="sortRecSection(\'' + dir + '\',\'frequency\')">' + sortHeader('frequency', 'Frequency') + '</th>';
+    html += '<th class="sortable r" onclick="sortRecSection(\'' + dir + '\',\'amount\')">' + sortHeader('amount', 'Amount') + '</th>';
+    html += '<th class="sortable" onclick="sortRecSection(\'' + dir + '\',\'nextDue\')">' + sortHeader('nextDue', 'Start Date') + '</th>';
+    html += '<th class="sortable" onclick="sortRecSection(\'' + dir + '\',\'endDate\')">' + sortHeader('endDate', 'End Date') + '</th>';
     html += '<th></th>';
     html += '</tr></thead><tbody data-rec-tbody-' + dir + '>';
-    items.forEach(r => { html += buildRecRow(r); });
+    getSortedItems(items).forEach(r => { html += buildRecRow(r); });
     html += '</tbody></table></div>';
   }
   html += '</div>';
@@ -1158,13 +1219,11 @@ function updateRecSectionTotals(dir) {
 }
 
 function buildRecRow(r) {
-  const mo = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
   const isBtc = r.direction.startsWith('btc-');
   const isIncome = r.direction === 'income';
   const editing = recEditingId === r.id;
   const amt = parseFloat(r.amount) || 0;
   const amtDisplay = amt > 0 ? (r.direction === 'btc-income' ? fmtSats(amt) : fmtMoney(amt)) : '<span style="color:var(--text-dim)">--</span>';
-  const moColor = isBtc ? 'var(--btc)' : (isIncome ? 'var(--accent)' : 'var(--red)');
 
   let html = '<tr data-rec-row="' + r.id + '" class="' + (!r.enabled ? 'rec-disabled' : '') + '">';
 
@@ -1177,6 +1236,13 @@ function buildRecRow(r) {
     html += '<td class="rec-name-cell"><input class="rec-inline-input" id="rec-name-' + r.id + '" value="' + escAttr(r.name) + '" placeholder="Name" onkeydown="if(event.key===\'Enter\')saveRecEdit(\'' + r.id + '\');if(event.key===\'Escape\')cancelRecEdit()"></td>';
   } else {
     html += '<td class="rec-name-cell" style="cursor:pointer" onclick="startRecEdit(\'' + r.id + '\')">' + escHtml(r.name || '(unnamed)') + '</td>';
+  }
+
+  // Category
+  if (editing) {
+    html += '<td><select class="rec-inline-select" id="rec-cat-' + r.id + '">' + buildCategoryOptions(r.direction, r.category) + '</select></td>';
+  } else {
+    html += '<td style="cursor:pointer" onclick="startRecEdit(\'' + r.id + '\')">' + (r.category ? '<span class="cat-badge">' + escHtml(r.category) + '</span>' : '<span style="color:var(--text-dim)">--</span>') + '</td>';
   }
 
   // Frequency
@@ -1192,17 +1258,9 @@ function buildRecRow(r) {
 
   // Amount
   if (editing) {
-    html += '<td class="r"><input class="rec-inline-input rec-inline-amount" id="rec-amt-' + r.id + '" type="number" step="' + (r.direction === 'btc-income' ? '1' : '0.01') + '" min="0" value="' + r.amount + '" onkeydown="if(event.key===\'Enter\')saveRecEdit(\'' + r.id + '\');if(event.key===\'Escape\')cancelRecEdit()"></td>';
+    html += '<td class="r"><input class="rec-inline-input rec-inline-amount" id="rec-amt-' + r.id + '" type="number" step="' + (r.direction === 'btc-income' ? '1' : '0.01') + '" min="0" value="' + (r.amount || '') + '" onkeydown="if(event.key===\'Enter\')saveRecEdit(\'' + r.id + '\');if(event.key===\'Escape\')cancelRecEdit()"></td>';
   } else {
     html += '<td class="r rec-amt-cell" onclick="startRecEdit(\'' + r.id + '\')">' + amtDisplay + '</td>';
-  }
-
-  // Monthly
-  if (r.direction === 'btc-income') {
-    const moFiat = satsToFiat(mo);
-    html += '<td class="r" style="color:' + moColor + '">' + fmtSats(Math.round(mo)) + (moFiat > 0 ? '<br><span style="font-size:9px;color:var(--text-dim)">≈ ' + fmtMoney(moFiat) + '</span>' : '') + '</td>';
-  } else {
-    html += '<td class="r" style="color:' + moColor + '">' + (isIncome ? '+' : '') + fmtMoney(mo) + '</td>';
   }
 
   // Start Date (nextDue)
@@ -1263,10 +1321,22 @@ function startRecEdit(id) {
   if (nameEl) nameEl.focus();
 }
 
-function cancelRecEdit() {
+async function cancelRecEdit() {
   const id = recEditingId;
   recEditingId = null;
-  if (id) swapRecRow(id);
+  if (!id) return;
+  const r = appData.recurring.find(x => x.id === id);
+  if (r && !r.name && !r.amount) {
+    const dir = r.direction;
+    const sectionKey = dir.startsWith('btc-') ? 'btc' : dir;
+    appData.recurring = appData.recurring.filter(x => x.id !== id);
+    const row = document.querySelector('[data-rec-row="' + id + '"]');
+    if (row) row.remove();
+    updateRecSectionTotals(sectionKey);
+    await encryptAndSave();
+  } else {
+    swapRecRow(id);
+  }
 }
 
 async function saveRecEdit(id) {
@@ -1277,11 +1347,13 @@ async function saveRecEdit(id) {
   const amtEl = document.getElementById('rec-amt-' + id);
   const dueEl = document.getElementById('rec-due-' + id);
   const endEl = document.getElementById('rec-end-' + id);
+  const catEl = document.getElementById('rec-cat-' + id);
   if (nameEl) r.name = nameEl.value.trim();
   if (freqEl) r.frequency = freqEl.value;
   if (amtEl) r.amount = r.direction === 'btc-income' ? (parseInt(amtEl.value, 10) || 0) : (parseFloat(amtEl.value) || 0);
   if (dueEl) r.nextDue = dueEl.value;
   if (endEl) r.endDate = endEl.value || null;
+  if (catEl) r.category = catEl.value || null;
   recEditingId = null;
   swapRecRow(id);
   updateRecSectionTotals(r.direction.startsWith('btc-') ? 'btc' : r.direction);
@@ -1307,7 +1379,7 @@ async function addRecurringItem(dir) {
   const newItem = {
     id: newId,
     name: '',
-    amount: 0,
+    amount: null,
     frequency: 'monthly',
     direction: dir,
     nextDue: today,
@@ -1694,6 +1766,7 @@ function renderEditPanel(recurringId) {
   let html = '<div class="edit-panel" onclick="event.stopPropagation()"><div class="edit-row">';
   html += '<div class="form-field"><label>Name</label><input class="form-input" id="edit-name-' + r.id + '" value="' + escAttr(r.name) + '" style="width:160px"></div>';
   html += '<div class="form-field"><label>Amount</label><input class="form-input" id="edit-amount-' + r.id + '" type="number" step="0.01" value="' + r.amount + '" style="width:100px"></div>';
+  html += '<div class="form-field"><label>Category</label><select class="form-select" id="edit-cat-' + r.id + '">' + buildCategoryOptions(r.direction, r.category) + '</select></div>';
   html += '<div class="form-field"><label>Next Due</label><input class="form-input" id="edit-due-' + r.id + '" type="date" value="' + r.nextDue + '" style="width:130px"></div>';
   html += '</div>';
   html += '<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">';
@@ -1709,9 +1782,11 @@ async function saveEditTx(id) {
   r.name = document.getElementById('edit-name-' + id).value.trim();
   r.amount = parseFloat(document.getElementById('edit-amount-' + id).value) || 0;
   r.nextDue = document.getElementById('edit-due-' + id).value;
+  r.category = document.getElementById('edit-cat-' + id)?.value || null;
   editingTxId = null;
   await encryptAndSave();
-  renderAll();
+  renderTransactions();
+  renderSummaryAndBalance();
   showToast('Updated ' + r.name, 'success');
 }
 
@@ -1797,6 +1872,7 @@ function toggleAddRecurring() {
     '<option value="weekly">Weekly</option><option value="biweekly">Biweekly</option>' +
     '<option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option>' +
     '<option value="annual">Annual</option></select></div>' +
+    '<div class="form-field"><label>Category</label><select class="form-select" id="ar-cat">' + buildCategoryOptions(arDirection, null) + '</select></div>' +
     '<div class="form-field"><label>Type</label><div class="dir-toggle" id="ar-dir">' +
     '<button class="active expense-active" onclick="setArDir(\'expense\')">Expense</button>' +
     '<button onclick="setArDir(\'income\')">Income</button>' +
@@ -1829,6 +1905,8 @@ function setArDir(dir) {
       amtInput.step = '0.01'; amtInput.placeholder = '0.00';
     }
   }
+  const catSelect = document.getElementById('ar-cat');
+  if (catSelect) catSelect.innerHTML = buildCategoryOptions(dir, null);
 }
 
 async function submitAddRecurring() {
@@ -1836,6 +1914,7 @@ async function submitAddRecurring() {
   const rawAmt = document.getElementById('ar-amount').value;
   const amount = arDirection === 'btc-income' ? parseInt(rawAmt, 10) : parseFloat(rawAmt);
   const freq = document.getElementById('ar-freq').value;
+  const cat = document.getElementById('ar-cat')?.value || null;
   const due = document.getElementById('ar-due').value;
   if (!name || !amount || !due) { showToast('Fill in all fields', 'error'); return; }
 
@@ -1849,7 +1928,7 @@ async function submitAddRecurring() {
     endDate: null,
     enabled: true,
     sourceId: null,
-    category: null,
+    category: cat,
     _liabId: null
   });
   addRecurringVisible = false;

@@ -24,3 +24,9 @@ Each item: `- [x] Description` with metadata tags and completion date.
 - [x] Animate "Show Paid" toggle (staggered fade-in for history rows) `[polish]` `[small]` `[low]` — 2026-04-05
 - [x] Font sizes too small on 1440p desktop monitors; review and adjust for better readability `[polish]` `[medium]` `[medium]` — 2026-04-05
 - [x] JSON import of recurring transactions from Cache export should navigate to the Recurring tab `[bug]` `[small]` `[medium]` — 2026-04-05
+- [x] Add Bitcoin price tracker banner at top (with live API calls), matching Cache's BTC ticker bar `[feature]` `[large]` `[high]` — 2026-04-06
+- [x] Support dual balances: Cash balance and Bitcoin balance with combined total display `[feature]` `[large]` `[high]` — 2026-04-06
+- [x] Recurring BTC transaction types: btc-income (mining/stacking) and btc-buy (DCA) with forecast integration `[feature]` `[large]` `[high]` — 2026-04-06
+- [x] Add category field to recurring transactions with direction-aware dropdowns, sortable columns, and inline editing `[feature]` `[medium]` `[high]` — 2026-04-06
+- [x] Recurring tab polish: remove Monthly column, column sorting, date format (yyyy/mm/dd), dark date picker theme, surgical transaction edit saves `[polish]` `[medium]` `[medium]` — 2026-04-06
+- [x] Cancel blank recurring item instead of creating "(unnamed)" entry `[bug]` `[small]` `[medium]` — 2026-04-06
