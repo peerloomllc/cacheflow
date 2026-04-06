@@ -212,7 +212,7 @@
   .forecast-table td:first-child{text-align:left;color:var(--text-muted);font-size:12px}
   .forecast-table tr:nth-child(even) td{background:var(--surface2)}
   .forecast-table tr:nth-child(odd) td{background:var(--surface)}
-  .forecast-table tr.current-month td{border-left:2px solid var(--accent)}
+  .forecast-table tr.current-month td{background:var(--accent-glow)}
   .forecast-table tr.negative-balance td{background:var(--red-glow)}
   .forecast-table .f-income{color:var(--accent)}
   .forecast-table .f-expense{color:var(--red)}
@@ -354,8 +354,29 @@
     .btc-refresh{padding:2px 6px;font-size:9px}
     .rec-inline-amount{width:100%}
     .rec-due-input{width:100%}
+    .dash-grid{grid-template-columns:1fr}
+    .runway-days{font-size:36px}
   }
+  /* ── DASHBOARD CHARTS ── */
+  .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;animation:fadeUp .4s ease both}
+  .chart-card:nth-child(1){animation-delay:.05s}
+  .chart-card:nth-child(2){animation-delay:.1s}
+  .chart-card-header{padding:16px 20px 12px;border-bottom:1px solid var(--border);text-align:center}
+  .chart-card-title{font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)}
+  .chart-card-sub{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:3px}
+  .chart-body{padding:20px}
+  .chart-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:14px}
+  .legend-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;color:var(--text-muted)}
+  .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+  .runway-body{padding:24px 20px;text-align:center}
+  .runway-days{font-family:var(--serif);font-size:48px;color:var(--accent);line-height:1}
+  .runway-days.warning{color:var(--gold)}
+  .runway-days.danger{color:var(--red)}
+  .runway-label{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:8px;letter-spacing:1px;text-transform:uppercase}
+  .runway-detail{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:12px}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
 <body>
 
@@ -467,7 +488,7 @@
     <div class="settings-title">Settings</div>
 
     <div class="settings-section">
-      <div class="settings-section-label">Balance</div>
+      <div class="settings-section-label">USD Balance</div>
       <div style="display:flex;gap:8px">
         <input class="form-input" id="settings-balance" type="number" step="0.01" style="flex:1">
         <button class="form-btn" onclick="saveBalance()">Update</button>
@@ -479,7 +500,7 @@
       <div class="settings-section-label" style="color:var(--btc)">Bitcoin Balance</div>
       <div style="display:flex;gap:8px">
         <input class="form-input" id="settings-btc-balance" type="number" step="1" min="0" style="flex:1" placeholder="satoshis">
-        <button class="form-btn" onclick="saveBtcBalance()" style="border-color:var(--btc);color:var(--btc)">Update</button>
+        <button class="form-btn" onclick="saveBtcBalance()">Update</button>
       </div>
       <div class="settings-help">Your Bitcoin balance in satoshis (1 BTC = 100,000,000 sats).</div>
     </div>
@@ -588,6 +609,13 @@ let isLocked      = true;
 let isFirstRun    = false;
 let isChangingPw  = false;
 
+let dashCharts = {};
+const CHART_PALETTE = [
+  '#a8d08d','#7ec8a4','#6ab4d4','#8b9fd4','#b48ed4',
+  '#d48eb4','#d4a87e','#d4c87e','#9ec87e','#7ed4d4',
+  '#c4a4a4','#a4b4c4','#c4b4a4'
+];
+
 let appData = {
   balance: 0,
   btcBalance: 0,
@@ -604,8 +632,8 @@ let appData = {
 // ══════════════════════════════════════════════════════════════════════════
 
 const CATEGORIES = {
-  expense: ['Housing','Transportation','Food & Dining','Utilities','Insurance','Healthcare','Entertainment','Subscriptions','Shopping','Education','Debt','Savings','Other'],
-  income: ['Salary','Freelance','Investment','Rental','Side Hustle','Gift','Other']
+  expense: ['Debt','Education','Entertainment','Food & Dining','Healthcare','Housing','Insurance','Savings','Shopping','Subscriptions','Transportation','Utilities','Other'],
+  income: ['Freelance','Gift','Investment','Rental','Salary','Side Hustle','Other']
 };
 
 function getCategoriesForDir(dir) {
@@ -1024,6 +1052,8 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + tab).classList.add('active');
+  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'forecast') renderForecast();
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1080,9 +1110,13 @@ function renderAll() {
 function renderDashboard() {
   const container = document.getElementById('view-dashboard');
 
-  let html = '';
+  // Destroy previous chart instances
+  Object.values(dashCharts).forEach(c => c.destroy());
+  dashCharts = {};
+
+  // Empty state
   if (appData.recurring.length === 0 && appData.oneoffs.length === 0) {
-    html += '<div class="section"><div style="padding:32px 24px;text-align:center">';
+    let html = '<div class="section"><div style="padding:32px 24px;text-align:center">';
     html += '<div style="font-family:var(--serif);font-size:20px;margin-bottom:8px">Welcome to Cache Flow</div>';
     html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);line-height:1.6;max-width:400px;margin:0 auto">';
     html += 'Get started by importing your recurring transactions from Cache (Settings \u2192 Import), or add them manually from the Recurring tab.</div>';
@@ -1090,11 +1124,171 @@ function renderDashboard() {
     html += '<button class="form-btn" onclick="openSettings()">Import from Cache</button>';
     html += '<button class="form-btn cancel" onclick="switchTab(\'recurring\')">Add Manually</button>';
     html += '</div></div></div>';
-  } else {
-    html += '<div style="padding:24px 16px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--text-dim)">Dashboard — charts coming soon</div>';
+    container.innerHTML = html;
+    return;
   }
 
+  // ── Aggregate by category ──
+  const incomeByCategory = {};
+  const expenseByCategory = {};
+  let monthlyIncome = 0, monthlyExpense = 0;
+
+  appData.recurring.filter(r => r.enabled).forEach(r => {
+    const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+    if (r.direction === 'income') {
+      const cat = r.category || 'Uncategorized';
+      incomeByCategory[cat] = (incomeByCategory[cat] || 0) + monthly;
+      monthlyIncome += monthly;
+    } else if (r.direction === 'expense') {
+      const cat = r.category || 'Uncategorized';
+      expenseByCategory[cat] = (expenseByCategory[cat] || 0) + monthly;
+      monthlyExpense += monthly;
+    } else if (r.direction === 'btc-buy') {
+      expenseByCategory['BTC DCA'] = (expenseByCategory['BTC DCA'] || 0) + monthly;
+      monthlyExpense += monthly;
+    }
+  });
+
+  // ── BTC vs Fiat allocation ──
+  const fiatBal = Math.abs(appData.balance);
+  const btcFiat = satsToFiat(appData.btcBalance);
+  const hasBtcNoPrice = appData.btcBalance > 0 && !btcPrice;
+
+  // ── Cash runway ──
+  const netMonthly = monthlyIncome - monthlyExpense;
+  let runwayDays = null;
+  let runwayClass = '';
+  if (netMonthly < 0 && appData.balance > 0) {
+    const dailyBurn = Math.abs(netMonthly) / 30.44;
+    runwayDays = Math.floor(appData.balance / dailyBurn);
+    if (runwayDays <= 30) runwayClass = 'danger';
+    else if (runwayDays <= 90) runwayClass = 'warning';
+  }
+
+  // ── Build HTML ──
+  let html = '';
+
+  // Row 1: Income + Expense pie charts
+  html += '<div class="dash-grid">';
+
+  html += '<div class="chart-card">';
+  html += '<div class="chart-card-header"><div class="chart-card-title">Income Breakdown</div>';
+  html += '<div class="chart-card-sub">Monthly by category</div></div>';
+  html += '<div class="chart-body"><div id="legend-income" class="chart-legend"></div>';
+  html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartIncome"></canvas></div></div>';
+  html += '</div>';
+
+  html += '<div class="chart-card">';
+  html += '<div class="chart-card-header"><div class="chart-card-title">Expense Breakdown</div>';
+  html += '<div class="chart-card-sub">Monthly by category</div></div>';
+  html += '<div class="chart-body"><div id="legend-expense" class="chart-legend"></div>';
+  html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartExpense"></canvas></div></div>';
+  html += '</div>';
+
+  html += '</div>';
+
+  // Row 2: BTC/Fiat allocation + Cash Runway
+  html += '<div class="dash-grid">';
+
+  html += '<div class="chart-card">';
+  html += '<div class="chart-card-header"><div class="chart-card-title">BTC vs Fiat</div>';
+  html += '<div class="chart-card-sub">Allocation by value' + (hasBtcNoPrice ? ' (awaiting BTC price\u2026)' : '') + '</div></div>';
+  html += '<div class="chart-body"><div id="legend-alloc" class="chart-legend"></div>';
+  html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartAlloc"></canvas></div></div>';
+  html += '</div>';
+
+  html += '<div class="chart-card">';
+  html += '<div class="chart-card-header"><div class="chart-card-title">Cash Runway</div>';
+  html += '<div class="chart-card-sub">Days until fiat balance hits zero</div></div>';
+  html += '<div class="runway-body">';
+  if (netMonthly >= 0) {
+    html += '<div class="runway-days" style="font-size:24px;color:var(--accent)">&#8734;</div>';
+    html += '<div class="runway-label">Net positive cash flow</div>';
+    html += '<div class="runway-detail">+' + fmtMoney(netMonthly) + '/mo surplus</div>';
+  } else if (appData.balance <= 0) {
+    html += '<div class="runway-days danger">0</div>';
+    html += '<div class="runway-label">Balance already depleted</div>';
+  } else {
+    html += '<div class="runway-days ' + runwayClass + '">' + runwayDays + '</div>';
+    html += '<div class="runway-label">days remaining</div>';
+    html += '<div class="runway-detail">Burn: ' + fmtMoney(Math.abs(netMonthly)) + '/mo &middot; Balance: ' + fmtMoney(appData.balance) + '</div>';
+  }
+  html += '</div></div>';
+
+  html += '</div>';
+
   container.innerHTML = html;
+
+  // ── Create charts ──
+  function mkDoughnut(canvasId, legendId, labels, values, colors) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    const hasData = values.length > 0 && values.some(v => v > 0);
+    const legendEl = document.getElementById(legendId);
+
+    if (legendEl && hasData) {
+      legendEl.innerHTML = labels.map(function(l, i) {
+        return '<span class="legend-item"><span class="legend-dot" style="background:' + colors[i] + '"></span>' + l + '</span>';
+      }).join('');
+    } else if (legendEl) {
+      legendEl.innerHTML = '';
+    }
+
+    dashCharts[canvasId] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: hasData ? labels : ['No data'],
+        datasets: [{
+          data: hasData ? values : [1],
+          backgroundColor: hasData ? colors : ['#252a25'],
+          borderColor: '#0d0f0e',
+          borderWidth: 3,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '68%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: hasData,
+            backgroundColor: '#1a1e1a',
+            borderColor: '#2e352e',
+            borderWidth: 1,
+            titleColor: '#e8ede8',
+            bodyColor: '#7a8a7a',
+            padding: 10,
+            callbacks: {
+              label: function(c) {
+                var total = c.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                var pct = total > 0 ? ((c.raw / total) * 100).toFixed(1) : 0;
+                return ' ' + fmtMoney(c.raw) + ' (' + pct + '%)';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Income chart
+  var incLabels = Object.keys(incomeByCategory);
+  var incValues = Object.values(incomeByCategory);
+  var incColors = incLabels.map(function(_, i) { return CHART_PALETTE[i % CHART_PALETTE.length]; });
+  mkDoughnut('chartIncome', 'legend-income', incLabels, incValues, incColors);
+
+  // Expense chart
+  var expLabels = Object.keys(expenseByCategory);
+  var expValues = Object.values(expenseByCategory);
+  var expColors = expLabels.map(function(_, i) { return CHART_PALETTE[i % CHART_PALETTE.length]; });
+  mkDoughnut('chartExpense', 'legend-expense', expLabels, expValues, expColors);
+
+  // BTC vs Fiat allocation chart
+  var allocLabels = ['Fiat (Cash)', 'Bitcoin'];
+  var allocValues = [fiatBal, Math.max(0, btcFiat)];
+  mkDoughnut('chartAlloc', 'legend-alloc', allocLabels, allocValues, ['#a8d08d', '#f7931a']);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1355,8 +1549,13 @@ async function saveRecEdit(id) {
   if (endEl) r.endDate = endEl.value || null;
   if (catEl) r.category = catEl.value || null;
   recEditingId = null;
-  swapRecRow(id);
-  updateRecSectionTotals(r.direction.startsWith('btc-') ? 'btc' : r.direction);
+  const sectionKey = r.direction.startsWith('btc-') ? 'btc' : r.direction;
+  if (recSortCol) {
+    rebuildRecSection(sectionKey);
+  } else {
+    swapRecRow(id);
+  }
+  updateRecSectionTotals(sectionKey);
   renderSummaryAndBalance();
   await encryptAndSave();
   showToast('Updated ' + r.name, 'success');
@@ -1824,6 +2023,9 @@ function renderSummaryAndBalance() {
   const netEl = document.getElementById('sumNet');
   netEl.textContent = (net >= 0 ? '+' : '') + fmtMoney(net);
   netEl.className = 's-value ' + (net >= 0 ? 'net-pos' : 'net-neg');
+
+  if (currentTab === 'dashboard') renderDashboard();
+  if (currentTab === 'forecast') renderForecast();
 }
 
 async function skipTransaction(recurringId, oneoffId, btn) {
@@ -1988,22 +2190,34 @@ function renderForecast() {
   const horizonDays = Math.round(fcHorizonMonths * 30.44);
   const txItems = getUpcomingTransactions(horizonDays);
   const txByDate = {};
+  const btcTxByDate = {};
   txItems.forEach(t => {
     if (!txByDate[t.date]) txByDate[t.date] = 0;
     if (t.direction === 'income') txByDate[t.date] += t.amount;
     else if (t.direction === 'expense' || t.direction === 'btc-buy') txByDate[t.date] -= t.amount;
     else if (t.direction === 'btc-income') txByDate[t.date] += satsToFiat(t.amount);
+    // Track BTC sats separately
+    if (t.direction === 'btc-income') {
+      if (!btcTxByDate[t.date]) btcTxByDate[t.date] = 0;
+      btcTxByDate[t.date] += t.amount;
+    } else if (t.direction === 'btc-buy' && btcPrice) {
+      if (!btcTxByDate[t.date]) btcTxByDate[t.date] = 0;
+      btcTxByDate[t.date] += Math.round((t.amount / btcPrice) * 1e8);
+    }
   });
 
   // Build daily balance series, then sample to weekly if horizon > 6 months
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const dailyBal = [];
   let bal = combinedBalance();
+  let btcBal = appData.btcBalance || 0;
+  const hasBtcData = btcBal > 0 || appData.recurring.some(r => r.enabled && (r.direction === 'btc-income' || r.direction === 'btc-buy'));
   for (let d = 0; d <= horizonDays; d++) {
     const dt = new Date(today); dt.setDate(dt.getDate() + d);
     const key = toDateStr(dt);
     if (txByDate[key]) bal += txByDate[key];
-    dailyBal.push({ date: dt, balance: bal });
+    if (btcTxByDate[key]) btcBal += btcTxByDate[key];
+    dailyBal.push({ date: dt, balance: bal, btcSats: btcBal });
   }
 
   // Sample: daily if <= 6 months, weekly if > 6
@@ -2017,11 +2231,10 @@ function renderForecast() {
   }
 
   // ── Chart ──
-  const W = 800, H = 250, PAD_L = 60, PAD_R = 20, PAD_T = 20, PAD_B = 52;
+  const W = 800, H = 250, PAD_L = 60, PAD_R = hasBtcData ? 70 : 20, PAD_T = 20, PAD_B = 52;
   const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
   const allBalVals = balPoints.map(p => p.balance);
-  const allMonthlyVals = months.reduce((a, m) => { a.push(m.inc, m.exp); return a; }, []);
-  const allVals = [...allBalVals, ...allMonthlyVals, 0];
+  const allVals = [...allBalVals, 0];
   const rawMin = Math.min(...allVals), rawMax = Math.max(...allVals);
 
   // Nice rounded tick values
@@ -2043,7 +2256,6 @@ function renderForecast() {
   const endTime = balPoints[balPoints.length - 1].date.getTime();
   const timeSpan = endTime - startTime || 1;
   function cxDate(dt) { return PAD_L + ((dt.getTime() - startTime) / timeSpan) * chartW; }
-  function cxMonth(i) { return PAD_L + (months.length > 1 ? (i / (months.length - 1)) * chartW : chartW / 2); }
   function cy(v) { return PAD_T + (1 - (v - minV) / range) * chartH; }
 
   let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;padding:16px 8px 8px">';
@@ -2061,31 +2273,61 @@ function renderForecast() {
     svg += '<text x="' + (PAD_L - 6) + '" y="' + (parseFloat(gy) + 3) + '" text-anchor="end" fill="var(--text-dim)" font-family="var(--mono)" font-size="8">' + fmtMoney(v) + '</text>';
   }
 
-  // X-axis labels (month markers)
+  // BTC secondary Y-axis (right side)
+  var btcMinV = 0, btcMaxV = 0, btcRange = 1, btcStep = 1;
+  function cyBtc(v) { return PAD_T + (1 - (v - btcMinV) / btcRange) * chartH; }
+  function fmtSatsCompact(n) {
+    if (n >= 1e8) return (n / 1e8).toFixed(2) + ' BTC';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+    return n.toLocaleString();
+  }
+  if (hasBtcData) {
+    const btcVals = balPoints.map(p => p.btcSats);
+    const btcRawMin = Math.min(...btcVals), btcRawMax = Math.max(...btcVals);
+    const btcRawRange = btcRawMax - btcRawMin || 1;
+    btcStep = niceStep(btcRawRange, 4);
+    btcMinV = Math.floor(btcRawMin / btcStep) * btcStep;
+    btcMaxV = Math.ceil(btcRawMax / btcStep) * btcStep;
+    btcRange = btcMaxV - btcMinV || 1;
+    for (var bv = btcMinV; bv <= btcMaxV + btcStep * 0.01; bv += btcStep) {
+      var bgy = cyBtc(bv).toFixed(1);
+      svg += '<text x="' + (W - PAD_R + 6) + '" y="' + (parseFloat(bgy) + 3) + '" text-anchor="start" fill="var(--btc)" font-family="var(--mono)" font-size="8" opacity="0.7">' + fmtSatsCompact(bv) + '</text>';
+    }
+  }
+
+  // X-axis labels (month markers, date-based positioning)
   const xLabelY = PAD_T + chartH + 14;
   const labelStep = months.length <= 12 ? 1 : months.length <= 18 ? 2 : 3;
   months.forEach((m, i) => {
     if (i % labelStep === 0 || i === months.length - 1) {
-      svg += '<text x="' + cxMonth(i).toFixed(1) + '" y="' + xLabelY + '" text-anchor="middle" fill="var(--text-dim)" font-family="var(--mono)" font-size="8">' + m.shortLabel + '</text>';
+      const mDate = new Date(today);
+      mDate.setMonth(mDate.getMonth() + i);
+      mDate.setDate(1);
+      var mx = cxDate(mDate < balPoints[0].date ? balPoints[0].date : mDate > balPoints[balPoints.length - 1].date ? balPoints[balPoints.length - 1].date : mDate);
+      svg += '<text x="' + mx.toFixed(1) + '" y="' + xLabelY + '" text-anchor="middle" fill="var(--text-dim)" font-family="var(--mono)" font-size="8">' + m.shortLabel + '</text>';
     }
   });
 
-  // Monthly income/expense dashed lines
-  const incPts = months.map((m, i) => cxMonth(i).toFixed(1) + ',' + cy(m.inc).toFixed(1)).join(' ');
-  const expPts = months.map((m, i) => cxMonth(i).toFixed(1) + ',' + cy(m.exp).toFixed(1)).join(' ');
-  svg += '<polyline points="' + incPts + '" fill="none" stroke="var(--accent-dim)" stroke-width="1.5" stroke-dasharray="4,3" />';
-  svg += '<polyline points="' + expPts + '" fill="none" stroke="var(--red-dim)" stroke-width="1.5" stroke-dasharray="4,3" />';
-
-  // Granular balance line
+  // Balance line
   const balPts = balPoints.map(p => cxDate(p.date).toFixed(1) + ',' + cy(p.balance).toFixed(1)).join(' ');
-  svg += '<polyline points="' + balPts + '" fill="none" stroke="var(--gold)" stroke-width="1.5" />';
+  svg += '<polyline points="' + balPts + '" fill="none" stroke="var(--accent)" stroke-width="1.5" />';
+
+  // BTC sats balance line
+  if (hasBtcData) {
+    const btcPts = balPoints.map(p => cxDate(p.date).toFixed(1) + ',' + cyBtc(p.btcSats).toFixed(1)).join(' ');
+    svg += '<polyline points="' + btcPts + '" fill="none" stroke="var(--btc)" stroke-width="1.5" />';
+  }
 
   // Legend (centered, below x-axis labels)
   const legendY = H - 6;
   const legendCx = W / 2;
-  svg += '<text x="' + (legendCx - 80) + '" y="' + legendY + '" text-anchor="middle" fill="var(--gold)" font-family="var(--mono)" font-size="8">\u2014 Balance</text>';
-  svg += '<text x="' + legendCx + '" y="' + legendY + '" text-anchor="middle" fill="var(--accent-dim)" font-family="var(--mono)" font-size="8">- - Income</text>';
-  svg += '<text x="' + (legendCx + 80) + '" y="' + legendY + '" text-anchor="middle" fill="var(--red-dim)" font-family="var(--mono)" font-size="8">- - Expenses</text>';
+  if (hasBtcData) {
+    svg += '<text x="' + (legendCx - 60) + '" y="' + legendY + '" text-anchor="middle" fill="var(--accent)" font-family="var(--mono)" font-size="8">\u2014 $ Balance</text>';
+    svg += '<text x="' + (legendCx + 60) + '" y="' + legendY + '" text-anchor="middle" fill="var(--btc)" font-family="var(--mono)" font-size="8">\u2014 \u20bf Balance</text>';
+  } else {
+    svg += '<text x="' + legendCx + '" y="' + legendY + '" text-anchor="middle" fill="var(--accent)" font-family="var(--mono)" font-size="8">\u2014 $ Balance</text>';
+  }
 
   svg += '</svg>';
 
@@ -2581,7 +2823,14 @@ async function fetchBtcPrice(manual) {
     disp.className = 'btc-price-val';
     disp.textContent = '$' + price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
     updateBtcAge();
-    if (document.getElementById('combinedDisplay')) renderBalanceHeader();
+    if (document.getElementById('combinedDisplay')) {
+      renderBalanceHeader();
+      var hasBtc = appData.btcBalance > 0 || appData.recurring.some(function(r) { return r.enabled && r.direction.startsWith('btc-'); });
+      if (hasBtc) {
+        if (currentTab === 'dashboard') renderDashboard();
+        if (currentTab === 'forecast') renderForecast();
+      }
+    }
     if (manual) showToast('BTC price updated', 'success');
   } else {
     disp.className = 'btc-price-val';

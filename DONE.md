@@ -30,3 +30,6 @@ Each item: `- [x] Description` with metadata tags and completion date.
 - [x] Add category field to recurring transactions with direction-aware dropdowns, sortable columns, and inline editing `[feature]` `[medium]` `[high]` — 2026-04-06
 - [x] Recurring tab polish: remove Monthly column, column sorting, date format (yyyy/mm/dd), dark date picker theme, surgical transaction edit saves `[polish]` `[medium]` `[medium]` — 2026-04-06
 - [x] Cancel blank recurring item instead of creating "(unnamed)" entry `[bug]` `[small]` `[medium]` — 2026-04-06
+- [x] Add side-by-side pie charts on Dashboard showing income and expense breakdowns by category `[feature]` `[large]` `[high]` — 2026-04-06
+- [x] Add BTC vs Fiat allocation visualization (donut/bar showing % of combined balance in BTC vs cash) `[feature]` `[medium]` `[medium]` — 2026-04-06
+- [x] Add cash runway indicator ("X days until balance hits zero" based on current burn rate) `[feature]` `[medium]` `[medium]` — 2026-04-06
