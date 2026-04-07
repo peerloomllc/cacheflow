@@ -41,3 +41,5 @@ Each item: `- [x] Description` with metadata tags and completion date.
 - [x] Make header/footer bars fully opaque (no scroll-through bleed) `[polish]` `[small]` `[low]` — 2026-04-06
 - [x] Hyperlink Cache on Dashboard welcome page `[polish]` `[small]` `[low]` — 2026-04-06
 - [x] Dark/Light mode option (same as Cache app) `[feature]` `[medium]` `[medium]` — 2026-04-06
+- [x] Undo option for recently paid transactions (when revealed through Show Paid toggle) `[feature]` `[medium]` `[medium]` — 2026-04-06
+- [x] Currency switching in Settings with live exchange rates `[feature]` `[medium]` `[medium]` — 2026-04-06
