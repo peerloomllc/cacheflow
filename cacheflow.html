@@ -87,6 +87,10 @@
   .toast.success{border-color:var(--accent-dim);color:var(--accent)}
   .toast.error{border-color:var(--red-dim);color:var(--red)}
 
+  /* ── DONATE MODAL ── */
+  #donate-modal{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease}
+  #donate-modal.hidden{display:none}
+
   /* ── HEADER ── */
   header{position:fixed;top:0;left:0;right:0;z-index:50;border-bottom:1px solid var(--border);padding:20px 32px 16px;display:flex;align-items:flex-end;justify-content:space-between;background:var(--bg)}
   .header-left h1{font-family:var(--serif);font-size:32px;font-weight:400;letter-spacing:-.5px;line-height:1}
@@ -145,8 +149,8 @@
   .tx-row{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.03);transition:background .1s}
   .tx-row:last-child{border-bottom:none}
   .tx-row:hover{background:rgba(255,255,255,.015)}
-  .tx-row.income-row{background:rgba(168,208,141,0.04);border-left:2px solid var(--accent)}
-  .tx-row.income-row:hover{background:rgba(168,208,141,0.07)}
+  .tx-row.due-today{background:rgba(255,255,255,0.04);border-left:2px solid var(--text)}
+  .tx-row.due-today:hover{background:rgba(255,255,255,0.07)}
   .tx-row.btc-row{background:rgba(247,147,26,0.04);border-left:2px solid var(--btc)}
   .tx-row.btc-row:hover{background:rgba(247,147,26,0.07)}
   .tx-row.paid-row{opacity:.5}
@@ -234,9 +238,9 @@
   #settings-modal{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease}
   #settings-modal.hidden{display:none}
   .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:32px 36px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:20px;animation:fadeUp .2s ease}
-  .settings-title{font-family:var(--serif);font-size:20px;font-weight:400;letter-spacing:-.3px}
+  .settings-title{font-family:var(--serif);font-size:20px;font-weight:400;letter-spacing:-.3px;text-align:center}
   .settings-section{display:flex;flex-direction:column;gap:8px}
-  .settings-section-label{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim)}
+  .settings-section-label{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);text-align:center}
   .settings-help{font-family:var(--mono);font-size:10px;color:var(--text-dim);line-height:1.5}
   .settings-btn{background:transparent;border:1px solid var(--border-light);color:var(--text-muted);font-family:var(--mono);font-size:11px;padding:9px 14px;border-radius:4px;cursor:pointer;transition:all .15s;width:100%;text-align:center}
   .settings-btn:hover{border-color:var(--accent-dim);color:var(--accent)}
@@ -591,7 +595,7 @@
     </div>
     <hr class="about-divider">
     <div>
-      <div class="about-section-label">Contact</div>
+      <div class="about-section-label" style="margin-bottom:8px">Contact</div>
       <div class="about-links-row">
         <a class="about-link" href="mailto:peerloomllc@proton.me?subject=%5BCache%20Flow%5D%20Feedback" title="Send email">&#9993; Email</a>
         <a class="about-link" href="https://github.com/peerloomllc/cache/issues" target="_blank" rel="noopener">&#128027; Report Issue</a>
@@ -613,6 +617,27 @@
     <button class="bar-btn bar-btn-secondary" onclick="openSettings()" title="Settings">&#9881; Settings</button>
     <button class="bar-btn bar-btn-secondary" onclick="lockApp()" title="Lock now">&#128274; Lock</button>
     <button class="bar-btn bar-btn-primary" onclick="encryptAndSave().then(()=>showToast('Saved','success'))">Save &#10003;</button>
+  </div>
+</div>
+
+<!-- ══ DONATE REMINDER ══ -->
+<div id="donate-modal" class="hidden" onclick="if(event.target===this)dismissDonateReminder()">
+  <div class="about-card">
+    <div class="settings-title">Support Cache Flow</div>
+    <hr class="about-divider">
+    <div>
+      <div class="about-body">Cache Flow is free and open source. If you find it useful, please consider supporting its development.</div>
+    </div>
+    <div class="about-links-row">
+      <a class="about-link" href="#" onclick="event.preventDefault();handleDonateBtc('donate-ln-panel')" title="Donate BTC via Lightning">&#9889; Donate BTC</a>
+      <a class="about-link" href="https://buymeacoffee.com/peerloomllc" target="_blank" rel="noopener">&#36; Donate USD</a>
+    </div>
+    <div id="donate-ln-panel" class="ln-panel" style="display:none"></div>
+    <hr class="about-divider">
+    <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px">
+      <button class="form-btn" onclick="dismissDonateReminder()" style="min-width:120px">Maybe Later</button>
+      <button class="form-btn" onclick="permanentlyDismissDonate()" style="min-width:120px;font-size:9px;opacity:0.7">Already Donated</button>
+    </div>
   </div>
 </div>
 
@@ -867,6 +892,7 @@ async function submitUnlock() {
       resetIdleTimer();
       await fetchFxRate();
       renderAll();
+      checkDonateReminder();
     }, 200);
   } catch (e) {
     setLockProgress('lock-progress', 'lock-progress-bar', 0, false);
@@ -914,7 +940,7 @@ async function submitSetPassword() {
     isLocked = false;
     resetIdleTimer();
     renderAll();
-    if (isFirstRun) { isFirstRun = false; startTour(); }
+    if (isFirstRun) { isFirstRun = false; localStorage.setItem(DONATE_REMIND_KEY, String(Date.now())); startTour(); }
     showToast('Password set \u2014 data is now encrypted', 'success');
   }, 300);
 }
@@ -1629,6 +1655,7 @@ async function saveRecEdit(id) {
   }
   updateRecSectionTotals(sectionKey);
   renderSummaryAndBalance();
+  renderTransactions();
   await encryptAndSave();
   showToast('Updated ' + r.name, 'success');
 }
@@ -1846,7 +1873,7 @@ function renderTransactions() {
           wg.items.forEach(i => {
             const isBtc = i.direction.startsWith('btc-');
             const isIncome = i.direction === 'income' || i.direction === 'btc-income';
-            const rowClass = 'tx-row' + (isBtc && !i.isPaid ? ' btc-row' : (isIncome && !i.isPaid ? ' income-row' : '')) + (i.isPaid ? ' paid-row' : '');
+            const rowClass = 'tx-row' + (isBtc && !i.isPaid ? ' btc-row' : '') + (i.isPaid ? ' paid-row' : '') + (!i.isPaid && i.date === today ? ' due-today' : '');
             const rid = i.recurringId || '';
             const oid = i.oneoffId || '';
             const clickable = !i.isPaid && rid;
@@ -2059,6 +2086,7 @@ async function saveEditTx(id) {
   editingTxId = null;
   await encryptAndSave();
   renderTransactions();
+  renderRecurring();
   renderSummaryAndBalance();
   showToast('Updated ' + r.name, 'success');
 }
@@ -2559,12 +2587,37 @@ function closeSettings() {
 function openAbout() { document.getElementById('about-modal').classList.remove('hidden'); }
 function closeAbout() { document.getElementById('about-modal').classList.add('hidden'); document.getElementById('ln-panel').style.display='none'; }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('about-modal').classList.contains('hidden')) closeAbout(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('donate-modal').classList.contains('hidden')) dismissDonateReminder(); });
+
+const DONATE_REMIND_KEY = 'cacheflow-donate-remind';
+const DONATE_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000;
+
+function checkDonateReminder() {
+  const val = localStorage.getItem(DONATE_REMIND_KEY);
+  if (val === 'never') return;
+  const last = parseInt(val, 10);
+  if (last && (Date.now() - last) < DONATE_INTERVAL_MS) return;
+  document.getElementById('donate-modal').classList.remove('hidden');
+}
+
+function dismissDonateReminder() {
+  localStorage.setItem(DONATE_REMIND_KEY, String(Date.now()));
+  document.getElementById('donate-modal').classList.add('hidden');
+  document.getElementById('donate-ln-panel').style.display = 'none';
+}
+
+function permanentlyDismissDonate() {
+  localStorage.setItem(DONATE_REMIND_KEY, 'never');
+  document.getElementById('donate-modal').classList.add('hidden');
+  document.getElementById('donate-ln-panel').style.display = 'none';
+  showToast('Thank you for your support!', 'success');
+}
 
 const LN_ADDR = 'peerloomllc@strike.me';
 function isMobile() { return navigator.maxTouchPoints > 0 && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent); }
-function handleDonateBtc() {
+function handleDonateBtc(panelId) {
   if (isMobile()) { window.location.href = 'lightning:' + LN_ADDR; return; }
-  const panel = document.getElementById('ln-panel');
+  const panel = document.getElementById(panelId || 'ln-panel');
   if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
   const canvas = document.createElement('canvas');
   const qr = qrcode(0, 'L');
