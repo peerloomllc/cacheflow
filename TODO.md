@@ -13,7 +13,6 @@ Each item: `- [ ] Description` with metadata tags: `[type]` `[complexity]` `[pri
 ### Dashboard Redesign
 
 ### UX Improvements
-- [ ] Undo option for recently paid transactions (when revealed through Show Paid toggle) `[feature]` `[medium]` `[medium]`
 
 ### Settings
 
