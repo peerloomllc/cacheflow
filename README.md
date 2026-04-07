@@ -1,22 +1,22 @@
 # Cache Flow
 
-Personal cash flow and budgeting app. Track recurring income and expenses, forecast future balances, and manage Bitcoin DCA — all with AES-256-GCM encryption and local-only data storage.
+Personal cash flow and budgeting app. Track recurring income and expenses, forecast future balances and manage Bitcoin DCA - all with AES-256-GCM encryption and local-only data storage.
 
 Single HTML file. No build system, no dependencies, no server. Open it in a browser.
 
-Companion app to [Cache](https://github.com/peerloomllc/cache) (a net worth ledger). Both share the same design language but are fully independent — separate passwords, separate data.
+Companion app to [Cache](https://github.com/peerloomllc/cache) (a net worth ledger). Both share the same design language but are fully independent - separate passwords, separate data.
 
 ## Features
 
-- Recurring transactions with flexible frequencies: weekly, biweekly, monthly, quarterly, annual, and custom day intervals
+- Recurring transactions with flexible frequencies: weekly, biweekly, monthly, quarterly, annual and custom day intervals
 - One-off transactions for non-recurring income and expenses
-- Dashboard with balance header, income/expense summary, spending breakdown donut chart, balance history sparkline, and financial runway estimate
-- 12-month rolling forecast with weekly drill-down, projected balance, and net cash flow
-- Bitcoin integration: BTC balance tracking, DCA recurring buys, sat stacking with live BTC price from CoinGecko (fallback: Coinbase)
+- Dashboard with balance header, income/expense summary, spending breakdown donut chart, balance history sparkline and financial runway estimate
+- 12-month rolling forecast with weekly drill-down, projected balance and net cash flow
+- Bitcoin integration: BTC balance tracking, DCA recurring buys and sat stacking with live BTC price from CoinGecko (fallback: Coinbase)
 - AES-256-GCM encryption with PBKDF2-derived keys; data encrypted at rest in localStorage
 - Auto-lock: 15-minute idle timeout clears the session key and wipes data from memory
 - Multi-currency support: USD, EUR, GBP, CAD, AUD, CHF, JPY with live exchange rates
-- Category tagging for expenses (Housing, Food & Dining, Subscriptions, etc.) and income (Salary, Freelance, etc.)
+- Category tagging for expenses (Housing, Food & Dining, Subscriptions etc.) and income (Salary, Freelance etc.)
 - Mark paid / undo paid with balance adjustment and 30-day history
 - Import recurring transactions from a Cache JSON export
 - JSON export and import for backup and restore
@@ -66,17 +66,17 @@ Everything lives in one file (`cacheflow.html`):
 | HTML | Lock screen, dashboard, transactions, forecast, settings |
 | JS: Encryption | AES-256-GCM, PBKDF2, session management |
 | JS: Rendering | Dashboard, transactions list, forecast table |
-| JS: Actions | Mark paid/undo, quick add, inline edit, recurring CRUD |
+| JS: Actions | Mark paid/undo, quick add, inline edit and recurring CRUD |
 | JS: Forecast | 12-month projection with weekly granularity |
 | JS: BTC | Price ticker, DCA processing, sat balance tracking |
-| JS: Persistence | Save, load, export, import, Cache import |
+| JS: Persistence | Save, load, export, import and Cache import |
 
 ## Security model
 
 - AES-256-GCM with PBKDF2-derived keys (310,000 iterations, SHA-256)
 - No plaintext ever hits disk; data is encrypted before writing to localStorage
 - 15-minute idle auto-lock destroys the in-memory key
-- No server, no cookies, no analytics, no telemetry
+- No server, no cookies, no analytics and no telemetry
 
 ## License
 
