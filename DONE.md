@@ -43,3 +43,4 @@ Each item: `- [x] Description` with metadata tags and completion date.
 - [x] Dark/Light mode option (same as Cache app) `[feature]` `[medium]` `[medium]` — 2026-04-06
 - [x] Undo option for recently paid transactions (when revealed through Show Paid toggle) `[feature]` `[medium]` `[medium]` — 2026-04-06
 - [x] Currency switching in Settings with live exchange rates `[feature]` `[medium]` `[medium]` — 2026-04-06
+- [x] Set up automated merging to website repo for automated updates `[feature]` `[medium]` `[high]` — 2026-04-06
