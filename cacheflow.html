@@ -409,6 +409,13 @@
   .tour-nav .tour-skip{background:transparent;color:var(--text-dim);margin-left:auto;font-size:10px;padding:8px 10px}
   .tour-nav .tour-skip:hover{color:var(--text-muted)}
   .tour-counter{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  /* ── FORECAST TOOLTIP ── */
+  .fc-chart-wrap{position:relative}
+  .fc-tooltip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--text-muted);line-height:1.6;white-space:nowrap;z-index:10;opacity:0;transition:opacity .12s}
+  .fc-tooltip.visible{opacity:1}
+  .fc-tooltip .tt-date{color:var(--text);font-weight:500;margin-bottom:2px}
+  .fc-tooltip .tt-cash{color:var(--accent)}
+  .fc-tooltip .tt-btc{color:var(--btc)}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
@@ -1012,7 +1019,7 @@ function generateId() {
 function fmtMoney(n) {
   const v = n * fxRate;
   const abs = Math.abs(v);
-  const str = abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const str = Math.round(abs).toLocaleString('en-US');
   return (v < 0 ? '-' : '') + csym() + str;
 }
 
@@ -1751,7 +1758,7 @@ let showPaidHistory = false;
 let editingTxId = null;
 let txSearchQuery = '';
 let txHorizonMonths = 6;
-let fcHorizonMonths = 12;
+let fcHorizonMonths = 6;
 let collapsedMonths = {};
 let collapsedWeeks = {};
 let txAllCollapsed = false;
@@ -2271,7 +2278,7 @@ function renderForecast() {
 
   // ── Compute forecast data ──
   const months = [];
-  let runningBalance = combinedBalance();
+  let runningBalance = appData.balance;
 
   for (let i = 0; i < fcHorizonMonths; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
@@ -2298,13 +2305,12 @@ function renderForecast() {
   // ── Granular balance projection ──
   const horizonDays = Math.round(fcHorizonMonths * 30.44);
   const txItems = getUpcomingTransactions(horizonDays);
-  const txByDate = {};
+  const cashTxByDate = {};
   const btcTxByDate = {};
   txItems.forEach(t => {
-    if (!txByDate[t.date]) txByDate[t.date] = 0;
-    if (t.direction === 'income') txByDate[t.date] += t.amount;
-    else if (t.direction === 'expense' || t.direction === 'btc-buy') txByDate[t.date] -= t.amount;
-    else if (t.direction === 'btc-income') txByDate[t.date] += satsToFiat(t.amount);
+    if (!cashTxByDate[t.date]) cashTxByDate[t.date] = 0;
+    if (t.direction === 'income') cashTxByDate[t.date] += t.amount;
+    else if (t.direction === 'expense' || t.direction === 'btc-buy') cashTxByDate[t.date] -= t.amount;
     // Track BTC sats separately
     if (t.direction === 'btc-income') {
       if (!btcTxByDate[t.date]) btcTxByDate[t.date] = 0;
@@ -2318,15 +2324,15 @@ function renderForecast() {
   // Build daily balance series, then sample to weekly if horizon > 6 months
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const dailyBal = [];
-  let bal = combinedBalance();
+  let cashBal = appData.balance;
   let btcBal = appData.btcBalance || 0;
   const hasBtcData = btcBal > 0 || appData.recurring.some(r => r.enabled && (r.direction === 'btc-income' || r.direction === 'btc-buy'));
   for (let d = 0; d <= horizonDays; d++) {
     const dt = new Date(today); dt.setDate(dt.getDate() + d);
     const key = toDateStr(dt);
-    if (txByDate[key]) bal += txByDate[key];
+    if (cashTxByDate[key]) cashBal += cashTxByDate[key];
     if (btcTxByDate[key]) btcBal += btcTxByDate[key];
-    dailyBal.push({ date: dt, balance: bal, btcSats: btcBal });
+    dailyBal.push({ date: dt, cashBalance: cashBal, btcSats: btcBal });
   }
 
   // Sample: daily if <= 6 months, weekly if > 6
@@ -2342,8 +2348,8 @@ function renderForecast() {
   // ── Chart ──
   const W = 800, H = 250, PAD_L = 60, PAD_R = hasBtcData ? 70 : 20, PAD_T = 20, PAD_B = 52;
   const chartW = W - PAD_L - PAD_R, chartH = H - PAD_T - PAD_B;
-  const allBalVals = balPoints.map(p => p.balance);
-  const allVals = [...allBalVals, 0];
+  const allCashVals = balPoints.map(p => p.cashBalance);
+  const allVals = [...allCashVals, 0];
   const rawMin = Math.min(...allVals), rawMax = Math.max(...allVals);
 
   // Nice rounded tick values
@@ -2418,9 +2424,9 @@ function renderForecast() {
     }
   });
 
-  // Balance line
-  const balPts = balPoints.map(p => cxDate(p.date).toFixed(1) + ',' + cy(p.balance).toFixed(1)).join(' ');
-  svg += '<polyline points="' + balPts + '" fill="none" stroke="var(--accent)" stroke-width="1.5" />';
+  // Cash balance line
+  const cashPts = balPoints.map(p => cxDate(p.date).toFixed(1) + ',' + cy(p.cashBalance).toFixed(1)).join(' ');
+  svg += '<polyline points="' + cashPts + '" fill="none" stroke="var(--accent)" stroke-width="1.5" />';
 
   // BTC sats balance line
   if (hasBtcData) {
@@ -2428,12 +2434,20 @@ function renderForecast() {
     svg += '<polyline points="' + btcPts + '" fill="none" stroke="var(--btc)" stroke-width="1.5" />';
   }
 
+  // Hover crosshair + highlight circles (hidden by default)
+  svg += '<line id="fc-crosshair" x1="0" y1="' + PAD_T + '" x2="0" y2="' + (PAD_T + chartH) + '" stroke="var(--text-dim)" stroke-width="0.5" stroke-dasharray="3,3" opacity="0" />';
+  svg += '<circle id="fc-dot-cash" cx="0" cy="0" r="3" fill="var(--accent)" opacity="0" />';
+  if (hasBtcData) svg += '<circle id="fc-dot-btc" cx="0" cy="0" r="3" fill="var(--btc)" opacity="0" />';
+
+  // Invisible overlay for mouse events
+  svg += '<rect x="' + PAD_L + '" y="' + PAD_T + '" width="' + chartW + '" height="' + chartH + '" fill="transparent" id="fc-hover-area" />';
+
   // Legend (centered, below x-axis labels)
   const legendY = H - 6;
   const legendCx = W / 2;
   if (hasBtcData) {
-    svg += '<text x="' + (legendCx - 60) + '" y="' + legendY + '" text-anchor="middle" fill="var(--accent)" font-family="var(--mono)" font-size="8">\u2014 $ Balance</text>';
-    svg += '<text x="' + (legendCx + 60) + '" y="' + legendY + '" text-anchor="middle" fill="var(--btc)" font-family="var(--mono)" font-size="8">\u2014 \u20bf Balance</text>';
+    svg += '<text x="' + (legendCx - 60) + '" y="' + legendY + '" text-anchor="middle" fill="var(--accent)" font-family="var(--mono)" font-size="8">\u2014 $ Cash</text>';
+    svg += '<text x="' + (legendCx + 60) + '" y="' + legendY + '" text-anchor="middle" fill="var(--btc)" font-family="var(--mono)" font-size="8">\u2014 \u20bf Bitcoin</text>';
   } else {
     svg += '<text x="' + legendCx + '" y="' + legendY + '" text-anchor="middle" fill="var(--accent)" font-family="var(--mono)" font-size="8">\u2014 $ Balance</text>';
   }
@@ -2448,7 +2462,7 @@ function renderForecast() {
     html += '<span class="section-name">Forecast</span></div>';
     html += '<div id="fc-controls" class="tx-toolbar-left" style="gap:6px"></div>';
     html += '</div>';
-    html += '<div id="fc-chart"></div>';
+    html += '<div id="fc-chart" class="fc-chart-wrap"><div class="fc-tooltip" id="fc-tooltip"></div></div>';
     html += '<table class="forecast-table"><thead><tr>';
     html += '<th>Month</th><th>Income</th><th>Expenses</th><th>Net</th><th>Balance</th>';
     html += '</tr></thead><tbody id="fc-tbody"></tbody></table></div>';
@@ -2465,8 +2479,73 @@ function renderForecast() {
   document.getElementById('fc-controls').innerHTML = ctrlHtml;
   document.getElementById('fc-icon').textContent = fcHorizonMonths;
 
-  // Update chart
-  document.getElementById('fc-chart').innerHTML = svg;
+  // Update chart (preserve tooltip div)
+  const fcChartEl = document.getElementById('fc-chart');
+  const fcTooltip = document.getElementById('fc-tooltip');
+  // Remove old SVG if present
+  const oldSvg = fcChartEl.querySelector('svg');
+  if (oldSvg) oldSvg.remove();
+  fcTooltip.insertAdjacentHTML('beforebegin', svg);
+
+  // Wire up hover interactions
+  const fcSvg = fcChartEl.querySelector('svg');
+  const hoverArea = document.getElementById('fc-hover-area');
+  const crosshair = document.getElementById('fc-crosshair');
+  const dotCash = document.getElementById('fc-dot-cash');
+  const dotBtc = document.getElementById('fc-dot-btc');
+
+  function fcHoverHandler(e) {
+    const rect = fcSvg.getBoundingClientRect();
+    const scaleX = W / rect.width;
+    const svgX = (e.clientX - rect.left) * scaleX;
+    // Find nearest point by X
+    let best = 0, bestDist = Infinity;
+    for (let i = 0; i < balPoints.length; i++) {
+      const px = cxDate(balPoints[i].date);
+      const dist = Math.abs(px - svgX);
+      if (dist < bestDist) { bestDist = dist; best = i; }
+    }
+    const p = balPoints[best];
+    const px = cxDate(p.date);
+    const cashY = cy(p.cashBalance);
+
+    crosshair.setAttribute('x1', px); crosshair.setAttribute('x2', px); crosshair.setAttribute('opacity', '1');
+    dotCash.setAttribute('cx', px); dotCash.setAttribute('cy', cashY); dotCash.setAttribute('opacity', '1');
+    if (dotBtc) {
+      const btcY = cyBtc(p.btcSats);
+      dotBtc.setAttribute('cx', px); dotBtc.setAttribute('cy', btcY); dotBtc.setAttribute('opacity', '1');
+    }
+
+    // Tooltip content
+    const dateStr = p.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    let ttHtml = '<div class="tt-date">' + dateStr + '</div>';
+    ttHtml += '<div class="tt-cash">Cash: ' + fmtMoney(p.cashBalance) + '</div>';
+    if (hasBtcData) ttHtml += '<div class="tt-btc">' + fmtSatsCompact(p.btcSats) + ' sats</div>';
+    fcTooltip.innerHTML = ttHtml;
+    fcTooltip.classList.add('visible');
+
+    // Position tooltip relative to chart wrapper
+    const pxScreen = px / scaleX;
+    const ttW = fcTooltip.offsetWidth;
+    let left = pxScreen - ttW / 2;
+    if (left < 4) left = 4;
+    if (left + ttW > rect.width - 4) left = rect.width - ttW - 4;
+    fcTooltip.style.left = left + 'px';
+    fcTooltip.style.top = '0px';
+  }
+
+  function fcLeaveHandler() {
+    crosshair.setAttribute('opacity', '0');
+    dotCash.setAttribute('opacity', '0');
+    if (dotBtc) dotBtc.setAttribute('opacity', '0');
+    fcTooltip.classList.remove('visible');
+  }
+
+  hoverArea.addEventListener('mousemove', fcHoverHandler);
+  hoverArea.addEventListener('mouseleave', fcLeaveHandler);
+  // Touch support
+  hoverArea.addEventListener('touchmove', function(e) { e.preventDefault(); fcHoverHandler(e.touches[0]); }, { passive: false });
+  hoverArea.addEventListener('touchend', fcLeaveHandler);
 
   // Update table rows — animate only added/removed rows
   const tbody = document.getElementById('fc-tbody');
