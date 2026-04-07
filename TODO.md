@@ -19,6 +19,5 @@ Each item: `- [ ] Description` with metadata tags: `[type]` `[complexity]` `[pri
 ### Forecast Page Enhancements
 
 ### DevOps
-- [ ] Set up automated merging to website repo for automated updates `[feature]` `[medium]` `[high]`
 
 ### Bitcoin Integration
