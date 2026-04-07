@@ -2294,6 +2294,17 @@ function renderForecast() {
     dailyBal.push({ date: dt, balance: bal, btcSats: btcBal });
   }
 
+  // Attach BTC sats to each forecast month (end-of-month snapshot from daily series)
+  if (hasBtcData) {
+    months.forEach((m, i) => {
+      const mEnd = new Date(now.getFullYear(), now.getMonth() + i + 1, 0);
+      mEnd.setHours(0, 0, 0, 0);
+      const dayOffset = Math.round((mEnd - today) / 86400000);
+      const idx = Math.min(Math.max(dayOffset, 0), dailyBal.length - 1);
+      m.btcSats = dailyBal[idx].btcSats;
+    });
+  }
+
   // Sample: daily if <= 6 months, weekly if > 6
   const sampleInterval = fcHorizonMonths <= 6 ? 1 : 7;
   const balPoints = [];
@@ -2407,7 +2418,9 @@ function renderForecast() {
 
   // ── Build / update HTML ──
   // Create shell once, then surgically update chart + table + controls
-  if (!document.getElementById('fc-chart')) {
+  const existingTh = document.querySelector('.forecast-table thead th');
+  const hasBtcCol = document.querySelector('.forecast-table thead th:nth-child(6)');
+  if (!document.getElementById('fc-chart') || (hasBtcData && !hasBtcCol) || (!hasBtcData && hasBtcCol)) {
     let html = '<div class="section"><div class="section-header"><div class="section-title">';
     html += '<div class="section-icon icon-default" id="fc-icon">' + fcHorizonMonths + '</div>';
     html += '<span class="section-name">Forecast</span></div>';
@@ -2416,6 +2429,7 @@ function renderForecast() {
     html += '<div id="fc-chart"></div>';
     html += '<table class="forecast-table"><thead><tr>';
     html += '<th>Month</th><th>Income</th><th>Expenses</th><th>Net</th><th>Balance</th>';
+    if (hasBtcData) html += '<th style="color:var(--btc)">₿ Sats</th>';
     html += '</tr></thead><tbody id="fc-tbody"></tbody></table></div>';
     container.innerHTML = html;
   }
@@ -2448,6 +2462,7 @@ function renderForecast() {
     h += '<td class="f-expense">' + fmtMoney(m.exp) + '</td>';
     h += '<td class="' + (m.net >= 0 ? 'f-net-pos' : 'f-net-neg') + '">' + (m.net >= 0 ? '+' : '') + fmtMoney(m.net) + '</td>';
     h += '<td class="' + (m.balance >= 0 ? 'f-bal-pos' : 'f-bal-neg') + '">' + fmtMoney(m.balance) + '</td>';
+    if (hasBtcData) h += '<td style="color:var(--btc);opacity:0.85">' + fmtSats(m.btcSats || 0) + '</td>';
     h += '</tr>';
     return h;
   }
