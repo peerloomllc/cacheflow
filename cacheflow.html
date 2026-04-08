@@ -736,7 +736,7 @@
 // ── PWA (early registration for install prompt) ──────────────────────────
 (function setupPWA() {
   if (location.protocol === 'file:') return;
-  const icon = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230d0f0e'/><text x='256' y='330' text-anchor='middle' font-family='Georgia,serif' font-size='160' font-style='italic' fill='%23a8d08d'>CF</text></svg>";
+  const icon = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230d0f0e'/><text x='256' y='330' text-anchor='middle' font-family='Georgia,serif' font-size='160' font-style='italic'><tspan fill='%23e8e6e1'>C</tspan><tspan fill='%23a8d08d'>F</tspan></text></svg>";
   const manifest = {
     name: 'Cache Flow — Personal Cash Flow',
     short_name: 'Cache Flow',
