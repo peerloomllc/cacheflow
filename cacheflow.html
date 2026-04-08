@@ -170,6 +170,9 @@
   .tx-row{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.03);transition:background .1s}
   .tx-row:last-child{border-bottom:none}
   .tx-row:hover{background:rgba(255,255,255,.015)}
+  .tx-row.past-due{background:rgba(255,80,80,0.06);border-left:2px solid var(--red)}
+  .tx-row.past-due:hover{background:rgba(255,80,80,0.10)}
+  .tx-row.past-due .overdue-badge{display:inline-block;font-size:9px;font-weight:700;color:var(--red);background:rgba(255,80,80,0.15);padding:1px 5px;border-radius:3px;margin-left:6px;letter-spacing:.5px}
   .tx-row.due-today{background:rgba(255,255,255,0.04);border-left:2px solid var(--text)}
   .tx-row.due-today:hover{background:rgba(255,255,255,0.07)}
   .tx-row.btc-row{background:rgba(247,147,26,0.04);border-left:2px solid var(--btc)}
@@ -1179,17 +1182,15 @@ function getUpcomingTransactions(daysAhead) {
     const rEnd = r.endDate ? new Date(r.endDate + 'T00:00:00') : null;
     while (due && new Date(due + 'T00:00:00') <= endDate) {
       if (rEnd && new Date(due + 'T00:00:00') > rEnd) break;
-      if (new Date(due + 'T00:00:00') >= today) {
-        items.push({
-          type: 'recurring',
-          recurringId: r.id,
-          name: r.name,
-          amount: parseFloat(r.amount) || 0,
-          direction: r.direction,
-          frequency: r.frequency,
-          date: due
-        });
-      }
+      items.push({
+        type: 'recurring',
+        recurringId: r.id,
+        name: r.name,
+        amount: parseFloat(r.amount) || 0,
+        direction: r.direction,
+        frequency: r.frequency,
+        date: due
+      });
       due = advanceDate(due, r.frequency);
     }
   });
@@ -1204,8 +1205,7 @@ function getUpcomingTransactions(daysAhead) {
         amount: parseFloat(o.amount) || 0,
         direction: o.direction,
         frequency: null,
-        date: d < today ? toDateStr(today) : o.date,
-        overdue: d < today
+        date: o.date
       });
     }
   });
@@ -1970,7 +1970,7 @@ function renderTransactions() {
           wg.items.forEach(i => {
             const isBtc = i.direction.startsWith('btc-');
             const isIncome = i.direction === 'income' || i.direction === 'btc-income';
-            const rowClass = 'tx-row' + (isBtc && !i.isPaid ? ' btc-row' : '') + (i.isPaid ? ' paid-row' : '') + (!i.isPaid && i.date === today ? ' due-today' : '');
+            const rowClass = 'tx-row' + (isBtc && !i.isPaid ? ' btc-row' : '') + (i.isPaid ? ' paid-row' : '') + (!i.isPaid && i.date < today ? ' past-due' : '') + (!i.isPaid && i.date === today ? ' due-today' : '');
             const rid = i.recurringId || '';
             const oid = i.oneoffId || '';
             const editId = rid || oid;
@@ -1984,6 +1984,7 @@ function renderTransactions() {
               html += '<span class="paid-badge">paid ' + fmtRelative(i.paidAt) + '</span>';
             } else {
               html += '<span>' + fmtDate(i.date) + '</span>';
+              if (i.date < today) html += '<span class="overdue-badge">OVERDUE</span>';
             }
             if (i.frequency) html += '<span class="freq-badge">' + i.frequency.toUpperCase() + '</span>';
             if (!i.frequency && !i.isPaid) html += '<span class="freq-badge">ONE-OFF</span>';
