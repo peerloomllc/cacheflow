@@ -309,6 +309,18 @@
   .about-close-btn{background:transparent;border:1px solid var(--border-light);color:var(--text-muted);font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:9px 16px;border-radius:4px;cursor:pointer;transition:all .15s;width:100%}
   .about-close-btn:hover{border-color:var(--text-dim);color:var(--text)}
 
+  /* ── WHAT'S NEW MODAL ── */
+  #whats-new-modal{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease}
+  #whats-new-modal.hidden{display:none}
+  .whats-new-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:32px 36px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:16px;animation:fadeUp .2s ease;max-height:90vh;overflow-y:auto}
+  .whats-new-title{font-family:var(--serif);font-size:20px;font-weight:400;letter-spacing:-.3px;text-align:center}
+  .whats-new-version{font-family:var(--mono);font-size:11px;color:var(--accent);text-align:center;letter-spacing:1px}
+  .whats-new-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+  .whats-new-list li{font-family:var(--mono);font-size:12px;color:var(--text-muted);line-height:1.6;padding-left:16px;position:relative}
+  .whats-new-list li::before{content:'\2022';color:var(--accent);position:absolute;left:0}
+  .whats-new-btn{background:var(--accent);border:none;color:var(--bg);font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:1px;padding:10px 16px;border-radius:4px;cursor:pointer;transition:opacity .15s;width:100%;text-align:center}
+  .whats-new-btn:hover{opacity:0.85}
+
   /* ── RECURRING PAGE ── */
   .rec-section-header{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;transition:background .1s}
   .rec-section-header:hover{background:var(--surface)}
@@ -377,7 +389,7 @@
     .save-hint{display:none}
     .btn-group{flex-wrap:nowrap;flex-shrink:0;gap:6px}
     .btn-group .bar-btn{padding:8px 10px;font-size:10px;white-space:nowrap;flex-shrink:0}
-    .about-card{max-width:calc(100vw - 32px);padding:24px 20px;max-height:80vh;gap:12px}
+    .about-card,.whats-new-card{max-width:calc(100vw - 32px);padding:24px 20px;max-height:80vh;gap:12px}
     .about-card .about-body{font-size:10px;line-height:1.5}
     .about-card .about-link{font-size:11px;padding:7px 10px}
     .rec-table th,.rec-table td{padding:5px 4px;font-size:10px}
@@ -669,6 +681,17 @@
   </div>
 </div>
 
+<!-- ══ WHAT'S NEW MODAL ══ -->
+<div id="whats-new-modal" class="hidden" onclick="if(event.target===this)dismissWhatsNew()">
+  <div class="whats-new-card">
+    <div class="whats-new-title">What's New</div>
+    <div class="whats-new-version" id="whats-new-version"></div>
+    <hr class="about-divider">
+    <ul class="whats-new-list" id="whats-new-list"></ul>
+    <button class="whats-new-btn" onclick="dismissWhatsNew()">Got It</button>
+  </div>
+</div>
+
 <!-- ══ GUIDED TOUR ══ -->
 <div id="tour-overlay" class="hidden"></div>
 <div id="tour-spotlight" class="hidden"></div>
@@ -756,6 +779,13 @@
 // ══════════════════════════════════════════════════════════════════════════
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
+
+const APP_VERSION = '1.0.0';
+const CHANGELOG = [
+  { version: '1.0.0', items: [
+    'Added "What\'s New" popup to surface changes after each update'
+  ]}
+];
 
 const STORAGE_ENC  = 'cacheflow-v1-enc';
 const STORAGE_META = 'cacheflow-v1-meta';
@@ -987,6 +1017,7 @@ async function submitUnlock() {
       await fetchFxRate();
       renderAll();
       checkDonateReminder();
+      checkWhatsNew();
     }, 200);
   } catch (e) {
     setLockProgress('lock-progress', 'lock-progress-bar', 0, false);
@@ -2764,6 +2795,25 @@ function openAbout() { document.getElementById('about-modal').classList.remove('
 function closeAbout() { document.getElementById('about-modal').classList.add('hidden'); document.getElementById('ln-panel').style.display='none'; }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('about-modal').classList.contains('hidden')) closeAbout(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('donate-modal').classList.contains('hidden')) dismissDonateReminder(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('whats-new-modal').classList.contains('hidden')) dismissWhatsNew(); });
+
+const CHANGELOG_SEEN_KEY = 'cacheflow-changelog-seen';
+
+function checkWhatsNew() {
+  const seen = localStorage.getItem(CHANGELOG_SEEN_KEY);
+  if (seen === APP_VERSION) return;
+  const entry = CHANGELOG.find(c => c.version === APP_VERSION);
+  if (!entry) return;
+  document.getElementById('whats-new-version').textContent = 'v' + entry.version;
+  const list = document.getElementById('whats-new-list');
+  list.innerHTML = entry.items.map(item => '<li>' + item + '</li>').join('');
+  document.getElementById('whats-new-modal').classList.remove('hidden');
+}
+
+function dismissWhatsNew() {
+  document.getElementById('whats-new-modal').classList.add('hidden');
+  localStorage.setItem(CHANGELOG_SEEN_KEY, APP_VERSION);
+}
 
 const DONATE_REMIND_KEY = 'cacheflow-donate-remind';
 const DONATE_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000;
