@@ -45,18 +45,14 @@
   .fc-row-out{animation:slideOut .3s ease forwards;overflow:hidden;pointer-events:none}
 
   /* ── BTC TICKER BAR ── */
-  .btc-bar{position:fixed;top:0;left:0;right:0;z-index:55;display:flex;align-items:center;justify-content:center;gap:12px;padding:8px 32px;border-bottom:1px solid var(--border);background:var(--bg)}
+  .btc-bar{position:fixed;top:0;left:0;right:0;z-index:55;display:flex;flex-direction:column;align-items:center;padding:6px 32px 4px;border-bottom:1px solid var(--border);background:var(--bg)}
   .btc-bar-left{display:flex;align-items:center;gap:12px}
   .btc-logo{font-size:14px;color:var(--btc)}
   .btc-price-label{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim)}
   .btc-price-val{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--btc)}
   .btc-price-val.loading{color:var(--text-dim);animation:pulse 1.5s ease-in-out infinite}
-  .btc-bar-right{font-family:var(--mono);font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:8px}
-  .btc-refresh{background:none;border:1px solid var(--border-light);color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:3px;cursor:pointer;transition:all .15s}
-  .btc-refresh:hover{color:var(--btc);border-color:var(--btc)}
-  .btc-refresh.spinning{animation:spin .7s linear infinite}
+  .btc-bar-right{font-family:var(--mono);font-size:9px;color:var(--text-dim);display:flex;align-items:center;gap:8px;margin-top:2px}
   @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
-  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
   /* ── PWA INSTALL REMINDER ── */
   #pwa-reminder{display:none;align-items:center;justify-content:center;gap:10px;padding:8px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text-muted)}
@@ -387,10 +383,9 @@
     .rec-table th,.rec-table td{padding:5px 4px;font-size:10px}
     .rec-inline-input{font-size:10px;padding:3px 4px}
     .rec-inline-select{font-size:9px;padding:3px 3px}
-    .btc-bar{padding:6px 12px;gap:8px}
-    .btc-price-val{font-size:12px}
-    .btc-bar-right{font-size:9px;gap:6px}
-    .btc-refresh{padding:2px 6px;font-size:9px}
+    .btc-bar{padding:4px 12px 3px;gap:2px}
+    .btc-price-label{display:none}
+    .btc-bar-right{font-size:8px;margin-top:0}
     .rec-inline-amount{width:100%}
     .rec-due-input{width:100%}
     .dash-grid{grid-template-columns:1fr}
@@ -493,7 +488,6 @@
     </div>
     <div class="btc-bar-right">
       <span id="btcPriceAge">—</span>
-      <button class="btc-refresh" id="btcRefreshBtn" onclick="fetchBtcPrice(true)">↻ Refresh</button>
     </div>
   </div>
   <header>
@@ -3280,9 +3274,7 @@ let btcPrice = null;
 let btcFetchedAt = null;
 
 async function fetchBtcPrice(manual) {
-  const btn = document.getElementById('btcRefreshBtn');
   const disp = document.getElementById('btcPriceDisplay');
-  btn.classList.add('spinning');
   disp.className = 'btc-price-val loading';
   disp.textContent = 'Fetching…';
   let price = null;
@@ -3299,7 +3291,6 @@ async function fetchBtcPrice(manual) {
     } catch(_){}
   }
 
-  btn.classList.remove('spinning');
   if (price && price > 0) {
     btcPrice = price;
     btcFetchedAt = new Date();
