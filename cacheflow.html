@@ -392,14 +392,52 @@
     .about-card,.whats-new-card{max-width:calc(100vw - 32px);padding:24px 20px;max-height:80vh;gap:12px}
     .about-card .about-body{font-size:10px;line-height:1.5}
     .about-card .about-link{font-size:11px;padding:7px 10px}
-    .rec-table th,.rec-table td{padding:5px 4px;font-size:10px}
-    .rec-inline-input{font-size:10px;padding:3px 4px}
-    .rec-inline-select{font-size:9px;padding:3px 3px}
+    .rec-table-wrap{overflow-x:visible}
+    .rec-table,.rec-table thead,.rec-table tbody,.rec-table tr,.rec-table td{display:block}
+    .rec-table{table-layout:auto}
+    .rec-table thead,.rec-table colgroup{display:none}
+    .rec-table tr{display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;row-gap:4px;padding:10px 12px;border-bottom:1px solid var(--border)}
+    .rec-table td{padding:0;border:none;min-width:0;display:inline-flex;align-items:center;font-size:11px}
+    .rec-table td:nth-child(1){order:1}
+    .rec-table td:nth-child(2){order:2;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:none;font-size:12px}
+    .rec-table td:nth-child(5){order:3;text-align:right;font-size:12px;padding:0}
+    .rec-table td:nth-child(8){order:4}
+    .rec-table tr::after{content:"";flex-basis:100%;height:0;order:5}
+    .rec-table td:nth-child(3){order:6;font-size:10px;color:var(--text-muted)}
+    .rec-table td:nth-child(4){order:7;font-size:10px}
+    .rec-table td:nth-child(6){order:8;font-size:10px;color:var(--text-dim)}
+    .rec-table td:nth-child(7){order:9;font-size:10px;color:var(--text-dim)}
+    .rec-table td::before{color:var(--text-dim);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;margin-right:5px;flex-shrink:0}
+    .rec-table td:nth-child(3)::before{content:"Cat"}
+    .rec-table td:nth-child(4)::before{content:"Freq"}
+    .rec-table td:nth-child(6)::before{content:"Start"}
+    .rec-table td:nth-child(7)::before{content:"End"}
+    .rec-table tr.rec-editing td{flex:1 1 100%;overflow:visible;white-space:normal;text-align:left}
+    .rec-table tr.rec-editing::after{display:none}
+    .rec-table tr.rec-editing td:nth-child(1){flex:0 0 auto;order:1}
+    .rec-table tr.rec-editing td:nth-child(2){order:2}
+    .rec-table tr.rec-editing td:nth-child(3){order:3}
+    .rec-table tr.rec-editing td:nth-child(4){order:4}
+    .rec-table tr.rec-editing td:nth-child(5){order:5}
+    .rec-table tr.rec-editing td:nth-child(6){order:6}
+    .rec-table tr.rec-editing td:nth-child(7){order:7}
+    .rec-table tr.rec-editing td:nth-child(8){order:8;justify-content:center;gap:12px;margin-top:8px}
+    .rec-table tr.rec-editing td:nth-child(8) .form-btn{font-size:18px !important;padding:8px 20px !important;margin-right:0 !important}
+    .edit-panel .form-actions{justify-content:center;gap:12px;margin-top:4px}
+    .edit-panel .form-btn{font-size:18px;padding:8px 20px}
+    .rec-table tr.rec-editing td:nth-child(2)::before{content:"Name"}
+    .rec-table tr.rec-editing td:nth-child(3)::before{content:"Category"}
+    .rec-table tr.rec-editing td:nth-child(4)::before{content:"Frequency"}
+    .rec-table tr.rec-editing td:nth-child(5)::before{content:"Amount"}
+    .rec-table tr.rec-editing td:nth-child(6)::before{content:"Start Date"}
+    .rec-table tr.rec-editing td:nth-child(7)::before{content:"End Date"}
+    .rec-table tr.rec-editing td:not(:first-child):not(:last-child){flex-direction:column;align-items:stretch}
+    .rec-table tr.rec-editing td:not(:first-child):not(:last-child)::before{margin:0 0 3px 0;font-size:10px}
+    .rec-table tr.rec-editing .rec-inline-input,
+    .rec-table tr.rec-editing .rec-inline-select{width:100%;font-size:12px;padding:5px 8px;text-align:left}
     .btc-bar{padding:4px 12px 3px;gap:2px}
     .btc-price-label{display:none}
     .btc-bar-right{font-size:8px;margin-top:0}
-    .rec-inline-amount{width:100%}
-    .rec-due-input{width:100%}
     .dash-grid{grid-template-columns:1fr}
     .runway-days{font-size:36px}
     #tour-tooltip{width:calc(100vw - 32px);max-width:340px}
@@ -422,6 +460,23 @@
   .runway-days.danger{color:var(--red)}
   .runway-label{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:8px;letter-spacing:1px;text-transform:uppercase}
   .runway-detail{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:12px}
+  .profit-rows{display:flex;flex-direction:column;gap:18px;padding:20px}
+  .profit-row{display:flex;flex-direction:column;gap:8px}
+  .profit-row-header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-family:var(--mono);font-size:12px}
+  .profit-row-name{color:var(--text);font-weight:500}
+  .profit-row-gross{color:var(--text-dim);font-size:10px}
+  .profit-bar{display:flex;height:14px;border-radius:3px;overflow:hidden;background:var(--surface2);border:1px solid var(--border)}
+  .profit-bar-seg{height:100%;transition:opacity .15s}
+  .profit-bar-seg:hover{opacity:.75}
+  .profit-bar-net{background:var(--accent-dim)}
+  .profit-bar-over{background:repeating-linear-gradient(45deg,var(--red),var(--red) 4px,#7a2828 4px,#7a2828 8px)}
+  .profit-row-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .profit-row-net{font-size:11px}
+  .profit-row-net.pos{color:var(--accent)}
+  .profit-row-net.neg{color:var(--red)}
+  .profit-row-legend{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:9px;color:var(--text-dim)}
+  .profit-row-legend-dot{width:7px;height:7px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:middle}
+  .profit-empty-dash{padding:20px;font-family:var(--mono);font-size:11px;color:var(--text-dim);font-style:italic;text-align:center}
   /* ── GUIDED TOUR ── */
   #tour-overlay{position:fixed;inset:0;z-index:998;pointer-events:none}
   #tour-overlay.hidden{display:none}
@@ -780,8 +835,14 @@
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const CHANGELOG = [
+  { version: '1.1.0', items: [
+    'Dashboard: income profitability chart showing net return per income source after linked recurring expenses',
+    'Recurring expenses can now be linked to an income source via the category dropdown',
+    'Editing a transaction on the Transactions tab now only edits that occurrence — the recurring template is preserved',
+    'Mobile: Recurring tab uses a compact card layout (no more horizontal scroll) with larger Save/Cancel buttons'
+  ]},
   { version: '1.0.0', items: [
     'Added "What\'s New" popup to surface changes after each update'
   ]}
@@ -823,6 +884,7 @@ let appData = {
   btcBalance: 0,
   recurring: [],
   oneoffs: [],
+  overrides: [],
   history: [],
   settings: { currency: 'USD' },
   importedAt: null,
@@ -999,6 +1061,7 @@ async function submitUnlock() {
     appData.btcBalance = appData.btcBalance ?? 0;
     appData.recurring = appData.recurring || [];
     appData.oneoffs = appData.oneoffs || [];
+    appData.overrides = appData.overrides || [];
     appData.history = appData.history || [];
     appData.settings = appData.settings || { currency: 'USD' };
     appData.importedAt = appData.importedAt ?? null;
@@ -1093,7 +1156,7 @@ function lockApp() {
   sessionKey = null;
   isLocked = true;
   clearIdleTimer();
-  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], overrides: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
   showLockScreen('unlock');
 }
 
@@ -1118,6 +1181,7 @@ function clearIdleTimer() {
 
 async function encryptAndSave() {
   pruneHistory();
+  pruneOverrides();
   appData.savedAt = new Date().toISOString();
   const payload = JSON.stringify(appData);
   if (sessionKey) {
@@ -1131,12 +1195,39 @@ function pruneHistory() {
   appData.history = appData.history.filter(h => new Date(h.paidAt).getTime() > cutoff);
 }
 
+function pruneOverrides() {
+  if (!appData.overrides) return;
+  appData.overrides = appData.overrides.filter(o => {
+    const r = appData.recurring.find(x => x.id === o.recurringId);
+    if (!r) return false;
+    return o.originalDate >= r.nextDue;
+  });
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 // ── HELPERS ──────────────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
 function generateId() {
   return Math.random().toString(36).slice(2, 9);
+}
+
+function findOverride(recurringId, originalDate) {
+  return appData.overrides.find(o => o.recurringId === recurringId && o.originalDate === originalDate);
+}
+
+function upsertOverride(recurringId, originalDate, patch) {
+  let ov = findOverride(recurringId, originalDate);
+  if (!ov) {
+    ov = { id: generateId(), recurringId, originalDate };
+    appData.overrides.push(ov);
+  }
+  Object.assign(ov, patch);
+  return ov;
+}
+
+function removeOverride(recurringId, originalDate) {
+  appData.overrides = appData.overrides.filter(o => !(o.recurringId === recurringId && o.originalDate === originalDate));
 }
 
 function fmtMoney(n) {
@@ -1207,14 +1298,16 @@ function getUpcomingTransactions(daysAhead) {
     const rEnd = r.endDate ? new Date(r.endDate + 'T00:00:00') : null;
     while (due && new Date(due + 'T00:00:00') <= endDate) {
       if (rEnd && new Date(due + 'T00:00:00') > rEnd) break;
+      const ov = findOverride(r.id, due);
       items.push({
         type: 'recurring',
         recurringId: r.id,
-        name: r.name,
-        amount: parseFloat(r.amount) || 0,
+        originalDate: due,
+        name: ov && ov.name != null ? ov.name : r.name,
+        amount: ov && ov.amount != null ? parseFloat(ov.amount) || 0 : parseFloat(r.amount) || 0,
         direction: r.direction,
         frequency: r.frequency,
-        date: due
+        date: ov && ov.date ? ov.date : due
       });
       due = advanceDate(due, r.frequency);
     }
@@ -1323,6 +1416,78 @@ function renderAll() {
   renderRecurring();
   renderTransactions();
   renderForecast();
+}
+
+function buildProfitabilityDashboard() {
+  const incomeItems = appData.recurring.filter(r => r.direction === 'income' && r.enabled);
+  if (incomeItems.length === 0) return '';
+
+  let html = '<div class="chart-card" style="margin-bottom:16px">';
+  html += '<div class="chart-card-header"><div class="chart-card-title">Income Profitability</div>';
+  html += '<div class="chart-card-sub">Net return per income source after linked recurring expenses (monthly)</div></div>';
+
+  const anyLinked = appData.recurring.some(r => r.direction === 'expense' && r.incomeSourceId);
+  if (!anyLinked) {
+    html += '<div class="profit-empty-dash">No expenses linked yet. Edit a recurring expense and choose an income source to link it.</div>';
+    html += '</div>';
+    return html;
+  }
+
+  html += '<div class="profit-rows">';
+  incomeItems.forEach((inc, incIdx) => {
+    const grossMo = normalizeToMonthly(parseFloat(inc.amount) || 0, inc.frequency);
+    const linked = appData.recurring.filter(e => e.direction === 'expense' && e.enabled && e.incomeSourceId === inc.id);
+    const linkedMo = linked.reduce((s, e) => s + normalizeToMonthly(parseFloat(e.amount) || 0, e.frequency), 0);
+    const net = grossMo - linkedMo;
+    const netPct = grossMo > 0 ? (net / grossMo) * 100 : 0;
+    const overBudget = linkedMo > grossMo;
+
+    html += '<div class="profit-row">';
+    html += '<div class="profit-row-header">';
+    html += '<span class="profit-row-name">' + escHtml(inc.name || '(unnamed)') + '</span>';
+    html += '<span class="profit-row-gross">Gross ' + fmtMoney(grossMo) + '/mo</span>';
+    html += '</div>';
+
+    // Bar
+    html += '<div class="profit-bar">';
+    if (overBudget) {
+      html += '<div class="profit-bar-seg profit-bar-over" style="flex:1" title="Expenses exceed gross income"></div>';
+    } else {
+      linked.forEach((e, i) => {
+        const emo = normalizeToMonthly(parseFloat(e.amount) || 0, e.frequency);
+        const pct = grossMo > 0 ? (emo / grossMo) * 100 : 0;
+        const color = CHART_PALETTE[(incIdx * 3 + i) % CHART_PALETTE.length];
+        html += '<div class="profit-bar-seg" style="width:' + pct.toFixed(2) + '%;background:' + color + '" title="' + escAttr(e.name) + ': ' + fmtMoney(emo) + '/mo"></div>';
+      });
+      if (net > 0) {
+        const netPctWidth = (net / grossMo) * 100;
+        html += '<div class="profit-bar-seg profit-bar-net" style="width:' + netPctWidth.toFixed(2) + '%" title="Net: ' + fmtMoney(net) + '/mo"></div>';
+      }
+    }
+    html += '</div>';
+
+    // Legend + net readout
+    html += '<div class="profit-row-foot">';
+    if (linked.length > 0) {
+      let legendHtml = '<div class="profit-row-legend">';
+      linked.forEach((e, i) => {
+        const emo = normalizeToMonthly(parseFloat(e.amount) || 0, e.frequency);
+        const color = overBudget ? 'var(--red)' : CHART_PALETTE[(incIdx * 3 + i) % CHART_PALETTE.length];
+        legendHtml += '<span><span class="profit-row-legend-dot" style="background:' + color + '"></span>' + escHtml(e.name) + ' ' + fmtMoney(emo) + '</span>';
+      });
+      legendHtml += '</div>';
+      html += legendHtml;
+    } else {
+      html += '<span></span>';
+    }
+    const netClass = net >= 0 ? 'pos' : 'neg';
+    html += '<span class="profit-row-net ' + netClass + '">Net ' + fmtMoney(net) + '/mo \u00b7 ' + (grossMo > 0 ? netPct.toFixed(1) : '0') + '%</span>';
+    html += '</div>';
+
+    html += '</div>';
+  });
+  html += '</div></div>';
+  return html;
 }
 
 function renderDashboard() {
@@ -1436,6 +1601,9 @@ function renderDashboard() {
   html += '</div></div>';
 
   html += '</div>';
+
+  // Row 3: Profitability per income source (full width)
+  html += buildProfitabilityDashboard();
 
   container.innerHTML = html;
 
@@ -1639,7 +1807,7 @@ function buildRecRow(r) {
   const amt = parseFloat(r.amount) || 0;
   const amtDisplay = amt > 0 ? (r.direction === 'btc-income' ? fmtSats(amt) : fmtMoney(amt)) : '<span style="color:var(--text-dim)">--</span>';
 
-  let html = '<tr data-rec-row="' + r.id + '" class="' + (!r.enabled ? 'rec-disabled' : '') + '">';
+  let html = '<tr data-rec-row="' + r.id + '" class="' + (!r.enabled ? 'rec-disabled ' : '') + (editing ? 'rec-editing' : '') + '">';
 
   // Enable toggle
   html += '<td><div class="rec-toggle' + (r.enabled ? ' on' : '') + '" onclick="toggleRecEnabled(\'' + r.id + '\')">';
@@ -1654,9 +1822,25 @@ function buildRecRow(r) {
 
   // Category
   if (editing) {
-    html += '<td><select class="rec-inline-select" id="rec-cat-' + r.id + '">' + buildCategoryOptions(r.direction, r.category) + '</select></td>';
+    let catCell = '<select class="rec-inline-select" id="rec-cat-' + r.id + '">' + buildCategoryOptions(r.direction, r.category) + '</select>';
+    if (r.direction === 'expense') {
+      const incomeItems = appData.recurring.filter(x => x.direction === 'income');
+      if (incomeItems.length > 0) {
+        let opts = '<option value="">— No income link —</option>';
+        incomeItems.forEach(inc => {
+          opts += '<option value="' + inc.id + '"' + (r.incomeSourceId === inc.id ? ' selected' : '') + '>\u21B3 ' + escHtml(inc.name || '(unnamed)') + '</option>';
+        });
+        catCell += '<select class="rec-inline-select" id="rec-inclink-' + r.id + '" style="margin-top:4px;font-size:10px;width:100%;max-width:100%;box-sizing:border-box" title="Link to income source">' + opts + '</select>';
+      }
+    }
+    html += '<td>' + catCell + '</td>';
   } else {
-    html += '<td style="cursor:pointer" onclick="startRecEdit(\'' + r.id + '\')">' + (r.category ? '<span class="cat-badge">' + escHtml(r.category) + '</span>' : '<span style="color:var(--text-dim)">--</span>') + '</td>';
+    let catDisplay = r.category ? '<span class="cat-badge">' + escHtml(r.category) + '</span>' : '<span style="color:var(--text-dim)">--</span>';
+    if (r.direction === 'expense' && r.incomeSourceId) {
+      const inc = appData.recurring.find(x => x.id === r.incomeSourceId);
+      if (inc) catDisplay += '<div style="font-size:9px;color:var(--text-dim);margin-top:2px">\u21B3 ' + escHtml(inc.name) + '</div>';
+    }
+    html += '<td style="cursor:pointer" onclick="startRecEdit(\'' + r.id + '\')">' + catDisplay + '</td>';
   }
 
   // Frequency
@@ -1768,6 +1952,8 @@ async function saveRecEdit(id) {
   if (dueEl) r.nextDue = dueEl.value;
   if (endEl) r.endDate = endEl.value || null;
   if (catEl) r.category = catEl.value || null;
+  const incLinkEl = document.getElementById('rec-inclink-' + id);
+  if (incLinkEl) r.incomeSourceId = incLinkEl.value || null;
   recEditingId = null;
   const sectionKey = r.direction.startsWith('btc-') ? 'btc' : r.direction;
   if (recSortCol) {
@@ -1806,6 +1992,7 @@ async function addRecurringItem(dir) {
     endDate: null,
     enabled: true,
     sourceId: null,
+    incomeSourceId: null,
     category: null,
     _liabId: null
   };
@@ -1998,11 +2185,11 @@ function renderTransactions() {
             const rowClass = 'tx-row' + (isBtc && !i.isPaid ? ' btc-row' : '') + (i.isPaid ? ' paid-row' : '') + (!i.isPaid && i.date < today ? ' past-due' : '') + (!i.isPaid && i.date === today ? ' due-today' : '');
             const rid = i.recurringId || '';
             const oid = i.oneoffId || '';
-            const editId = rid || oid;
-            const clickable = !i.isPaid && editId;
+            const editKey = rid ? rid + '|' + i.originalDate : oid;
+            const clickable = !i.isPaid && editKey;
 
             const txKey = (rid || oid) + '-' + i.date;
-            html += '<div class="' + rowClass + '" data-tx-key="' + txKey + '"' + (clickable ? ' style="cursor:pointer" onclick="toggleEditTx(\'' + editId + '\')"' : '') + '>';
+            html += '<div class="' + rowClass + '" data-tx-key="' + txKey + '"' + (clickable ? ' style="cursor:pointer" onclick="toggleEditTx(\'' + editKey + '\')"' : '') + '>';
             html += '<div><div class="tx-name">' + escHtml(i.name) + '</div>';
             html += '<div class="tx-meta">';
             if (i.isPaid) {
@@ -2024,7 +2211,7 @@ function renderTransactions() {
             }
             if (!i.isPaid) {
               const btnLabel = isBtc ? 'Received' : (isIncome ? 'Received' : 'Paid');
-              html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\',this)">' + btnLabel + '</button>';
+              html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\',this,\'' + (i.originalDate || '') + '\')">' + btnLabel + '</button>';
               html += '<button class="tx-btn danger" onclick="event.stopPropagation();skipTransaction(\'' + rid + '\',\'' + oid + '\',this)" title="Remove without affecting balance">&#10005;</button>';
             } else {
               html += '<button class="tx-btn undo" onclick="event.stopPropagation();undoPaid(\'' + i.historyId + '\',this)" title="Undo this payment">Undo</button>';
@@ -2033,7 +2220,7 @@ function renderTransactions() {
             html += '</div>';
 
             if (clickable) {
-              html += '<div class="edit-panel-wrap" data-edit-for="' + editId + '"' + (editingTxId !== editId ? ' style="display:none"' : '') + '>' + renderEditPanel(editId) + '</div>';
+              html += '<div class="edit-panel-wrap" data-edit-for="' + editKey + '"' + (editingTxId !== editKey ? ' style="display:none"' : '') + '>' + renderEditPanel(editKey) + '</div>';
             }
           });
         }
@@ -2184,47 +2371,101 @@ function escAttr(s) {
   return s.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function renderEditPanel(id) {
-  const r = appData.recurring.find(x => x.id === id);
-  const o = !r ? appData.oneoffs.find(x => x.id === id) : null;
-  const item = r || o;
-  if (!item) return '';
+function parseEditKey(editKey) {
+  const pipeIdx = editKey.indexOf('|');
+  if (pipeIdx === -1) return { kind: 'oneoff', id: editKey };
+  return { kind: 'recurring', id: editKey.slice(0, pipeIdx), originalDate: editKey.slice(pipeIdx + 1) };
+}
+
+function editKeyDomId(editKey) {
+  return editKey.replace(/\|/g, '_');
+}
+
+function renderEditPanel(editKey) {
+  const parsed = parseEditKey(editKey);
+  const domId = editKeyDomId(editKey);
   let html = '<div class="edit-panel" onclick="event.stopPropagation()"><div class="inline-form">';
-  html += '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="edit-name-' + item.id + '" value="' + escAttr(item.name) + '"></div>';
-  html += '<div class="form-field"><label>Amount</label><input class="form-input" id="edit-amount-' + item.id + '" type="number" step="0.01" value="' + item.amount + '"></div>';
-  if (r) {
-    html += '<div class="form-field"><label>Category</label><select class="form-select" id="edit-cat-' + r.id + '">' + buildCategoryOptions(r.direction, r.category) + '</select></div>';
-    html += '<div class="form-field"><label>Next Due</label><input class="form-input" id="edit-due-' + r.id + '" type="date" value="' + r.nextDue + '"></div>';
+  if (parsed.kind === 'recurring') {
+    const r = appData.recurring.find(x => x.id === parsed.id);
+    if (!r) return '';
+    const ov = findOverride(r.id, parsed.originalDate) || {};
+    const name = ov.name != null ? ov.name : r.name;
+    const amount = ov.amount != null ? ov.amount : r.amount;
+    const date = ov.date || parsed.originalDate;
+    const category = ov.category != null ? ov.category : r.category;
+    const hasOverride = !!findOverride(r.id, parsed.originalDate);
+    html += '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="edit-name-' + domId + '" value="' + escAttr(name) + '"></div>';
+    html += '<div class="form-field"><label>Amount</label><input class="form-input" id="edit-amount-' + domId + '" type="number" step="0.01" value="' + amount + '"></div>';
+    html += '<div class="form-field"><label>Category</label><select class="form-select" id="edit-cat-' + domId + '">' + buildCategoryOptions(r.direction, category) + '</select></div>';
+    html += '<div class="form-field"><label>Date</label><input class="form-input" id="edit-date-' + domId + '" type="date" value="' + date + '"></div>';
+    html += '<div class="form-actions">';
+    html += '<button class="form-btn cancel" onclick="event.stopPropagation();var p=this.closest(\'[data-edit-for]\');if(p)p.style.display=\'none\';editingTxId=null">Cancel</button>';
+    if (hasOverride) {
+      html += '<button class="form-btn cancel" onclick="resetEditTx(\'' + editKey + '\')" title="Revert to recurring template values">Reset</button>';
+    }
+    html += '<button class="form-btn" onclick="saveEditTx(\'' + editKey + '\')">Save</button>';
+    html += '</div>';
   } else {
-    html += '<div class="form-field"><label>Date</label><input class="form-input" id="edit-date-' + o.id + '" type="date" value="' + o.date + '"></div>';
+    const o = appData.oneoffs.find(x => x.id === parsed.id);
+    if (!o) return '';
+    html += '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="edit-name-' + domId + '" value="' + escAttr(o.name) + '"></div>';
+    html += '<div class="form-field"><label>Amount</label><input class="form-input" id="edit-amount-' + domId + '" type="number" step="0.01" value="' + o.amount + '"></div>';
+    html += '<div class="form-field"><label>Date</label><input class="form-input" id="edit-date-' + domId + '" type="date" value="' + o.date + '"></div>';
+    html += '<div class="form-actions">';
+    html += '<button class="form-btn cancel" onclick="event.stopPropagation();var p=this.closest(\'[data-edit-for]\');if(p)p.style.display=\'none\';editingTxId=null">Cancel</button>';
+    html += '<button class="form-btn" onclick="saveEditTx(\'' + editKey + '\')">Save</button>';
+    html += '</div>';
   }
-  html += '<div class="form-actions">';
-  html += '<button class="form-btn cancel" onclick="event.stopPropagation();var p=this.closest(\'[data-edit-for]\');if(p)p.style.display=\'none\';editingTxId=null">Cancel</button>';
-  html += '<button class="form-btn" onclick="saveEditTx(\'' + item.id + '\')">Save</button>';
-  html += '</div></div></div>';
+  html += '</div></div>';
   return html;
 }
 
-async function saveEditTx(id) {
-  const r = appData.recurring.find(x => x.id === id);
-  const o = !r ? appData.oneoffs.find(x => x.id === id) : null;
-  if (!r && !o) return;
-  if (r) {
-    r.name = document.getElementById('edit-name-' + id).value.trim();
-    r.amount = parseFloat(document.getElementById('edit-amount-' + id).value) || 0;
-    r.nextDue = document.getElementById('edit-due-' + id).value;
-    r.category = document.getElementById('edit-cat-' + id)?.value || null;
+async function saveEditTx(editKey) {
+  const parsed = parseEditKey(editKey);
+  const domId = editKeyDomId(editKey);
+  let displayName;
+  if (parsed.kind === 'recurring') {
+    const r = appData.recurring.find(x => x.id === parsed.id);
+    if (!r) return;
+    const name = document.getElementById('edit-name-' + domId).value.trim();
+    const amount = parseFloat(document.getElementById('edit-amount-' + domId).value) || 0;
+    const date = document.getElementById('edit-date-' + domId).value;
+    const category = document.getElementById('edit-cat-' + domId)?.value || null;
+    const patch = {};
+    if (name !== r.name) patch.name = name;
+    if (amount !== (parseFloat(r.amount) || 0)) patch.amount = amount;
+    if (date !== parsed.originalDate) patch.date = date;
+    if (category !== (r.category || null)) patch.category = category;
+    if (Object.keys(patch).length === 0) {
+      removeOverride(r.id, parsed.originalDate);
+    } else {
+      upsertOverride(r.id, parsed.originalDate, patch);
+    }
+    displayName = name;
   } else {
-    o.name = document.getElementById('edit-name-' + id).value.trim();
-    o.amount = parseFloat(document.getElementById('edit-amount-' + id).value) || 0;
-    o.date = document.getElementById('edit-date-' + id).value;
+    const o = appData.oneoffs.find(x => x.id === parsed.id);
+    if (!o) return;
+    o.name = document.getElementById('edit-name-' + domId).value.trim();
+    o.amount = parseFloat(document.getElementById('edit-amount-' + domId).value) || 0;
+    o.date = document.getElementById('edit-date-' + domId).value;
+    displayName = o.name;
   }
   editingTxId = null;
   await encryptAndSave();
   renderTransactions();
-  renderRecurring();
   renderSummaryAndBalance();
-  showToast('Updated ' + (r || o).name, 'success');
+  showToast('Updated ' + displayName, 'success');
+}
+
+async function resetEditTx(editKey) {
+  const parsed = parseEditKey(editKey);
+  if (parsed.kind !== 'recurring') return;
+  removeOverride(parsed.id, parsed.originalDate);
+  editingTxId = null;
+  await encryptAndSave();
+  renderTransactions();
+  renderSummaryAndBalance();
+  showToast('Reverted to template', 'success');
 }
 
 async function toggleEnabled(id) {
@@ -2367,6 +2608,7 @@ async function submitAddRecurring() {
     endDate: null,
     enabled: true,
     sourceId: null,
+    incomeSourceId: null,
     category: cat,
     _liabId: null
   });
@@ -3071,7 +3313,7 @@ async function clearAllData() {
   localStorage.removeItem(STORAGE_ENC);
   localStorage.removeItem(STORAGE_META);
   sessionKey = null;
-  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], overrides: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
   theme = 'dark';
   applyTheme();
   closeSettings();
@@ -3134,7 +3376,7 @@ function startBtcBalanceEdit() {
 // ── MARK PAID / RECEIVED ─────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-async function markPaid(recurringId, oneoffId, date, btn) {
+async function markPaid(recurringId, oneoffId, date, btn, originalDate) {
   const inlineRender = showPaidHistory;
   const row = btn ? btn.closest('.tx-row') : null;
 
@@ -3148,18 +3390,23 @@ async function markPaid(recurringId, oneoffId, date, btn) {
   if (recurringId) {
     const r = appData.recurring.find(x => x.id === recurringId);
     if (!r) return;
+    const origDate = originalDate || date;
+    const ov = findOverride(r.id, origDate);
+    const paidName = ov && ov.name != null ? ov.name : r.name;
+    const paidAmount = ov && ov.amount != null ? parseFloat(ov.amount) || 0 : parseFloat(r.amount) || 0;
     entry = {
       id: generateId(),
-      name: r.name,
-      amount: parseFloat(r.amount) || 0,
+      name: paidName,
+      amount: paidAmount,
       direction: r.direction,
       paidAt: new Date().toISOString(),
       recurringId: r.id,
       prevNextDue: r.nextDue
     };
-    while (r.nextDue <= date) {
+    while (r.nextDue <= origDate) {
       r.nextDue = advanceDate(r.nextDue, r.frequency);
     }
+    removeOverride(r.id, origDate);
   } else if (oneoffId) {
     const o = appData.oneoffs.find(x => x.id === oneoffId);
     if (!o) return;
