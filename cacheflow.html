@@ -392,14 +392,52 @@
     .about-card,.whats-new-card{max-width:calc(100vw - 32px);padding:24px 20px;max-height:80vh;gap:12px}
     .about-card .about-body{font-size:10px;line-height:1.5}
     .about-card .about-link{font-size:11px;padding:7px 10px}
-    .rec-table th,.rec-table td{padding:5px 4px;font-size:10px}
-    .rec-inline-input{font-size:10px;padding:3px 4px}
-    .rec-inline-select{font-size:9px;padding:3px 3px}
+    .rec-table-wrap{overflow-x:visible}
+    .rec-table,.rec-table thead,.rec-table tbody,.rec-table tr,.rec-table td{display:block}
+    .rec-table{table-layout:auto}
+    .rec-table thead,.rec-table colgroup{display:none}
+    .rec-table tr{display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;row-gap:4px;padding:10px 12px;border-bottom:1px solid var(--border)}
+    .rec-table td{padding:0;border:none;min-width:0;display:inline-flex;align-items:center;font-size:11px}
+    .rec-table td:nth-child(1){order:1}
+    .rec-table td:nth-child(2){order:2;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:none;font-size:12px}
+    .rec-table td:nth-child(5){order:3;text-align:right;font-size:12px;padding:0}
+    .rec-table td:nth-child(8){order:4}
+    .rec-table tr::after{content:"";flex-basis:100%;height:0;order:5}
+    .rec-table td:nth-child(3){order:6;font-size:10px;color:var(--text-muted)}
+    .rec-table td:nth-child(4){order:7;font-size:10px}
+    .rec-table td:nth-child(6){order:8;font-size:10px;color:var(--text-dim)}
+    .rec-table td:nth-child(7){order:9;font-size:10px;color:var(--text-dim)}
+    .rec-table td::before{color:var(--text-dim);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;margin-right:5px;flex-shrink:0}
+    .rec-table td:nth-child(3)::before{content:"Cat"}
+    .rec-table td:nth-child(4)::before{content:"Freq"}
+    .rec-table td:nth-child(6)::before{content:"Start"}
+    .rec-table td:nth-child(7)::before{content:"End"}
+    .rec-table tr.rec-editing td{flex:1 1 100%;overflow:visible;white-space:normal;text-align:left}
+    .rec-table tr.rec-editing::after{display:none}
+    .rec-table tr.rec-editing td:nth-child(1){flex:0 0 auto;order:1}
+    .rec-table tr.rec-editing td:nth-child(2){order:2}
+    .rec-table tr.rec-editing td:nth-child(3){order:3}
+    .rec-table tr.rec-editing td:nth-child(4){order:4}
+    .rec-table tr.rec-editing td:nth-child(5){order:5}
+    .rec-table tr.rec-editing td:nth-child(6){order:6}
+    .rec-table tr.rec-editing td:nth-child(7){order:7}
+    .rec-table tr.rec-editing td:nth-child(8){order:8;justify-content:center;gap:12px;margin-top:8px}
+    .rec-table tr.rec-editing td:nth-child(8) .form-btn{font-size:18px !important;padding:8px 20px !important;margin-right:0 !important}
+    .edit-panel .form-actions{justify-content:center;gap:12px;margin-top:4px}
+    .edit-panel .form-btn{font-size:18px;padding:8px 20px}
+    .rec-table tr.rec-editing td:nth-child(2)::before{content:"Name"}
+    .rec-table tr.rec-editing td:nth-child(3)::before{content:"Category"}
+    .rec-table tr.rec-editing td:nth-child(4)::before{content:"Frequency"}
+    .rec-table tr.rec-editing td:nth-child(5)::before{content:"Amount"}
+    .rec-table tr.rec-editing td:nth-child(6)::before{content:"Start Date"}
+    .rec-table tr.rec-editing td:nth-child(7)::before{content:"End Date"}
+    .rec-table tr.rec-editing td:not(:first-child):not(:last-child){flex-direction:column;align-items:stretch}
+    .rec-table tr.rec-editing td:not(:first-child):not(:last-child)::before{margin:0 0 3px 0;font-size:10px}
+    .rec-table tr.rec-editing .rec-inline-input,
+    .rec-table tr.rec-editing .rec-inline-select{width:100%;font-size:12px;padding:5px 8px;text-align:left}
     .btc-bar{padding:4px 12px 3px;gap:2px}
     .btc-price-label{display:none}
     .btc-bar-right{font-size:8px;margin-top:0}
-    .rec-inline-amount{width:100%}
-    .rec-due-input{width:100%}
     .dash-grid{grid-template-columns:1fr}
     .runway-days{font-size:36px}
     #tour-tooltip{width:calc(100vw - 32px);max-width:340px}
@@ -1763,7 +1801,7 @@ function buildRecRow(r) {
   const amt = parseFloat(r.amount) || 0;
   const amtDisplay = amt > 0 ? (r.direction === 'btc-income' ? fmtSats(amt) : fmtMoney(amt)) : '<span style="color:var(--text-dim)">--</span>';
 
-  let html = '<tr data-rec-row="' + r.id + '" class="' + (!r.enabled ? 'rec-disabled' : '') + '">';
+  let html = '<tr data-rec-row="' + r.id + '" class="' + (!r.enabled ? 'rec-disabled ' : '') + (editing ? 'rec-editing' : '') + '">';
 
   // Enable toggle
   html += '<td><div class="rec-toggle' + (r.enabled ? ' on' : '') + '" onclick="toggleRecEnabled(\'' + r.id + '\')">';
