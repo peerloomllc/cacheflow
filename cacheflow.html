@@ -840,6 +840,7 @@ let appData = {
   btcBalance: 0,
   recurring: [],
   oneoffs: [],
+  overrides: [],
   history: [],
   settings: { currency: 'USD' },
   importedAt: null,
@@ -1016,6 +1017,7 @@ async function submitUnlock() {
     appData.btcBalance = appData.btcBalance ?? 0;
     appData.recurring = appData.recurring || [];
     appData.oneoffs = appData.oneoffs || [];
+    appData.overrides = appData.overrides || [];
     appData.history = appData.history || [];
     appData.settings = appData.settings || { currency: 'USD' };
     appData.importedAt = appData.importedAt ?? null;
@@ -1110,7 +1112,7 @@ function lockApp() {
   sessionKey = null;
   isLocked = true;
   clearIdleTimer();
-  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], overrides: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
   showLockScreen('unlock');
 }
 
@@ -1135,6 +1137,7 @@ function clearIdleTimer() {
 
 async function encryptAndSave() {
   pruneHistory();
+  pruneOverrides();
   appData.savedAt = new Date().toISOString();
   const payload = JSON.stringify(appData);
   if (sessionKey) {
@@ -1148,12 +1151,39 @@ function pruneHistory() {
   appData.history = appData.history.filter(h => new Date(h.paidAt).getTime() > cutoff);
 }
 
+function pruneOverrides() {
+  if (!appData.overrides) return;
+  appData.overrides = appData.overrides.filter(o => {
+    const r = appData.recurring.find(x => x.id === o.recurringId);
+    if (!r) return false;
+    return o.originalDate >= r.nextDue;
+  });
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 // ── HELPERS ──────────────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
 function generateId() {
   return Math.random().toString(36).slice(2, 9);
+}
+
+function findOverride(recurringId, originalDate) {
+  return appData.overrides.find(o => o.recurringId === recurringId && o.originalDate === originalDate);
+}
+
+function upsertOverride(recurringId, originalDate, patch) {
+  let ov = findOverride(recurringId, originalDate);
+  if (!ov) {
+    ov = { id: generateId(), recurringId, originalDate };
+    appData.overrides.push(ov);
+  }
+  Object.assign(ov, patch);
+  return ov;
+}
+
+function removeOverride(recurringId, originalDate) {
+  appData.overrides = appData.overrides.filter(o => !(o.recurringId === recurringId && o.originalDate === originalDate));
 }
 
 function fmtMoney(n) {
@@ -1224,14 +1254,16 @@ function getUpcomingTransactions(daysAhead) {
     const rEnd = r.endDate ? new Date(r.endDate + 'T00:00:00') : null;
     while (due && new Date(due + 'T00:00:00') <= endDate) {
       if (rEnd && new Date(due + 'T00:00:00') > rEnd) break;
+      const ov = findOverride(r.id, due);
       items.push({
         type: 'recurring',
         recurringId: r.id,
-        name: r.name,
-        amount: parseFloat(r.amount) || 0,
+        originalDate: due,
+        name: ov && ov.name != null ? ov.name : r.name,
+        amount: ov && ov.amount != null ? parseFloat(ov.amount) || 0 : parseFloat(r.amount) || 0,
         direction: r.direction,
         frequency: r.frequency,
-        date: due
+        date: ov && ov.date ? ov.date : due
       });
       due = advanceDate(due, r.frequency);
     }
@@ -2109,11 +2141,11 @@ function renderTransactions() {
             const rowClass = 'tx-row' + (isBtc && !i.isPaid ? ' btc-row' : '') + (i.isPaid ? ' paid-row' : '') + (!i.isPaid && i.date < today ? ' past-due' : '') + (!i.isPaid && i.date === today ? ' due-today' : '');
             const rid = i.recurringId || '';
             const oid = i.oneoffId || '';
-            const editId = rid || oid;
-            const clickable = !i.isPaid && editId;
+            const editKey = rid ? rid + '|' + i.originalDate : oid;
+            const clickable = !i.isPaid && editKey;
 
             const txKey = (rid || oid) + '-' + i.date;
-            html += '<div class="' + rowClass + '" data-tx-key="' + txKey + '"' + (clickable ? ' style="cursor:pointer" onclick="toggleEditTx(\'' + editId + '\')"' : '') + '>';
+            html += '<div class="' + rowClass + '" data-tx-key="' + txKey + '"' + (clickable ? ' style="cursor:pointer" onclick="toggleEditTx(\'' + editKey + '\')"' : '') + '>';
             html += '<div><div class="tx-name">' + escHtml(i.name) + '</div>';
             html += '<div class="tx-meta">';
             if (i.isPaid) {
@@ -2135,7 +2167,7 @@ function renderTransactions() {
             }
             if (!i.isPaid) {
               const btnLabel = isBtc ? 'Received' : (isIncome ? 'Received' : 'Paid');
-              html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\',this)">' + btnLabel + '</button>';
+              html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\',this,\'' + (i.originalDate || '') + '\')">' + btnLabel + '</button>';
               html += '<button class="tx-btn danger" onclick="event.stopPropagation();skipTransaction(\'' + rid + '\',\'' + oid + '\',this)" title="Remove without affecting balance">&#10005;</button>';
             } else {
               html += '<button class="tx-btn undo" onclick="event.stopPropagation();undoPaid(\'' + i.historyId + '\',this)" title="Undo this payment">Undo</button>';
@@ -2144,7 +2176,7 @@ function renderTransactions() {
             html += '</div>';
 
             if (clickable) {
-              html += '<div class="edit-panel-wrap" data-edit-for="' + editId + '"' + (editingTxId !== editId ? ' style="display:none"' : '') + '>' + renderEditPanel(editId) + '</div>';
+              html += '<div class="edit-panel-wrap" data-edit-for="' + editKey + '"' + (editingTxId !== editKey ? ' style="display:none"' : '') + '>' + renderEditPanel(editKey) + '</div>';
             }
           });
         }
@@ -2295,47 +2327,101 @@ function escAttr(s) {
   return s.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function renderEditPanel(id) {
-  const r = appData.recurring.find(x => x.id === id);
-  const o = !r ? appData.oneoffs.find(x => x.id === id) : null;
-  const item = r || o;
-  if (!item) return '';
+function parseEditKey(editKey) {
+  const pipeIdx = editKey.indexOf('|');
+  if (pipeIdx === -1) return { kind: 'oneoff', id: editKey };
+  return { kind: 'recurring', id: editKey.slice(0, pipeIdx), originalDate: editKey.slice(pipeIdx + 1) };
+}
+
+function editKeyDomId(editKey) {
+  return editKey.replace(/\|/g, '_');
+}
+
+function renderEditPanel(editKey) {
+  const parsed = parseEditKey(editKey);
+  const domId = editKeyDomId(editKey);
   let html = '<div class="edit-panel" onclick="event.stopPropagation()"><div class="inline-form">';
-  html += '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="edit-name-' + item.id + '" value="' + escAttr(item.name) + '"></div>';
-  html += '<div class="form-field"><label>Amount</label><input class="form-input" id="edit-amount-' + item.id + '" type="number" step="0.01" value="' + item.amount + '"></div>';
-  if (r) {
-    html += '<div class="form-field"><label>Category</label><select class="form-select" id="edit-cat-' + r.id + '">' + buildCategoryOptions(r.direction, r.category) + '</select></div>';
-    html += '<div class="form-field"><label>Next Due</label><input class="form-input" id="edit-due-' + r.id + '" type="date" value="' + r.nextDue + '"></div>';
+  if (parsed.kind === 'recurring') {
+    const r = appData.recurring.find(x => x.id === parsed.id);
+    if (!r) return '';
+    const ov = findOverride(r.id, parsed.originalDate) || {};
+    const name = ov.name != null ? ov.name : r.name;
+    const amount = ov.amount != null ? ov.amount : r.amount;
+    const date = ov.date || parsed.originalDate;
+    const category = ov.category != null ? ov.category : r.category;
+    const hasOverride = !!findOverride(r.id, parsed.originalDate);
+    html += '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="edit-name-' + domId + '" value="' + escAttr(name) + '"></div>';
+    html += '<div class="form-field"><label>Amount</label><input class="form-input" id="edit-amount-' + domId + '" type="number" step="0.01" value="' + amount + '"></div>';
+    html += '<div class="form-field"><label>Category</label><select class="form-select" id="edit-cat-' + domId + '">' + buildCategoryOptions(r.direction, category) + '</select></div>';
+    html += '<div class="form-field"><label>Date</label><input class="form-input" id="edit-date-' + domId + '" type="date" value="' + date + '"></div>';
+    html += '<div class="form-actions">';
+    html += '<button class="form-btn cancel" onclick="event.stopPropagation();var p=this.closest(\'[data-edit-for]\');if(p)p.style.display=\'none\';editingTxId=null">Cancel</button>';
+    if (hasOverride) {
+      html += '<button class="form-btn cancel" onclick="resetEditTx(\'' + editKey + '\')" title="Revert to recurring template values">Reset</button>';
+    }
+    html += '<button class="form-btn" onclick="saveEditTx(\'' + editKey + '\')">Save</button>';
+    html += '</div>';
   } else {
-    html += '<div class="form-field"><label>Date</label><input class="form-input" id="edit-date-' + o.id + '" type="date" value="' + o.date + '"></div>';
+    const o = appData.oneoffs.find(x => x.id === parsed.id);
+    if (!o) return '';
+    html += '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="edit-name-' + domId + '" value="' + escAttr(o.name) + '"></div>';
+    html += '<div class="form-field"><label>Amount</label><input class="form-input" id="edit-amount-' + domId + '" type="number" step="0.01" value="' + o.amount + '"></div>';
+    html += '<div class="form-field"><label>Date</label><input class="form-input" id="edit-date-' + domId + '" type="date" value="' + o.date + '"></div>';
+    html += '<div class="form-actions">';
+    html += '<button class="form-btn cancel" onclick="event.stopPropagation();var p=this.closest(\'[data-edit-for]\');if(p)p.style.display=\'none\';editingTxId=null">Cancel</button>';
+    html += '<button class="form-btn" onclick="saveEditTx(\'' + editKey + '\')">Save</button>';
+    html += '</div>';
   }
-  html += '<div class="form-actions">';
-  html += '<button class="form-btn cancel" onclick="event.stopPropagation();var p=this.closest(\'[data-edit-for]\');if(p)p.style.display=\'none\';editingTxId=null">Cancel</button>';
-  html += '<button class="form-btn" onclick="saveEditTx(\'' + item.id + '\')">Save</button>';
-  html += '</div></div></div>';
+  html += '</div></div>';
   return html;
 }
 
-async function saveEditTx(id) {
-  const r = appData.recurring.find(x => x.id === id);
-  const o = !r ? appData.oneoffs.find(x => x.id === id) : null;
-  if (!r && !o) return;
-  if (r) {
-    r.name = document.getElementById('edit-name-' + id).value.trim();
-    r.amount = parseFloat(document.getElementById('edit-amount-' + id).value) || 0;
-    r.nextDue = document.getElementById('edit-due-' + id).value;
-    r.category = document.getElementById('edit-cat-' + id)?.value || null;
+async function saveEditTx(editKey) {
+  const parsed = parseEditKey(editKey);
+  const domId = editKeyDomId(editKey);
+  let displayName;
+  if (parsed.kind === 'recurring') {
+    const r = appData.recurring.find(x => x.id === parsed.id);
+    if (!r) return;
+    const name = document.getElementById('edit-name-' + domId).value.trim();
+    const amount = parseFloat(document.getElementById('edit-amount-' + domId).value) || 0;
+    const date = document.getElementById('edit-date-' + domId).value;
+    const category = document.getElementById('edit-cat-' + domId)?.value || null;
+    const patch = {};
+    if (name !== r.name) patch.name = name;
+    if (amount !== (parseFloat(r.amount) || 0)) patch.amount = amount;
+    if (date !== parsed.originalDate) patch.date = date;
+    if (category !== (r.category || null)) patch.category = category;
+    if (Object.keys(patch).length === 0) {
+      removeOverride(r.id, parsed.originalDate);
+    } else {
+      upsertOverride(r.id, parsed.originalDate, patch);
+    }
+    displayName = name;
   } else {
-    o.name = document.getElementById('edit-name-' + id).value.trim();
-    o.amount = parseFloat(document.getElementById('edit-amount-' + id).value) || 0;
-    o.date = document.getElementById('edit-date-' + id).value;
+    const o = appData.oneoffs.find(x => x.id === parsed.id);
+    if (!o) return;
+    o.name = document.getElementById('edit-name-' + domId).value.trim();
+    o.amount = parseFloat(document.getElementById('edit-amount-' + domId).value) || 0;
+    o.date = document.getElementById('edit-date-' + domId).value;
+    displayName = o.name;
   }
   editingTxId = null;
   await encryptAndSave();
   renderTransactions();
-  renderRecurring();
   renderSummaryAndBalance();
-  showToast('Updated ' + (r || o).name, 'success');
+  showToast('Updated ' + displayName, 'success');
+}
+
+async function resetEditTx(editKey) {
+  const parsed = parseEditKey(editKey);
+  if (parsed.kind !== 'recurring') return;
+  removeOverride(parsed.id, parsed.originalDate);
+  editingTxId = null;
+  await encryptAndSave();
+  renderTransactions();
+  renderSummaryAndBalance();
+  showToast('Reverted to template', 'success');
 }
 
 async function toggleEnabled(id) {
@@ -3183,7 +3269,7 @@ async function clearAllData() {
   localStorage.removeItem(STORAGE_ENC);
   localStorage.removeItem(STORAGE_META);
   sessionKey = null;
-  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], overrides: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
   theme = 'dark';
   applyTheme();
   closeSettings();
@@ -3246,7 +3332,7 @@ function startBtcBalanceEdit() {
 // ── MARK PAID / RECEIVED ─────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-async function markPaid(recurringId, oneoffId, date, btn) {
+async function markPaid(recurringId, oneoffId, date, btn, originalDate) {
   const inlineRender = showPaidHistory;
   const row = btn ? btn.closest('.tx-row') : null;
 
@@ -3260,18 +3346,23 @@ async function markPaid(recurringId, oneoffId, date, btn) {
   if (recurringId) {
     const r = appData.recurring.find(x => x.id === recurringId);
     if (!r) return;
+    const origDate = originalDate || date;
+    const ov = findOverride(r.id, origDate);
+    const paidName = ov && ov.name != null ? ov.name : r.name;
+    const paidAmount = ov && ov.amount != null ? parseFloat(ov.amount) || 0 : parseFloat(r.amount) || 0;
     entry = {
       id: generateId(),
-      name: r.name,
-      amount: parseFloat(r.amount) || 0,
+      name: paidName,
+      amount: paidAmount,
       direction: r.direction,
       paidAt: new Date().toISOString(),
       recurringId: r.id,
       prevNextDue: r.nextDue
     };
-    while (r.nextDue <= date) {
+    while (r.nextDue <= origDate) {
       r.nextDue = advanceDate(r.nextDue, r.frequency);
     }
+    removeOverride(r.id, origDate);
   } else if (oneoffId) {
     const o = appData.oneoffs.find(x => x.id === oneoffId);
     if (!o) return;
