@@ -239,8 +239,6 @@
   .date-group-header{padding:5px 16px;background:var(--surface2);font-family:var(--mono);font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);border-bottom:1px solid var(--border)}
   .month-group-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--surface2);font-family:var(--mono);font-size:15px;letter-spacing:1px;color:var(--text-muted);border-bottom:1px solid var(--border);user-select:none;transition:background .1s}
   .month-group-header:hover{background:var(--surface);color:var(--text)}
-  .week-group-header{display:flex;justify-content:space-between;align-items:center;padding:6px 16px 6px 28px;font-family:var(--mono);font-size:14px;letter-spacing:1px;color:var(--text-dim);border-bottom:1px solid rgba(255,255,255,.05);background:var(--surface);cursor:pointer;user-select:none;transition:background .1s}
-  .week-group-header:hover{background:var(--surface2);color:var(--text-muted)}
 
   /* ── EDIT PANEL ── */
   .edit-panel{animation:fadeUp .15s ease}
@@ -851,8 +849,11 @@
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 const CHANGELOG = [
+  { version: '1.3.1', items: [
+    'Transactions tab: removed the Weekly subgroups — transactions are now grouped by month only'
+  ]},
   { version: '1.3.0', items: [
     'Transactions tab: each upcoming row now shows a running balance projection ($1,000 − $50 = $950), turning red when a transaction would push you into the red',
     'Transactions tab: Paid/Received buttons replaced with a compact ✓ checkmark to match the ✕ delete button',
@@ -2095,7 +2096,6 @@ let txSearchQuery = '';
 let txHorizonMonths = 6;
 let fcHorizonMonths = 6;
 let collapsedMonths = {};
-let collapsedWeeks = {};
 let txAllCollapsed = false;
 
 function renderTransactions() {
@@ -2186,91 +2186,56 @@ function renderTransactions() {
     html += '<span style="color:' + (monthTotal >= 0 ? 'var(--accent)' : 'var(--red)') + '">' + (monthTotal >= 0 ? '+' : '') + fmtMoney(monthTotal) + '</span>';
     html += '</div>';
     html += '<div class="collapse-body" data-month-body="' + monthKey + '"' + (collapsed ? ' style="display:none"' : '') + '>';
-    {
-      const weekGroups = {};
-      items.forEach(i => {
-        const itemDate = new Date(i.date + 'T00:00:00');
-        const day = itemDate.getDay();
-        const mon = new Date(itemDate);
-        mon.setDate(mon.getDate() - ((day + 6) % 7));
-        const weekKey = toDateStr(mon);
-        if (!weekGroups[weekKey]) weekGroups[weekKey] = { mon: new Date(mon), items: [] };
-        weekGroups[weekKey].items.push(i);
-      });
+    items.forEach(i => {
+      const isBtc = i.direction.startsWith('btc-');
+      const isIncome = i.direction === 'income' || i.direction === 'btc-income';
+      const rowClass = 'tx-row' + (isBtc && !i.isPaid ? ' btc-row' : '') + (i.isPaid ? ' paid-row' : '') + (!i.isPaid && i.date < today ? ' past-due' : '') + (!i.isPaid && i.date === today ? ' due-today' : '');
+      const rid = i.recurringId || '';
+      const oid = i.oneoffId || '';
+      const editKey = rid ? rid + '|' + i.originalDate : oid;
+      const clickable = !i.isPaid && editKey;
 
-      Object.keys(weekGroups).sort().forEach(weekKey => {
-        const wg = weekGroups[weekKey];
-        const sun = new Date(wg.mon);
-        sun.setDate(sun.getDate() + 6);
-        const wLabel = wg.mon.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' \u2013 ' + sun.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const weekTotal = wg.items.reduce((s, i) => {
-          if (i.direction === 'expense' || i.direction === 'btc-buy') return s - i.amount;
-          if (i.direction === 'btc-income') return s + satsToFiat(i.amount);
-          return s + i.amount;
-        }, 0);
-        const wCollapsed = !!collapsedWeeks[weekKey];
-        const wArrow = wCollapsed ? '\u25b6' : '\u25bc';
-
-        html += '<div class="week-group-header" onclick="toggleWeek(\'' + weekKey + '\')" data-week-header="' + weekKey + '">';
-        html += '<div style="display:flex;align-items:center;gap:6px"><span class="collapse-arrow" style="font-size:10px">' + wArrow + '</span>' + wLabel + '</div>';
-        html += '<span style="color:' + (weekTotal >= 0 ? 'var(--accent)' : 'var(--red)') + '">' + (weekTotal >= 0 ? '+' : '') + fmtMoney(weekTotal) + '</span>';
+      const txKey = (rid || oid) + '-' + i.date;
+      html += '<div class="' + rowClass + '" data-tx-key="' + txKey + '"' + (clickable ? ' style="cursor:pointer" onclick="toggleEditTx(\'' + editKey + '\')"' : '') + '>';
+      html += '<div><div class="tx-name">' + escHtml(i.name) + '</div>';
+      html += '<div class="tx-meta">';
+      if (i.isPaid) {
+        html += '<span class="paid-badge">paid ' + fmtRelative(i.paidAt) + '</span>';
+      } else {
+        html += '<span>' + fmtDate(i.date) + '</span>';
+        if (i.date < today) html += '<span class="overdue-badge">OVERDUE</span>';
+      }
+      html += '</div></div>';
+      if (i.direction === 'btc-income') {
+        html += '<div class="tx-amount" style="color:var(--btc)">+' + fmtSats(i.amount) + '</div>';
+      } else if (i.runningBalance !== undefined) {
+        const sign = (i.direction === 'income') ? ' + ' : ' − ';
+        const amtCls = isBtc ? 'tx-eq-amt btc' : (isIncome ? 'tx-eq-amt income' : 'tx-eq-amt expense');
+        const afterCls = 'tx-eq-after' + (i.runningBalance < 0 ? ' negative' : '');
+        const dca = (i.direction === 'btc-buy') ? '<span style="font-size:11px"> DCA</span>' : '';
+        html += '<div class="tx-eq">';
+        html += '<span class="tx-eq-before">' + fmtMoney(i.balanceBefore) + '</span>';
+        html += '<span class="' + amtCls + '">' + sign + fmtMoney(i.amount) + dca + '</span>';
+        html += '<span class="tx-eq-op"> = </span>';
+        html += '<span class="' + afterCls + '">' + fmtMoney(i.runningBalance) + '</span>';
         html += '</div>';
-        html += '<div class="collapse-body" data-week-body="' + weekKey + '"' + (wCollapsed ? ' style="display:none"' : '') + '>';
-        {
-          wg.items.forEach(i => {
-            const isBtc = i.direction.startsWith('btc-');
-            const isIncome = i.direction === 'income' || i.direction === 'btc-income';
-            const rowClass = 'tx-row' + (isBtc && !i.isPaid ? ' btc-row' : '') + (i.isPaid ? ' paid-row' : '') + (!i.isPaid && i.date < today ? ' past-due' : '') + (!i.isPaid && i.date === today ? ' due-today' : '');
-            const rid = i.recurringId || '';
-            const oid = i.oneoffId || '';
-            const editKey = rid ? rid + '|' + i.originalDate : oid;
-            const clickable = !i.isPaid && editKey;
+      } else {
+        html += '<div' + (isIncome ? ' class="tx-amount income"' : ' class="tx-amount"') + '>' + (isIncome ? '+' : '') + fmtMoney(i.amount) + '</div>';
+      }
+      if (!i.isPaid) {
+        const btnTitle = isBtc || isIncome ? 'Mark received' : 'Mark paid';
+        html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\',this,\'' + (i.originalDate || '') + '\')" title="' + btnTitle + '">&#10003;</button>';
+        html += '<button class="tx-btn danger" onclick="event.stopPropagation();skipTransaction(\'' + rid + '\',\'' + oid + '\',this)" title="Remove without affecting balance">&#10005;</button>';
+      } else {
+        html += '<button class="tx-btn undo" onclick="event.stopPropagation();undoPaid(\'' + i.historyId + '\',this)" title="Undo this payment">Undo</button>';
+        html += '<div></div>';
+      }
+      html += '</div>';
 
-            const txKey = (rid || oid) + '-' + i.date;
-            html += '<div class="' + rowClass + '" data-tx-key="' + txKey + '"' + (clickable ? ' style="cursor:pointer" onclick="toggleEditTx(\'' + editKey + '\')"' : '') + '>';
-            html += '<div><div class="tx-name">' + escHtml(i.name) + '</div>';
-            html += '<div class="tx-meta">';
-            if (i.isPaid) {
-              html += '<span class="paid-badge">paid ' + fmtRelative(i.paidAt) + '</span>';
-            } else {
-              html += '<span>' + fmtDate(i.date) + '</span>';
-              if (i.date < today) html += '<span class="overdue-badge">OVERDUE</span>';
-            }
-            html += '</div></div>';
-            if (i.direction === 'btc-income') {
-              html += '<div class="tx-amount" style="color:var(--btc)">+' + fmtSats(i.amount) + '</div>';
-            } else if (i.runningBalance !== undefined) {
-              const sign = (i.direction === 'income') ? ' + ' : ' − ';
-              const amtCls = isBtc ? 'tx-eq-amt btc' : (isIncome ? 'tx-eq-amt income' : 'tx-eq-amt expense');
-              const afterCls = 'tx-eq-after' + (i.runningBalance < 0 ? ' negative' : '');
-              const dca = (i.direction === 'btc-buy') ? '<span style="font-size:11px"> DCA</span>' : '';
-              html += '<div class="tx-eq">';
-              html += '<span class="tx-eq-before">' + fmtMoney(i.balanceBefore) + '</span>';
-              html += '<span class="' + amtCls + '">' + sign + fmtMoney(i.amount) + dca + '</span>';
-              html += '<span class="tx-eq-op"> = </span>';
-              html += '<span class="' + afterCls + '">' + fmtMoney(i.runningBalance) + '</span>';
-              html += '</div>';
-            } else {
-              html += '<div' + (isIncome ? ' class="tx-amount income"' : ' class="tx-amount"') + '>' + (isIncome ? '+' : '') + fmtMoney(i.amount) + '</div>';
-            }
-            if (!i.isPaid) {
-              const btnTitle = isBtc || isIncome ? 'Mark received' : 'Mark paid';
-              html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\',this,\'' + (i.originalDate || '') + '\')" title="' + btnTitle + '">&#10003;</button>';
-              html += '<button class="tx-btn danger" onclick="event.stopPropagation();skipTransaction(\'' + rid + '\',\'' + oid + '\',this)" title="Remove without affecting balance">&#10005;</button>';
-            } else {
-              html += '<button class="tx-btn undo" onclick="event.stopPropagation();undoPaid(\'' + i.historyId + '\',this)" title="Undo this payment">Undo</button>';
-              html += '<div></div>';
-            }
-            html += '</div>';
-
-            if (clickable) {
-              html += '<div class="edit-panel-wrap" data-edit-for="' + editKey + '"' + (editingTxId !== editKey ? ' style="display:none"' : '') + '>' + renderEditPanel(editKey) + '</div>';
-            }
-          });
-        }
-        html += '</div>'; // close week body
-      });
-    }
+      if (clickable) {
+        html += '<div class="edit-panel-wrap" data-edit-for="' + editKey + '"' + (editingTxId !== editKey ? ' style="display:none"' : '') + '>' + renderEditPanel(editKey) + '</div>';
+      }
+    });
     html += '</div>'; // close month body
   });
 
@@ -2322,17 +2287,6 @@ function toggleCollapse(body, arrow, collapsed) {
   }
 }
 
-function toggleWeek(key) {
-  collapsedWeeks[key] = !collapsedWeeks[key];
-  const header = document.querySelector('[data-week-header="' + key + '"]');
-  const body = document.querySelector('[data-week-body="' + key + '"]');
-  if (header && body) {
-    toggleCollapse(body, header.querySelector('.collapse-arrow'), collapsedWeeks[key]);
-  } else {
-    renderTransactions();
-  }
-}
-
 function toggleMonth(key) {
   collapsedMonths[key] = !collapsedMonths[key];
   const header = document.querySelector('[data-month-header="' + key + '"]');
@@ -2351,13 +2305,6 @@ function toggleCollapseAll() {
     const key = h.dataset.monthHeader;
     collapsedMonths[key] = txAllCollapsed;
     const body = document.querySelector('[data-month-body="' + key + '"]');
-    if (body) toggleCollapse(body, h.querySelector('.collapse-arrow'), txAllCollapsed);
-  });
-  const weekHeaders = document.querySelectorAll('[data-week-header]');
-  weekHeaders.forEach(h => {
-    const key = h.dataset.weekHeader;
-    collapsedWeeks[key] = txAllCollapsed;
-    const body = document.querySelector('[data-week-body="' + key + '"]');
     if (body) toggleCollapse(body, h.querySelector('.collapse-arrow'), txAllCollapsed);
   });
   const btn = document.querySelector('[onclick="event.stopPropagation();toggleCollapseAll()"]');
