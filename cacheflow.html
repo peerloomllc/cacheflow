@@ -119,6 +119,12 @@
   .balance-label{font-family:var(--mono);font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:2px}
   .balance-value{font-family:var(--serif);font-size:40px;letter-spacing:-1px;color:var(--accent);text-shadow:0 0 40px rgba(168,208,141,.3);transition:all .4s}
   .balance-value.negative{color:var(--red);text-shadow:0 0 40px rgba(224,112,112,.3)}
+  .balance-value.sats{color:var(--btc);text-shadow:0 0 40px rgba(247,147,26,.3)}
+  .fs-unit-toggle{display:inline-flex;background:var(--surface2);border:1px solid var(--border);border-radius:3px;overflow:hidden;margin-top:6px}
+  .fs-unit-toggle .unit-btn{font-family:var(--mono);font-size:14px;letter-spacing:1px;padding:4px 10px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;transition:all .15s}
+  .fs-unit-toggle .unit-btn.active{background:rgba(247,147,26,.15);color:var(--btc)}
+  .fs-unit-toggle .unit-btn[disabled]{opacity:.35;cursor:not-allowed}
+  body[data-display-unit="sats"] .s-value.income{color:var(--btc)}
   .balance-sub-lines{margin-top:6px;display:grid;grid-template-columns:auto 1fr;gap:2px 6px;text-align:right;justify-items:end;align-items:center}
   .balance-sub-lines .sub-label{font-family:var(--mono);font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);align-self:center}
   .balance-sub-lines .sub-value{font-family:var(--mono);font-size:22px;letter-spacing:-.3px;color:var(--text-muted);transition:all .3s}
@@ -580,6 +586,10 @@
       <div class="balance-display">
         <div class="balance-label">Total Balance</div>
         <div class="balance-value" id="combinedDisplay">—</div>
+        <div class="fs-unit-toggle" title="Denominate values in fiat or sats">
+          <button class="unit-btn active" id="display-unit-fiat" onclick="setDisplayUnit('fiat')">FIAT</button>
+          <button class="unit-btn" id="display-unit-sats" onclick="setDisplayUnit('sats')">SATS</button>
+        </div>
         <div class="balance-sub-lines">
           <span class="sub-label">Cash</span>
           <span class="sub-value editable" id="balanceDisplay">—</span>
@@ -849,8 +859,13 @@
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.4.0';
 const CHANGELOG = [
+  { version: '1.4.0', items: [
+    'New FIAT / SATS toggle under Total Balance — denominates all fiat values (Total Balance, summary bar, recurring, dashboard, forecast) in sats; Cash sub-line stays in fiat',
+    'Toggle is disabled when BTC price is unavailable, and auto-falls back to fiat if the price fetch fails while sats mode is active; preference persists with your data',
+    'Recurring expense categories: added Taxes, Childcare, Dues & Memberships, Fees & Charges, Gifts & Donations, Personal Care, Pets, and Travel'
+  ]},
   { version: '1.3.1', items: [
     'Transactions tab: removed the Weekly subgroups — transactions are now grouped by month only'
   ]},
@@ -906,6 +921,7 @@ const CURRENCIES = {
   JPY: { symbol:'¥', code:'jpy', label:'JPY (¥)' },
 };
 let fxRate = 1;
+let displayUnit = 'fiat'; // 'fiat' | 'sats'
 function csym() { return CURRENCIES[appData.settings.currency]?.symbol || '$'; }
 
 let appData = {
@@ -925,7 +941,7 @@ let appData = {
 // ══════════════════════════════════════════════════════════════════════════
 
 const CATEGORIES = {
-  expense: ['Debt','Education','Entertainment','Food & Dining','Healthcare','Housing','Insurance','Savings','Shopping','Subscriptions','Transportation','Utilities','Other'],
+  expense: ['Childcare','Debt','Dues & Memberships','Education','Entertainment','Fees & Charges','Food & Dining','Gifts & Donations','Healthcare','Housing','Insurance','Personal Care','Pets','Savings','Shopping','Subscriptions','Taxes','Transportation','Travel','Utilities','Other'],
   income: ['Freelance','Gift','Investment','Rental','Salary','Side Hustle','Other']
 };
 
@@ -1099,6 +1115,10 @@ async function submitUnlock() {
     if (appData.settings.currency && CURRENCIES[appData.settings.currency]) {
       document.getElementById('btcPairLabel').textContent = 'BTC / ' + appData.settings.currency;
     }
+    if (appData.settings.displayUnit === 'sats' || appData.settings.displayUnit === 'fiat') {
+      displayUnit = appData.settings.displayUnit;
+    }
+    refreshDisplayUnitToggle();
     setLockProgress('lock-progress', 'lock-progress-bar', 100, true);
     setTimeout(async () => {
       setLockProgress('lock-progress', 'lock-progress-bar', 0, false);
@@ -1259,11 +1279,29 @@ function removeOverride(recurringId, originalDate) {
   appData.overrides = appData.overrides.filter(o => !(o.recurringId === recurringId && o.originalDate === originalDate));
 }
 
-function fmtMoney(n) {
+function fiatToSats(n) {
+  if (!btcPrice || !n) return 0;
+  return (n / btcPrice) * 1e8;
+}
+
+function fmtSatsCompact(n) {
+  const abs = Math.abs(n), sign = n < 0 ? '-' : '';
+  if (abs >= 1e9) return sign + (abs / 1e9).toFixed(1) + 'B sats';
+  if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1) + 'M sats';
+  if (abs >= 1e4) return sign + (abs / 1e3).toFixed(0) + 'K sats';
+  return sign + Math.round(abs).toLocaleString() + ' sats';
+}
+
+function fmtFiat(n) {
   const v = n * fxRate;
   const abs = Math.abs(v);
   const str = Math.round(abs).toLocaleString('en-US');
   return (v < 0 ? '-' : '') + csym() + str;
+}
+
+function fmtMoney(n) {
+  if (displayUnit === 'sats' && btcPrice) return fmtSatsCompact(fiatToSats(n));
+  return fmtFiat(n);
 }
 
 async function fetchFxRate() {
@@ -1405,12 +1443,14 @@ function renderBalanceHeader() {
   const combined = combinedBalance();
   const combEl = document.getElementById('combinedDisplay');
   combEl.textContent = fmtMoney(combined);
-  combEl.className = 'balance-value' + (combined < 0 ? ' negative' : '');
+  const balCls = combined < 0 ? ' negative' : (displayUnit === 'sats' ? ' sats' : '');
+  combEl.className = 'balance-value' + balCls;
+  document.body.setAttribute('data-display-unit', displayUnit);
 
-  // Cash sub-line
+  // Cash sub-line — always shown in fiat
   const bal = appData.balance;
   const balEl = document.getElementById('balanceDisplay');
-  balEl.textContent = fmtMoney(bal);
+  balEl.textContent = fmtFiat(bal);
   balEl.className = 'sub-value editable' + (bal < 0 ? ' negative' : '');
   balEl.onclick = startBalanceEdit;
 
@@ -1420,7 +1460,7 @@ function renderBalanceHeader() {
   btcEl.className = 'sub-value editable btc-value';
   btcEl.onclick = startBtcBalanceEdit;
   const btcFiat = satsToFiat(appData.btcBalance);
-  document.getElementById('btcFiatDisplay').textContent = btcFiat > 0 ? '≈ ' + fmtMoney(btcFiat) : '';
+  document.getElementById('btcFiatDisplay').textContent = (btcFiat > 0 && displayUnit !== 'sats') ? '≈ ' + fmtMoney(btcFiat) : '';
 }
 
 function renderAll() {
@@ -3020,6 +3060,29 @@ async function setCurrencySetting(val) {
   await encryptAndSave();
 }
 
+async function setDisplayUnit(unit) {
+  if (unit !== 'fiat' && unit !== 'sats') return;
+  if (unit === 'sats' && !btcPrice) {
+    showToast('BTC price unavailable — cannot denominate in sats', 'error');
+    return;
+  }
+  displayUnit = unit;
+  appData.settings.displayUnit = unit;
+  refreshDisplayUnitToggle();
+  renderAll();
+  await encryptAndSave();
+}
+
+function refreshDisplayUnitToggle() {
+  const fiatBtn = document.getElementById('display-unit-fiat');
+  const satsBtn = document.getElementById('display-unit-sats');
+  if (!fiatBtn || !satsBtn) return;
+  fiatBtn.classList.toggle('active', displayUnit === 'fiat');
+  satsBtn.classList.toggle('active', displayUnit === 'sats');
+  satsBtn.disabled = !btcPrice;
+  satsBtn.title = btcPrice ? '' : 'BTC price unavailable';
+}
+
 function closeSettings() {
   document.getElementById('settings-modal').classList.add('hidden');
 }
@@ -3281,6 +3344,9 @@ async function confirmBackupImport() {
   if (appData.settings.currency && CURRENCIES[appData.settings.currency]) {
     document.getElementById('btcPairLabel').textContent = 'BTC / ' + appData.settings.currency;
   }
+  displayUnit = (appData.settings.displayUnit === 'sats' || appData.settings.displayUnit === 'fiat')
+    ? appData.settings.displayUnit : 'fiat';
+  refreshDisplayUnitToggle();
   await fetchFxRate();
 
   pendingBackupData = null;
@@ -3586,10 +3652,13 @@ async function fetchBtcPrice(manual) {
     const dispPrice = price * fxRate;
     disp.textContent = csym() + dispPrice.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
     updateBtcAge();
+    refreshDisplayUnitToggle();
     if (document.getElementById('combinedDisplay')) {
       renderBalanceHeader();
+      var affectsAll = displayUnit === 'sats';
       var hasBtc = appData.btcBalance > 0 || appData.recurring.some(function(r) { return r.enabled && r.direction.startsWith('btc-'); });
-      if (hasBtc) {
+      if (affectsAll) renderAll();
+      else if (hasBtc) {
         if (currentTab === 'dashboard') renderDashboard();
         if (currentTab === 'forecast') renderForecast();
       }
@@ -3600,6 +3669,14 @@ async function fetchBtcPrice(manual) {
     disp.style.color = 'var(--text-dim)';
     disp.textContent = 'Unavailable';
     document.getElementById('btcPriceAge').textContent = 'API unreachable';
+    if (displayUnit === 'sats') {
+      displayUnit = 'fiat';
+      appData.settings.displayUnit = 'fiat';
+      refreshDisplayUnitToggle();
+      if (document.getElementById('combinedDisplay')) renderAll();
+    } else {
+      refreshDisplayUnitToggle();
+    }
     if (manual) showToast('Could not fetch BTC price', 'error');
   }
 }
