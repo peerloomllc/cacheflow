@@ -298,8 +298,36 @@
   .bar-btn-about .about-icon{display:inline-block;width:14px;height:14px;border:1.5px solid currentColor;border-radius:50%;text-align:center;line-height:13px;font-size:14px;font-style:italic;font-family:Georgia,serif;margin-right:4px}
   .bar-btn-secondary{background:transparent;border:1px solid var(--border-light);color:var(--text-muted)}
   .bar-btn-secondary:hover{border-color:var(--gold);color:var(--gold)}
+  .bar-btn-privacy{background:transparent;border:1px solid var(--border-light);color:var(--text-muted)}
+  .bar-btn-privacy:hover{border-color:var(--accent);color:var(--accent)}
+  .bar-btn-privacy.on{background:rgba(168,208,141,0.12);border-color:var(--accent);color:var(--accent)}
   .bar-btn-primary{background:var(--accent);color:var(--bg);font-weight:500}
   .bar-btn-primary:hover{background:#bfe0a0}
+
+  /* ── PRIVACY MODE — blur monetary values ── */
+  body[data-privacy="on"] .balance-value,
+  body[data-privacy="on"] .balance-sub-lines .sub-value,
+  body[data-privacy="on"] .balance-sub-lines .sub-fiat,
+  body[data-privacy="on"] .summary-bar .s-value,
+  body[data-privacy="on"] .runway-days,
+  body[data-privacy="on"] .runway-detail,
+  body[data-privacy="on"] .profit-row-gross,
+  body[data-privacy="on"] .profit-row-net,
+  body[data-privacy="on"] .profit-row-legend,
+  body[data-privacy="on"] .profit-bar,
+  body[data-privacy="on"] .chart-card .chart-body,
+  body[data-privacy="on"] .month-group-header > span:last-child,
+  body[data-privacy="on"] .tx-amount,
+  body[data-privacy="on"] .tx-eq,
+  body[data-privacy="on"] .rec-section-total,
+  body[data-privacy="on"] .rec-table td.r,
+  body[data-privacy="on"] .rec-table td.rec-amt-cell,
+  body[data-privacy="on"] .forecast-table tbody td:not(:first-child),
+  body[data-privacy="on"] .fc-tooltip{
+    filter:blur(8px);
+    transition:filter .25s ease;
+    user-select:none;
+  }
 
   /* ── ABOUT MODAL ── */
   #about-modal{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease}
@@ -401,7 +429,7 @@
     .tx-amount{text-align:center}
     .inline-form{gap:8px;padding:10px 12px}
     .inline-form .form-field{min-width:calc(50% - 8px)}
-    .form-actions{width:100%;justify-content:flex-end}
+    .form-actions{width:100%;justify-content:center}
     .settings-card{max-width:calc(100vw - 32px);padding:24px 20px}
     .lock-card,.pwa-gate-card{max-width:calc(100vw - 32px);padding:24px 20px}
     .forecast-table th,.forecast-table td{padding:8px 8px;font-size:15px}
@@ -409,6 +437,8 @@
     .save-hint{display:none}
     .btn-group{flex-wrap:nowrap;flex-shrink:0;gap:6px}
     .btn-group .bar-btn{padding:8px 10px;font-size:14px;white-space:nowrap;flex-shrink:0}
+    .bar-btn-privacy .privacy-label{display:none}
+    .bar-btn-privacy{padding:8px 10px}
     .about-card,.whats-new-card{max-width:calc(100vw - 32px);padding:24px 20px;max-height:80vh;gap:12px}
     .about-card .about-body{font-size:14px;line-height:1.5}
     .about-card .about-link{font-size:15px;padding:7px 10px}
@@ -734,6 +764,7 @@
   <div class="btn-group">
     <button class="bar-btn bar-btn-about" onclick="openAbout()"><span class="about-icon">i</span> About</button>
     <button class="bar-btn bar-btn-secondary" onclick="openSettings()" title="Settings">&#9881; Settings</button>
+    <button class="bar-btn bar-btn-privacy" id="privacyBtn" onclick="togglePrivacy()" title="Toggle privacy mode" aria-label="Toggle privacy mode">&#128065; <span class="privacy-label">Privacy</span></button>
     <button class="bar-btn bar-btn-secondary" onclick="lockApp()" title="Lock now">&#128274; Lock</button>
     <button class="bar-btn bar-btn-primary" onclick="encryptAndSave().then(()=>showToast('Saved','success'))">Save &#10003;</button>
   </div>
@@ -859,8 +890,12 @@
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 const CHANGELOG = [
+  { version: '1.5.0', items: [
+    'New privacy mode toggle in the bottom menu (eye icon next to Lock) — blurs balances, summary bar, recurring/transaction/forecast amounts, dashboard charts, and runway. Setting persists with your data',
+    'Mobile: Save/Cancel buttons in the Quick Add and Add Recurring forms now center within their row'
+  ]},
   { version: '1.4.0', items: [
     'New FIAT / SATS toggle under Total Balance — denominates all fiat values (Total Balance, summary bar, recurring, dashboard, forecast) in sats; Cash sub-line stays in fiat',
     'Toggle is disabled when BTC price is unavailable, and auto-falls back to fiat if the price fetch fails while sats mode is active; preference persists with your data',
@@ -1119,6 +1154,7 @@ async function submitUnlock() {
       displayUnit = appData.settings.displayUnit;
     }
     refreshDisplayUnitToggle();
+    applyPrivacyMode();
     setLockProgress('lock-progress', 'lock-progress-bar', 100, true);
     setTimeout(async () => {
       setLockProgress('lock-progress', 'lock-progress-bar', 0, false);
@@ -3083,6 +3119,19 @@ function refreshDisplayUnitToggle() {
   satsBtn.title = btcPrice ? '' : 'BTC price unavailable';
 }
 
+async function togglePrivacy() {
+  appData.settings.privacyMode = !appData.settings.privacyMode;
+  applyPrivacyMode();
+  await encryptAndSave();
+}
+
+function applyPrivacyMode() {
+  const on = !!(appData.settings && appData.settings.privacyMode);
+  document.body.setAttribute('data-privacy', on ? 'on' : 'off');
+  const btn = document.getElementById('privacyBtn');
+  if (btn) btn.classList.toggle('on', on);
+}
+
 function closeSettings() {
   document.getElementById('settings-modal').classList.add('hidden');
 }
@@ -3347,6 +3396,7 @@ async function confirmBackupImport() {
   displayUnit = (appData.settings.displayUnit === 'sats' || appData.settings.displayUnit === 'fiat')
     ? appData.settings.displayUnit : 'fiat';
   refreshDisplayUnitToggle();
+  applyPrivacyMode();
   await fetchFxRate();
 
   pendingBackupData = null;
