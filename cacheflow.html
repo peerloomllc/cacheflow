@@ -138,9 +138,10 @@
   .btc-balance-edit-input{background:var(--surface2);border:1px solid var(--btc);border-radius:4px;color:var(--btc);font-family:var(--mono);font-size:22px;padding:2px 8px;outline:none;width:140px;text-align:right}
   /* ── SUMMARY BAR ── */
   .summary-bar{position:fixed;top:0;left:0;right:0;z-index:50;display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border);background:var(--surface)}
-  .summary-item{padding:16px 32px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px}
+  .summary-item{padding:16px 32px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;cursor:help}
   .summary-item:last-child{border-right:none}
   .s-label{font-family:var(--mono);font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim)}
+  .s-info{font-size:11px;color:var(--text-dim);opacity:.6;margin-left:4px;letter-spacing:0;vertical-align:middle}
   .s-value{font-family:var(--mono);font-size:25px;font-weight:500}
   .s-value.income{color:var(--accent)}
   .s-value.expense{color:var(--red)}
@@ -216,7 +217,7 @@
   .form-input:focus{border-color:var(--accent-dim)}
   input[type="date"]{color-scheme:dark}
   input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.7) sepia(0.3) hue-rotate(80deg);cursor:pointer}
-  .form-select{background:var(--surface);border:1px solid var(--border-light);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:16px;padding:6px 8px;outline:none;cursor:pointer}
+  .form-select{background:var(--surface);border:1px solid var(--border-light);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:16px;padding:6px 28px 6px 8px;outline:none;cursor:pointer}
   .form-btn{background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:14px;font-weight:500;padding:6px 14px;border:none;border-radius:3px;cursor:pointer;transition:background .15s}
   .form-btn:hover{background:#bfe0a0}
   .form-btn.cancel{background:transparent;border:1px solid var(--border);color:var(--text-dim)}
@@ -501,7 +502,7 @@
   .chart-card-title{font-family:var(--mono);font-size:15px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)}
   .chart-card-sub{font-family:var(--mono);font-size:14px;color:var(--text-dim);margin-top:3px}
   .chart-body{padding:20px}
-  .chart-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:14px}
+  .chart-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;justify-content:center}
   .legend-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:15px;color:var(--text-muted)}
   .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
   .runway-body{padding:24px 20px;text-align:center}
@@ -639,16 +640,16 @@
 </div>
 
   <div class="summary-bar" id="summaryBar">
-    <div class="summary-item">
-      <div class="s-label">Monthly Income</div>
+    <div class="summary-item" title="Recurring items at their monthly rate, plus one-offs from the past 60 days and next 60 days averaged across that 120-day window.">
+      <div class="s-label">Avg Monthly Income <span class="s-info" aria-hidden="true">&#9432;</span></div>
       <div class="s-value income" id="sumIncome">—</div>
     </div>
-    <div class="summary-item">
-      <div class="s-label">Monthly Expenses</div>
+    <div class="summary-item" title="Recurring items at their monthly rate, plus one-offs from the past 60 days and next 60 days averaged across that 120-day window.">
+      <div class="s-label">Avg Monthly Expenses <span class="s-info" aria-hidden="true">&#9432;</span></div>
       <div class="s-value expense" id="sumExpense">—</div>
     </div>
-    <div class="summary-item">
-      <div class="s-label">Net Cash Flow</div>
+    <div class="summary-item" title="Recurring items at their monthly rate, plus one-offs from the past 60 days and next 60 days averaged across that 120-day window.">
+      <div class="s-label">Avg Net Cash Flow <span class="s-info" aria-hidden="true">&#9432;</span></div>
       <div class="s-value" id="sumNet">—</div>
     </div>
   </div>
@@ -890,8 +891,13 @@
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 const CHANGELOG = [
+  { version: '1.6.0', items: [
+    'Quick Add: new categories on one-off transactions (Bonus added to Income); $/₿ unit toggle so a one-off can be denominated in USD or sats (e.g. a 50,000-sat coffee). Sats-denominated one-offs settle against your BTC balance on Paid/Received',
+    'Dashboard Income/Expense Breakdown charts now include one-offs from the past 60 days and next 60 days, averaged across that 120-day window — captures unexpected expenses alongside recurring baselines. Legends moved below the doughnuts',
+    'Quick Add layout polish: reduced Description width, fixed dropdown arrow overlapping the Category text, and Save/Cancel buttons centered on mobile inline forms'
+  ]},
   { version: '1.5.0', items: [
     'New privacy mode toggle in the bottom menu (eye icon next to Lock) — blurs balances, summary bar, recurring/transaction/forecast amounts, dashboard charts, and runway. Setting persists with your data',
     'Mobile: Save/Cancel buttons in the Quick Add and Add Recurring forms now center within their row'
@@ -977,7 +983,7 @@ let appData = {
 
 const CATEGORIES = {
   expense: ['Childcare','Debt','Dues & Memberships','Education','Entertainment','Fees & Charges','Food & Dining','Gifts & Donations','Healthcare','Housing','Insurance','Personal Care','Pets','Savings','Shopping','Subscriptions','Taxes','Transportation','Travel','Utilities','Other'],
-  income: ['Freelance','Gift','Investment','Rental','Salary','Side Hustle','Other']
+  income: ['Bonus','Freelance','Gift','Investment','Rental','Salary','Side Hustle','Other']
 };
 
 function getCategoriesForDir(dir) {
@@ -1141,6 +1147,7 @@ async function submitUnlock() {
     appData.btcBalance = appData.btcBalance ?? 0;
     appData.recurring = appData.recurring || [];
     appData.oneoffs = appData.oneoffs || [];
+    migrateOneoffUnits(appData.oneoffs);
     appData.overrides = appData.overrides || [];
     appData.history = appData.history || [];
     appData.settings = appData.settings || { currency: 'USD' };
@@ -1373,6 +1380,35 @@ function normalizeToMonthly(amount, frequency) {
   }
 }
 
+function migrateOneoffUnits(oneoffs) {
+  if (!Array.isArray(oneoffs)) return;
+  for (const o of oneoffs) {
+    if (!o) continue;
+    if (o.direction === 'btc-expense') { o.direction = 'expense'; o.unit = 'sats'; }
+    if (!o.unit) o.unit = 'fiat';
+  }
+}
+
+const ONEOFF_WINDOW_DAYS = 60;
+const ONEOFF_WINDOW_MONTHS = (ONEOFF_WINDOW_DAYS * 2) / 30.4375;
+
+function forEachWindowedOneoff(fn) {
+  if (!appData.oneoffs || appData.oneoffs.length === 0) return;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const ms = ONEOFF_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const winStart = today.getTime() - ms;
+  const winEnd = today.getTime() + ms;
+  for (const o of appData.oneoffs) {
+    if (!o || !o.date) continue;
+    const t = new Date(o.date + 'T00:00:00').getTime();
+    if (t < winStart || t > winEnd) continue;
+    const raw = parseFloat(o.amount) || 0;
+    const fiatAmt = o.unit === 'sats' ? satsToFiat(raw) : raw;
+    fn(o, fiatAmt / ONEOFF_WINDOW_MONTHS);
+  }
+}
+
 function advanceDate(dateStr, frequency) {
   const d = new Date(dateStr + 'T00:00:00');
   switch (frequency) {
@@ -1425,6 +1461,7 @@ function getUpcomingTransactions(daysAhead) {
         name: o.name,
         amount: parseFloat(o.amount) || 0,
         direction: o.direction,
+        unit: o.unit || 'fiat',
         frequency: null,
         date: o.date
       });
@@ -1509,6 +1546,10 @@ function renderAll() {
     if (r.direction === 'income') monthlyIncome += monthly;
     else if (r.direction === 'expense' || r.direction === 'btc-buy') monthlyExpense += monthly;
     // btc-income excluded from fiat summary — reflected in combined balance
+  });
+  forEachWindowedOneoff((o, monthly) => {
+    if (o.direction === 'income') monthlyIncome += monthly;
+    else if (o.direction === 'expense') monthlyExpense += monthly;
   });
   document.getElementById('sumIncome').textContent = fmtMoney(monthlyIncome);
   document.getElementById('sumExpense').textContent = fmtMoney(monthlyExpense);
@@ -1639,6 +1680,17 @@ function renderDashboard() {
     }
   });
 
+  forEachWindowedOneoff((o, monthly) => {
+    const cat = o.category || 'Uncategorized';
+    if (o.direction === 'income') {
+      incomeByCategory[cat] = (incomeByCategory[cat] || 0) + monthly;
+      monthlyIncome += monthly;
+    } else if (o.direction === 'expense') {
+      expenseByCategory[cat] = (expenseByCategory[cat] || 0) + monthly;
+      monthlyExpense += monthly;
+    }
+  });
+
   // ── BTC vs Fiat allocation ──
   const fiatBal = Math.abs(appData.balance);
   const btcFiat = satsToFiat(appData.btcBalance);
@@ -1663,16 +1715,18 @@ function renderDashboard() {
 
   html += '<div class="chart-card">';
   html += '<div class="chart-card-header"><div class="chart-card-title">Income Breakdown</div>';
-  html += '<div class="chart-card-sub">Monthly by category</div></div>';
-  html += '<div class="chart-body"><div id="legend-income" class="chart-legend"></div>';
-  html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartIncome"></canvas></div></div>';
+  html += '<div class="chart-card-sub">Avg / mo by category &middot; one-offs averaged across &plusmn;60d</div></div>';
+  html += '<div class="chart-body">';
+  html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartIncome"></canvas></div>';
+  html += '<div id="legend-income" class="chart-legend"></div></div>';
   html += '</div>';
 
   html += '<div class="chart-card">';
   html += '<div class="chart-card-header"><div class="chart-card-title">Expense Breakdown</div>';
-  html += '<div class="chart-card-sub">Monthly by category</div></div>';
-  html += '<div class="chart-body"><div id="legend-expense" class="chart-legend"></div>';
-  html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartExpense"></canvas></div></div>';
+  html += '<div class="chart-card-sub">Avg / mo by category &middot; one-offs averaged across &plusmn;60d</div></div>';
+  html += '<div class="chart-body">';
+  html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartExpense"></canvas></div>';
+  html += '<div id="legend-expense" class="chart-legend"></div></div>';
   html += '</div>';
 
   html += '</div>';
@@ -1683,8 +1737,9 @@ function renderDashboard() {
   html += '<div class="chart-card">';
   html += '<div class="chart-card-header"><div class="chart-card-title">BTC vs Fiat</div>';
   html += '<div class="chart-card-sub">Allocation by value' + (hasBtcNoPrice ? ' (awaiting BTC price\u2026)' : '') + '</div></div>';
-  html += '<div class="chart-body"><div id="legend-alloc" class="chart-legend"></div>';
-  html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartAlloc"></canvas></div></div>';
+  html += '<div class="chart-body">';
+  html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartAlloc"></canvas></div>';
+  html += '<div id="legend-alloc" class="chart-legend"></div></div>';
   html += '</div>';
 
   html += '<div class="chart-card">';
@@ -2213,6 +2268,7 @@ function renderTransactions() {
         name: h.name,
         amount: h.amount,
         direction: h.direction,
+        unit: h.unit || 'fiat',
         date: h.paidAt.slice(0, 10),
         paidAt: h.paidAt,
         isPaid: true,
@@ -2225,7 +2281,7 @@ function renderTransactions() {
   let projBal = appData.balance;
   allItems.forEach(i => {
     if (i.isPaid) return;
-    if (i.direction === 'btc-income') return;
+    if (i.direction === 'btc-income' || i.unit === 'sats') return;
     i.balanceBefore = projBal;
     if (i.direction === 'income') projBal += i.amount;
     else if (i.direction === 'expense' || i.direction === 'btc-buy') projBal -= i.amount;
@@ -2250,6 +2306,9 @@ function renderTransactions() {
     const d = new Date(monthKey + '-01T00:00:00');
     const monthLabel = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     const monthTotal = items.reduce((s, i) => {
+      if (i.unit === 'sats') {
+        return s + (i.direction === 'income' ? satsToFiat(i.amount) : -satsToFiat(i.amount));
+      }
       if (i.direction === 'expense' || i.direction === 'btc-buy') return s - i.amount;
       if (i.direction === 'btc-income') return s + satsToFiat(i.amount);
       return s + i.amount;
@@ -2263,7 +2322,7 @@ function renderTransactions() {
     html += '</div>';
     html += '<div class="collapse-body" data-month-body="' + monthKey + '"' + (collapsed ? ' style="display:none"' : '') + '>';
     items.forEach(i => {
-      const isBtc = i.direction.startsWith('btc-');
+      const isBtc = i.direction.startsWith('btc-') || i.unit === 'sats';
       const isIncome = i.direction === 'income' || i.direction === 'btc-income';
       const rowClass = 'tx-row' + (isBtc && !i.isPaid ? ' btc-row' : '') + (i.isPaid ? ' paid-row' : '') + (!i.isPaid && i.date < today ? ' past-due' : '') + (!i.isPaid && i.date === today ? ' due-today' : '');
       const rid = i.recurringId || '';
@@ -2284,6 +2343,9 @@ function renderTransactions() {
       html += '</div></div>';
       if (i.direction === 'btc-income') {
         html += '<div class="tx-amount" style="color:var(--btc)">+' + fmtSats(i.amount) + '</div>';
+      } else if (i.unit === 'sats') {
+        const sign = i.direction === 'income' ? '+' : '−';
+        html += '<div class="tx-amount" style="color:var(--btc)">' + sign + fmtSats(i.amount) + '</div>';
       } else if (i.runningBalance !== undefined) {
         const sign = (i.direction === 'income') ? ' + ' : ' − ';
         const amtCls = isBtc ? 'tx-eq-amt btc' : (isIncome ? 'tx-eq-amt income' : 'tx-eq-amt expense');
@@ -2299,7 +2361,7 @@ function renderTransactions() {
         html += '<div' + (isIncome ? ' class="tx-amount income"' : ' class="tx-amount"') + '>' + (isIncome ? '+' : '') + fmtMoney(i.amount) + '</div>';
       }
       if (!i.isPaid) {
-        const btnTitle = isBtc || isIncome ? 'Mark received' : 'Mark paid';
+        const btnTitle = isIncome || i.direction === 'btc-income' ? 'Mark received' : 'Mark paid';
         html += '<button class="tx-btn" onclick="event.stopPropagation();markPaid(\'' + rid + '\',\'' + oid + '\',\'' + i.date + '\',this,\'' + (i.originalDate || '') + '\')" title="' + btnTitle + '">&#10003;</button>';
         html += '<button class="tx-btn danger" onclick="event.stopPropagation();skipTransaction(\'' + rid + '\',\'' + oid + '\',this)" title="Remove without affecting balance">&#10005;</button>';
       } else {
@@ -2475,8 +2537,12 @@ function renderEditPanel(editKey) {
   } else {
     const o = appData.oneoffs.find(x => x.id === parsed.id);
     if (!o) return '';
+    const isSats = o.unit === 'sats';
+    const amtStep = isSats ? '1' : '0.01';
+    const amtLabel = isSats ? 'Amount (sats)' : 'Amount';
     html += '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="edit-name-' + domId + '" value="' + escAttr(o.name) + '"></div>';
-    html += '<div class="form-field"><label>Amount</label><input class="form-input" id="edit-amount-' + domId + '" type="number" step="0.01" value="' + o.amount + '"></div>';
+    html += '<div class="form-field"><label>' + amtLabel + '</label><input class="form-input" id="edit-amount-' + domId + '" type="number" step="' + amtStep + '" value="' + o.amount + '"></div>';
+    html += '<div class="form-field"><label>Category</label><select class="form-select" id="edit-cat-' + domId + '">' + buildCategoryOptions(o.direction, o.category) + '</select></div>';
     html += '<div class="form-field"><label>Date</label><input class="form-input" id="edit-date-' + domId + '" type="date" value="' + o.date + '"></div>';
     html += '<div class="form-actions">';
     html += '<button class="form-btn cancel" onclick="event.stopPropagation();var p=this.closest(\'[data-edit-for]\');if(p)p.style.display=\'none\';editingTxId=null">Cancel</button>';
@@ -2513,8 +2579,10 @@ async function saveEditTx(editKey) {
     const o = appData.oneoffs.find(x => x.id === parsed.id);
     if (!o) return;
     o.name = document.getElementById('edit-name-' + domId).value.trim();
-    o.amount = parseFloat(document.getElementById('edit-amount-' + domId).value) || 0;
+    const rawAmt = document.getElementById('edit-amount-' + domId).value;
+    o.amount = o.unit === 'sats' ? (parseInt(rawAmt, 10) || 0) : (parseFloat(rawAmt) || 0);
     o.date = document.getElementById('edit-date-' + domId).value;
+    o.category = document.getElementById('edit-cat-' + domId)?.value || null;
     displayName = o.name;
   }
   editingTxId = null;
@@ -2562,6 +2630,10 @@ function renderSummaryAndBalance() {
     if (r.direction === 'income') monthlyIncome += monthly;
     else if (r.direction === 'expense' || r.direction === 'btc-buy') monthlyExpense += monthly;
     // btc-income excluded from fiat summary — reflected in combined balance
+  });
+  forEachWindowedOneoff((o, monthly) => {
+    if (o.direction === 'income') monthlyIncome += monthly;
+    else if (o.direction === 'expense') monthlyExpense += monthly;
   });
   document.getElementById('sumIncome').textContent = fmtMoney(monthlyIncome);
   document.getElementById('sumExpense').textContent = fmtMoney(monthlyExpense);
@@ -2700,6 +2772,7 @@ function renderForecast() {
 
   const oneoffByMonth = {};
   appData.oneoffs.filter(o => !o.paid).forEach(o => {
+    if (o.unit === 'sats') return; // sats one-offs don't affect fiat balance
     const key = o.date.slice(0, 7);
     if (!oneoffByMonth[key]) oneoffByMonth[key] = { income: 0, expense: 0 };
     if (o.direction === 'income') oneoffByMonth[key].income += parseFloat(o.amount) || 0;
@@ -3384,6 +3457,7 @@ async function confirmBackupImport() {
   appData.btcBalance = d.btcBalance ?? 0;
   appData.recurring = d.recurring || [];
   appData.oneoffs = d.oneoffs || [];
+  migrateOneoffUnits(appData.oneoffs);
   appData.history = d.history || [];
   appData.settings = d.settings || { currency: 'USD' };
   appData.importedAt = d.importedAt ?? null;
@@ -3522,6 +3596,7 @@ async function markPaid(recurringId, oneoffId, date, btn, originalDate) {
       name: o.name,
       amount: parseFloat(o.amount) || 0,
       direction: o.direction,
+      unit: o.unit || 'fiat',
       paidAt: new Date().toISOString(),
       oneoffId: o.id
     };
@@ -3531,7 +3606,18 @@ async function markPaid(recurringId, oneoffId, date, btn, originalDate) {
   if (!entry) return;
 
   let toastMsg;
-  if (entry.direction === 'expense') {
+  if (entry.unit === 'sats') {
+    const sats = Math.round(entry.amount);
+    if (entry.direction === 'income') {
+      appData.btcBalance += sats;
+      entry.btcPriceAtTime = btcPrice;
+      toastMsg = 'Received: ' + entry.name + ' — +' + fmtSats(sats);
+    } else {
+      appData.btcBalance -= sats;
+      entry.btcPriceAtTime = btcPrice;
+      toastMsg = 'Paid: ' + entry.name + ' — −' + fmtSats(sats);
+    }
+  } else if (entry.direction === 'expense') {
     appData.balance -= entry.amount;
     toastMsg = 'Paid: ' + entry.name;
   } else if (entry.direction === 'income') {
@@ -3576,7 +3662,11 @@ async function undoPaid(historyId, btn) {
   const entry = appData.history[idx];
 
   // Reverse balance change
-  if (entry.direction === 'expense') {
+  if (entry.unit === 'sats') {
+    const sats = Math.round(entry.amount);
+    if (entry.direction === 'income') appData.btcBalance -= sats;
+    else appData.btcBalance += sats;
+  } else if (entry.direction === 'expense') {
     appData.balance += entry.amount;
   } else if (entry.direction === 'income') {
     appData.balance -= entry.amount;
@@ -3622,19 +3712,26 @@ async function undoPaid(historyId, btn) {
 
 let quickAddVisible = false;
 let qaDirection = 'expense';
+let qaUnit = 'fiat';
 
 function showQuickAdd() {
   quickAddVisible = !quickAddVisible;
   const container = document.getElementById('quick-add-form');
   if (!container) return;
   if (!quickAddVisible) { container.innerHTML = ''; return; }
+  qaDirection = 'expense';
+  qaUnit = 'fiat';
   const today = toDateStr(new Date());
   container.innerHTML = '<div class="inline-form">' +
-    '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="qa-name" placeholder="Description"></div>' +
+    '<div class="form-field" style="flex:1.3"><label>Name</label><input class="form-input" id="qa-name" placeholder="Description"></div>' +
     '<div class="form-field"><label>Amount</label><input class="form-input" id="qa-amount" type="number" step="0.01" min="0" placeholder="0.00"></div>' +
-    '<div class="form-field"><label>Type</label><div class="dir-toggle" id="qa-dir">' +
+    '<div class="form-field" style="flex:0 0 auto"><label>Unit</label><div class="dir-toggle" id="qa-unit">' +
+    '<button class="active" onclick="setQaUnit(\'fiat\')">$</button>' +
+    '<button onclick="setQaUnit(\'sats\')">&#8383;</button></div></div>' +
+    '<div class="form-field" style="flex:0 0 auto"><label>Type</label><div class="dir-toggle" id="qa-dir">' +
     '<button class="active expense-active" onclick="setQaDir(\'expense\')">Expense</button>' +
     '<button onclick="setQaDir(\'income\')">Income</button></div></div>' +
+    '<div class="form-field"><label>Category</label><select class="form-select" id="qa-cat">' + buildCategoryOptions(qaDirection, null) + '</select></div>' +
     '<div class="form-field"><label>Date</label><input class="form-input" id="qa-date" type="date" value="' + today + '"></div>' +
     '<div class="form-actions"><button class="form-btn cancel" onclick="showQuickAdd()">Cancel</button><button class="form-btn" onclick="submitQuickAdd()">Add</button></div>' +
     '</div>';
@@ -3648,12 +3745,37 @@ function setQaDir(dir) {
     const isThis = b.textContent.toLowerCase() === dir;
     b.className = isThis ? ('active' + (dir === 'expense' ? ' expense-active' : '')) : '';
   });
+  const catSel = document.getElementById('qa-cat');
+  if (catSel) catSel.innerHTML = buildCategoryOptions(dir, null);
+}
+
+function setQaUnit(unit) {
+  qaUnit = unit;
+  const btns = document.querySelectorAll('#qa-unit button');
+  btns.forEach(b => {
+    const isThis = (b.textContent === '$' && unit === 'fiat') || (b.textContent !== '$' && unit === 'sats');
+    let cls = '';
+    if (isThis) cls = 'active' + (unit === 'sats' ? ' btc-active' : '');
+    b.className = cls;
+  });
+  const amtInput = document.getElementById('qa-amount');
+  if (amtInput) {
+    if (unit === 'sats') {
+      amtInput.step = '1';
+      amtInput.placeholder = 'sats (e.g. 50000)';
+    } else {
+      amtInput.step = '0.01';
+      amtInput.placeholder = '0.00';
+    }
+  }
 }
 
 async function submitQuickAdd() {
   const name = document.getElementById('qa-name').value.trim();
-  const amount = parseFloat(document.getElementById('qa-amount').value);
+  const rawAmt = document.getElementById('qa-amount').value;
+  const amount = qaUnit === 'sats' ? parseInt(rawAmt, 10) : parseFloat(rawAmt);
   const date = document.getElementById('qa-date').value;
+  const category = document.getElementById('qa-cat')?.value || null;
   if (!name || !amount || !date) { showToast('Fill in all fields', 'error'); return; }
 
   appData.oneoffs.push({
@@ -3661,6 +3783,8 @@ async function submitQuickAdd() {
     name: name,
     amount: amount,
     direction: qaDirection,
+    unit: qaUnit,
+    category: category,
     date: date,
     paid: false
   });
