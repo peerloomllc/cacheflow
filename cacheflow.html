@@ -218,14 +218,14 @@
   input[type="date"]{color-scheme:dark}
   input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.7) sepia(0.3) hue-rotate(80deg);cursor:pointer}
   .form-select{background:var(--surface);border:1px solid var(--border-light);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:16px;padding:6px 28px 6px 8px;outline:none;cursor:pointer}
-  .form-btn{background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:14px;font-weight:500;padding:6px 14px;border:none;border-radius:3px;cursor:pointer;transition:background .15s}
+  .form-btn{background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:14px;font-weight:500;padding:6px 14px;border:1px solid transparent;border-radius:3px;cursor:pointer;transition:background .15s;box-sizing:border-box;line-height:1.4;min-width:80px;text-align:center}
   .form-btn:hover{background:#bfe0a0}
   .form-btn.cancel{background:transparent;border:1px solid var(--border);color:var(--text-dim)}
   .form-btn.cancel:hover{border-color:var(--text-dim);color:var(--text)}
 
   /* ── DIRECTION TOGGLE ── */
-  .dir-toggle{display:flex;border:1px solid var(--border-light);border-radius:3px;overflow:hidden}
-  .dir-toggle button{background:none;border:none;color:var(--text-dim);font-family:var(--mono);font-size:14px;padding:6px 10px;cursor:pointer;transition:all .15s}
+  .dir-toggle{display:flex;width:100%;border:1px solid var(--border-light);border-radius:3px;overflow:hidden}
+  .dir-toggle button{flex:1 1 0;min-width:0;background:none;border:none;color:var(--text-dim);font-family:var(--mono);font-size:14px;padding:6px 10px;cursor:pointer;transition:all .15s;text-align:center;white-space:nowrap}
   .dir-toggle button.active{background:var(--accent-glow);color:var(--accent)}
   .dir-toggle button.active.expense-active{background:var(--red-glow);color:var(--red)}
   .dir-toggle button.active.btc-active{background:var(--btc-glow);color:var(--btc)}
@@ -284,6 +284,13 @@
   .settings-input{background:var(--surface2);border:1px solid var(--border-light);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:18px;padding:9px 11px;outline:none;transition:border-color .15s;width:100%;cursor:pointer}
   .settings-input:focus{border-color:var(--accent-dim)}
   .settings-divider{border:none;border-top:1px solid var(--border);margin:4px 0}
+  .cc-group-label{font-family:var(--mono);font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);margin:8px 0 4px}
+  .cc-row{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--border-light);border-radius:4px;margin-bottom:4px;background:var(--surface2)}
+  .cc-name{flex:1;font-family:var(--mono);font-size:15px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cc-act{background:transparent;border:1px solid var(--border-light);color:var(--text-muted);font-family:var(--mono);font-size:13px;padding:4px 8px;border-radius:4px;cursor:pointer;transition:all .15s}
+  .cc-act:hover{border-color:var(--accent-dim);color:var(--accent)}
+  .cc-act.danger:hover{border-color:var(--red-dim);color:var(--red);background:var(--red-glow)}
+  .cc-empty{font-family:var(--mono);font-size:14px;color:var(--text-dim);text-align:center;padding:8px 0}
   .import-preview{font-family:var(--mono);font-size:15px;color:var(--text-muted);padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;margin-top:8px}
 
   /* ── BALANCE EDITOR ── */
@@ -430,7 +437,9 @@
     .tx-amount{text-align:center}
     .inline-form{gap:8px;padding:10px 12px}
     .inline-form .form-field{min-width:calc(50% - 8px)}
-    .form-actions{width:100%;justify-content:center}
+    .inline-form .form-field.toggle-field{flex:1 1 calc(50% - 8px) !important;min-width:0}
+    .form-actions{width:100%;justify-content:center;gap:12px}
+    .form-actions .form-btn{flex:1 1 0;max-width:200px;text-align:center}
     .settings-card{max-width:calc(100vw - 32px);padding:24px 20px}
     .lock-card,.pwa-gate-card{max-width:calc(100vw - 32px);padding:24px 20px}
     .forecast-table th,.forecast-table td{padding:8px 8px;font-size:15px}
@@ -438,8 +447,10 @@
     .save-hint{display:none}
     .btn-group{flex-wrap:nowrap;flex-shrink:0;gap:6px}
     .btn-group .bar-btn{padding:8px 10px;font-size:14px;white-space:nowrap;flex-shrink:0}
+    .bar-btn-label{display:none}
     .bar-btn-privacy .privacy-label{display:none}
-    .bar-btn-privacy{padding:8px 10px}
+    .btn-group .bar-btn:not(.bar-btn-primary){width:40px;height:40px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
+    .btn-group .bar-btn-about .about-icon{margin-right:0}
     .about-card,.whats-new-card{max-width:calc(100vw - 32px);padding:24px 20px;max-height:80vh;gap:12px}
     .about-card .about-body{font-size:14px;line-height:1.5}
     .about-card .about-link{font-size:15px;padding:7px 10px}
@@ -700,6 +711,14 @@
     <hr class="settings-divider">
 
     <div class="settings-section">
+      <div class="settings-section-label">Custom Categories</div>
+      <div id="settings-categories-list"></div>
+      <div class="settings-help">Rename or remove categories you've added. Built-in categories aren't editable. Add new ones from any Category dropdown.</div>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
       <div class="settings-section-label">Export / Import / Clear</div>
       <div style="display:flex;gap:8px">
         <button class="settings-btn" onclick="exportJSON()" style="flex:1">Export JSON</button>
@@ -763,10 +782,10 @@
 <div class="save-bar" style="display:none">
   <div class="save-hint">All data saved locally — <span>never leaves this device</span></div>
   <div class="btn-group">
-    <button class="bar-btn bar-btn-about" onclick="openAbout()"><span class="about-icon">i</span> About</button>
-    <button class="bar-btn bar-btn-secondary" onclick="openSettings()" title="Settings">&#9881; Settings</button>
     <button class="bar-btn bar-btn-privacy" id="privacyBtn" onclick="togglePrivacy()" title="Toggle privacy mode" aria-label="Toggle privacy mode">&#128065; <span class="privacy-label">Privacy</span></button>
-    <button class="bar-btn bar-btn-secondary" onclick="lockApp()" title="Lock now">&#128274; Lock</button>
+    <button class="bar-btn bar-btn-about" onclick="openAbout()" title="About"><span class="about-icon">i</span> <span class="bar-btn-label">About</span></button>
+    <button class="bar-btn bar-btn-secondary" onclick="openSettings()" title="Settings">&#9881; <span class="bar-btn-label">Settings</span></button>
+    <button class="bar-btn bar-btn-secondary" onclick="lockApp()" title="Lock now">&#128274; <span class="bar-btn-label">Lock</span></button>
     <button class="bar-btn bar-btn-primary" onclick="encryptAndSave().then(()=>showToast('Saved','success'))">Save &#10003;</button>
   </div>
 </div>
@@ -891,8 +910,14 @@
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 const CHANGELOG = [
+  { version: '1.7.0', items: [
+    'Custom categories: pick "+ New category…" at the bottom of any Category dropdown (Quick Add, Add Recurring, edit forms) to add your own. Income and expense lists stay separate; new entries are merged into the dropdown alphabetically with "Other" pinned last',
+    'Settings → Custom Categories: rename or delete the categories you\'ve added. Renaming propagates the new name to every transaction using it; deleting confirms with the usage count and clears the category from referencing transactions',
+    'Quick Add polish: Unit and Type toggle buttons are equal-width with centered text on mobile, and Cancel/Add buttons match height and width',
+    'Bottom menu on mobile: About, Settings, Privacy, and Lock are now uniform icon-only buttons (Save keeps its label); reordered to Privacy · About · Settings · Lock · Save'
+  ]},
   { version: '1.6.0', items: [
     'Quick Add: new categories on one-off transactions (Bonus added to Income); $/₿ unit toggle so a one-off can be denominated in USD or sats (e.g. a 50,000-sat coffee). Sats-denominated one-offs settle against your BTC balance on Paid/Received',
     'Dashboard Income/Expense Breakdown charts now include one-offs from the past 60 days and next 60 days, averaged across that 120-day window — captures unexpected expenses alongside recurring baselines. Legends moved below the doughnuts',
@@ -973,6 +998,7 @@ let appData = {
   overrides: [],
   history: [],
   settings: { currency: 'USD' },
+  customCategories: { expense: [], income: [] },
   importedAt: null,
   savedAt: null
 };
@@ -986,16 +1012,215 @@ const CATEGORIES = {
   income: ['Bonus','Freelance','Gift','Investment','Rental','Salary','Side Hustle','Other']
 };
 
+function categoryGroupForDir(dir) {
+  return (dir === 'income' || dir === 'btc-income') ? 'income' : 'expense';
+}
+
 function getCategoriesForDir(dir) {
-  return (dir === 'income' || dir === 'btc-income') ? CATEGORIES.income : CATEGORIES.expense;
+  const group = categoryGroupForDir(dir);
+  const builtIn = CATEGORIES[group];
+  const custom = (appData.customCategories && appData.customCategories[group]) || [];
+  // Merge built-in + custom (case-insensitive dedupe), keep 'Other' last
+  const seen = new Set();
+  const merged = [];
+  builtIn.concat(custom).forEach(c => {
+    if (!c) return;
+    if (c === 'Other') return;
+    const key = c.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    merged.push(c);
+  });
+  merged.sort((a, b) => a.localeCompare(b));
+  merged.push('Other');
+  return merged;
 }
 
 function buildCategoryOptions(dir, selected) {
   let html = '<option value=""' + (!selected ? ' selected' : '') + '>Uncategorized</option>';
   getCategoriesForDir(dir).forEach(c => {
-    html += '<option value="' + c + '"' + (selected === c ? ' selected' : '') + '>' + c + '</option>';
+    html += '<option value="' + escAttr(c) + '"' + (selected === c ? ' selected' : '') + '>' + escHtml(c) + '</option>';
   });
+  html += '<option value="__add_new__">+ New category…</option>';
   return html;
+}
+
+function categorySelectHtml(id, dir, selected, extraClass) {
+  const cls = extraClass || 'form-select';
+  return '<select class="' + cls + '" id="' + id + '"' +
+         ' data-dir="' + escAttr(dir) + '"' +
+         ' data-prev="' + escAttr(selected || '') + '"' +
+         ' onfocus="this.dataset.prev=this.value"' +
+         ' onchange="handleCategoryChange(this)">' +
+         buildCategoryOptions(dir, selected) +
+         '</select>';
+}
+
+function refreshCategorySelect(selectEl, dir, selected) {
+  if (!selectEl) return;
+  selectEl.dataset.dir = dir;
+  selectEl.dataset.prev = selected || '';
+  selectEl.innerHTML = buildCategoryOptions(dir, selected);
+}
+
+async function handleCategoryChange(selectEl) {
+  if (!selectEl) return;
+  if (selectEl.value !== '__add_new__') {
+    selectEl.dataset.prev = selectEl.value;
+    return;
+  }
+  const dir = selectEl.dataset.dir || 'expense';
+  const group = categoryGroupForDir(dir);
+  const prev = selectEl.dataset.prev || '';
+  const raw = prompt('Name for new ' + group + ' category:');
+  const name = (raw || '').trim();
+  if (!name) {
+    selectEl.value = prev;
+    return;
+  }
+  if (name.startsWith('__')) {
+    showToast('Invalid category name', 'error');
+    selectEl.value = prev;
+    return;
+  }
+  if (!appData.customCategories) appData.customCategories = { expense: [], income: [] };
+  appData.customCategories[group] = appData.customCategories[group] || [];
+  const builtIn = CATEGORIES[group];
+  const custom = appData.customCategories[group];
+  const lower = name.toLowerCase();
+  const existing = builtIn.find(s => s.toLowerCase() === lower) ||
+                   custom.find(s => s.toLowerCase() === lower);
+  if (existing) {
+    selectEl.innerHTML = buildCategoryOptions(dir, existing);
+    selectEl.dataset.prev = existing;
+    showToast('Category already exists', 'info');
+    return;
+  }
+  custom.push(name);
+  await encryptAndSave();
+  selectEl.innerHTML = buildCategoryOptions(dir, name);
+  selectEl.dataset.prev = name;
+  showToast('Added category: ' + name, 'success');
+}
+
+function countCategoryUsages(group, name) {
+  let n = 0;
+  appData.recurring.forEach(r => {
+    if (r.category === name && categoryGroupForDir(r.direction) === group) n++;
+  });
+  appData.oneoffs.forEach(o => {
+    if (o.category === name && categoryGroupForDir(o.direction) === group) n++;
+  });
+  (appData.overrides || []).forEach(ov => {
+    if (ov.category !== name) return;
+    const parent = appData.recurring.find(r => r.id === ov.recurringId);
+    if (parent && categoryGroupForDir(parent.direction) === group) n++;
+  });
+  return n;
+}
+
+function rewriteCategoryInGroup(group, oldName, newName) {
+  appData.recurring.forEach(r => {
+    if (r.category === oldName && categoryGroupForDir(r.direction) === group) r.category = newName;
+  });
+  appData.oneoffs.forEach(o => {
+    if (o.category === oldName && categoryGroupForDir(o.direction) === group) o.category = newName;
+  });
+  (appData.overrides || []).forEach(ov => {
+    if (ov.category !== oldName) return;
+    const parent = appData.recurring.find(r => r.id === ov.recurringId);
+    if (parent && categoryGroupForDir(parent.direction) === group) ov.category = newName;
+  });
+}
+
+let customCategoriesDelegationBound = false;
+function renderCustomCategoriesList() {
+  const container = document.getElementById('settings-categories-list');
+  if (!container) return;
+  if (!customCategoriesDelegationBound) {
+    container.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-cc-action]');
+      if (!btn) return;
+      const action = btn.dataset.ccAction;
+      const group = btn.dataset.ccGroup;
+      const name = btn.dataset.ccName;
+      if (action === 'rename') renameCustomCategory(group, name);
+      else if (action === 'delete') deleteCustomCategory(group, name);
+    });
+    customCategoriesDelegationBound = true;
+  }
+  const cc = appData.customCategories || { expense: [], income: [] };
+  const groups = [
+    { key: 'expense', label: 'Expense' },
+    { key: 'income', label: 'Income' }
+  ];
+  let html = '';
+  let totalCount = 0;
+  groups.forEach(g => {
+    const list = (cc[g.key] || []).slice().sort((a, b) => a.localeCompare(b));
+    totalCount += list.length;
+    if (list.length === 0) return;
+    html += '<div class="cc-group-label">' + g.label + '</div>';
+    list.forEach(name => {
+      const a = escAttr(name);
+      html += '<div class="cc-row">' +
+              '<span class="cc-name">' + escHtml(name) + '</span>' +
+              '<button class="cc-act" data-cc-action="rename" data-cc-group="' + g.key + '" data-cc-name="' + a + '">Rename</button>' +
+              '<button class="cc-act danger" data-cc-action="delete" data-cc-group="' + g.key + '" data-cc-name="' + a + '">Delete</button>' +
+              '</div>';
+    });
+  });
+  if (totalCount === 0) {
+    html = '<div class="cc-empty">No custom categories yet.</div>';
+  }
+  container.innerHTML = html;
+}
+
+async function renameCustomCategory(group, oldName) {
+  if (!appData.customCategories || !appData.customCategories[group]) return;
+  const list = appData.customCategories[group];
+  const idx = list.indexOf(oldName);
+  if (idx === -1) return;
+  const raw = prompt('Rename "' + oldName + '" to:', oldName);
+  if (raw === null) return;
+  const newName = raw.trim();
+  if (!newName || newName === oldName) return;
+  if (newName.startsWith('__')) {
+    showToast('Invalid category name', 'error');
+    return;
+  }
+  const lower = newName.toLowerCase();
+  const builtIn = CATEGORIES[group];
+  const collision = builtIn.find(s => s.toLowerCase() === lower) ||
+                    list.find((s, i) => i !== idx && s.toLowerCase() === lower);
+  if (collision) {
+    showToast('Category already exists', 'error');
+    return;
+  }
+  list[idx] = newName;
+  rewriteCategoryInGroup(group, oldName, newName);
+  await encryptAndSave();
+  renderCustomCategoriesList();
+  renderAll();
+  showToast('Renamed to: ' + newName, 'success');
+}
+
+async function deleteCustomCategory(group, name) {
+  if (!appData.customCategories || !appData.customCategories[group]) return;
+  const list = appData.customCategories[group];
+  const idx = list.indexOf(name);
+  if (idx === -1) return;
+  const usages = countCategoryUsages(group, name);
+  const msg = usages > 0
+    ? 'Delete "' + name + '"? ' + usages + ' transaction' + (usages === 1 ? '' : 's') + ' will become Uncategorized.'
+    : 'Delete "' + name + '"?';
+  if (!confirm(msg)) return;
+  list.splice(idx, 1);
+  rewriteCategoryInGroup(group, name, null);
+  await encryptAndSave();
+  renderCustomCategoriesList();
+  renderAll();
+  showToast('Deleted: ' + name, 'success');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1151,6 +1376,9 @@ async function submitUnlock() {
     appData.overrides = appData.overrides || [];
     appData.history = appData.history || [];
     appData.settings = appData.settings || { currency: 'USD' };
+    appData.customCategories = appData.customCategories || { expense: [], income: [] };
+    appData.customCategories.expense = appData.customCategories.expense || [];
+    appData.customCategories.income = appData.customCategories.income || [];
     appData.importedAt = appData.importedAt ?? null;
     if (appData.settings.theme === 'light' || appData.settings.theme === 'dark') theme = appData.settings.theme;
     applyTheme();
@@ -1248,7 +1476,7 @@ function lockApp() {
   sessionKey = null;
   isLocked = true;
   clearIdleTimer();
-  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], overrides: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], overrides: [], history: [], settings: { currency: 'USD' }, customCategories: { expense: [], income: [] }, importedAt: null, savedAt: null };
   showLockScreen('unlock');
 }
 
@@ -1982,7 +2210,7 @@ function buildRecRow(r) {
 
   // Category
   if (editing) {
-    let catCell = '<select class="rec-inline-select" id="rec-cat-' + r.id + '">' + buildCategoryOptions(r.direction, r.category) + '</select>';
+    let catCell = categorySelectHtml('rec-cat-' + r.id, r.direction, r.category, 'rec-inline-select');
     if (r.direction === 'expense') {
       const incomeItems = appData.recurring.filter(x => x.direction === 'income');
       if (incomeItems.length > 0) {
@@ -2525,7 +2753,7 @@ function renderEditPanel(editKey) {
     const hasOverride = !!findOverride(r.id, parsed.originalDate);
     html += '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="edit-name-' + domId + '" value="' + escAttr(name) + '"></div>';
     html += '<div class="form-field"><label>Amount</label><input class="form-input" id="edit-amount-' + domId + '" type="number" step="0.01" value="' + amount + '"></div>';
-    html += '<div class="form-field"><label>Category</label><select class="form-select" id="edit-cat-' + domId + '">' + buildCategoryOptions(r.direction, category) + '</select></div>';
+    html += '<div class="form-field"><label>Category</label>' + categorySelectHtml('edit-cat-' + domId, r.direction, category) + '</div>';
     html += '<div class="form-field"><label>Date</label><input class="form-input" id="edit-date-' + domId + '" type="date" value="' + date + '"></div>';
     html += '<div class="form-actions">';
     html += '<button class="form-btn cancel" onclick="event.stopPropagation();var p=this.closest(\'[data-edit-for]\');if(p)p.style.display=\'none\';editingTxId=null">Cancel</button>';
@@ -2542,7 +2770,7 @@ function renderEditPanel(editKey) {
     const amtLabel = isSats ? 'Amount (sats)' : 'Amount';
     html += '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="edit-name-' + domId + '" value="' + escAttr(o.name) + '"></div>';
     html += '<div class="form-field"><label>' + amtLabel + '</label><input class="form-input" id="edit-amount-' + domId + '" type="number" step="' + amtStep + '" value="' + o.amount + '"></div>';
-    html += '<div class="form-field"><label>Category</label><select class="form-select" id="edit-cat-' + domId + '">' + buildCategoryOptions(o.direction, o.category) + '</select></div>';
+    html += '<div class="form-field"><label>Category</label>' + categorySelectHtml('edit-cat-' + domId, o.direction, o.category) + '</div>';
     html += '<div class="form-field"><label>Date</label><input class="form-input" id="edit-date-' + domId + '" type="date" value="' + o.date + '"></div>';
     html += '<div class="form-actions">';
     html += '<button class="form-btn cancel" onclick="event.stopPropagation();var p=this.closest(\'[data-edit-for]\');if(p)p.style.display=\'none\';editingTxId=null">Cancel</button>';
@@ -2692,7 +2920,7 @@ function toggleAddRecurring() {
     '<option value="weekly">Weekly</option><option value="biweekly">Biweekly</option>' +
     '<option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option>' +
     '<option value="annual">Annual</option></select></div>' +
-    '<div class="form-field"><label>Category</label><select class="form-select" id="ar-cat">' + buildCategoryOptions(arDirection, null) + '</select></div>' +
+    '<div class="form-field"><label>Category</label>' + categorySelectHtml('ar-cat', arDirection, null) + '</div>' +
     '<div class="form-field"><label>Type</label><div class="dir-toggle" id="ar-dir">' +
     '<button class="active expense-active" onclick="setArDir(\'expense\')">Expense</button>' +
     '<button onclick="setArDir(\'income\')">Income</button>' +
@@ -2724,8 +2952,7 @@ function setArDir(dir) {
       amtInput.step = '0.01'; amtInput.placeholder = '0.00';
     }
   }
-  const catSelect = document.getElementById('ar-cat');
-  if (catSelect) catSelect.innerHTML = buildCategoryOptions(dir, null);
+  refreshCategorySelect(document.getElementById('ar-cat'), dir, null);
 }
 
 async function submitAddRecurring() {
@@ -3156,6 +3383,7 @@ function openSettings() {
   sel.innerHTML = Object.entries(CURRENCIES).map(([k,v]) =>
     '<option value="' + k + '"' + (k===cur?' selected':'') + '>' + v.label + '</option>'
   ).join('');
+  renderCustomCategoriesList();
   document.getElementById('settings-modal').classList.remove('hidden');
 }
 
@@ -3494,7 +3722,7 @@ async function clearAllData() {
   localStorage.removeItem(STORAGE_ENC);
   localStorage.removeItem(STORAGE_META);
   sessionKey = null;
-  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], overrides: [], history: [], settings: { currency: 'USD' }, importedAt: null, savedAt: null };
+  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], overrides: [], history: [], settings: { currency: 'USD' }, customCategories: { expense: [], income: [] }, importedAt: null, savedAt: null };
   theme = 'dark';
   applyTheme();
   closeSettings();
@@ -3725,13 +3953,13 @@ function showQuickAdd() {
   container.innerHTML = '<div class="inline-form">' +
     '<div class="form-field" style="flex:1.3"><label>Name</label><input class="form-input" id="qa-name" placeholder="Description"></div>' +
     '<div class="form-field"><label>Amount</label><input class="form-input" id="qa-amount" type="number" step="0.01" min="0" placeholder="0.00"></div>' +
-    '<div class="form-field" style="flex:0 0 auto"><label>Unit</label><div class="dir-toggle" id="qa-unit">' +
+    '<div class="form-field toggle-field" style="flex:0 0 auto"><label>Unit</label><div class="dir-toggle" id="qa-unit">' +
     '<button class="active" onclick="setQaUnit(\'fiat\')">$</button>' +
     '<button onclick="setQaUnit(\'sats\')">&#8383;</button></div></div>' +
-    '<div class="form-field" style="flex:0 0 auto"><label>Type</label><div class="dir-toggle" id="qa-dir">' +
+    '<div class="form-field toggle-field" style="flex:0 0 auto"><label>Type</label><div class="dir-toggle" id="qa-dir">' +
     '<button class="active expense-active" onclick="setQaDir(\'expense\')">Expense</button>' +
     '<button onclick="setQaDir(\'income\')">Income</button></div></div>' +
-    '<div class="form-field"><label>Category</label><select class="form-select" id="qa-cat">' + buildCategoryOptions(qaDirection, null) + '</select></div>' +
+    '<div class="form-field"><label>Category</label>' + categorySelectHtml('qa-cat', qaDirection, null) + '</div>' +
     '<div class="form-field"><label>Date</label><input class="form-input" id="qa-date" type="date" value="' + today + '"></div>' +
     '<div class="form-actions"><button class="form-btn cancel" onclick="showQuickAdd()">Cancel</button><button class="form-btn" onclick="submitQuickAdd()">Add</button></div>' +
     '</div>';
@@ -3745,8 +3973,7 @@ function setQaDir(dir) {
     const isThis = b.textContent.toLowerCase() === dir;
     b.className = isThis ? ('active' + (dir === 'expense' ? ' expense-active' : '')) : '';
   });
-  const catSel = document.getElementById('qa-cat');
-  if (catSel) catSel.innerHTML = buildCategoryOptions(dir, null);
+  refreshCategorySelect(document.getElementById('qa-cat'), dir, null);
 }
 
 function setQaUnit(unit) {
