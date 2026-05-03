@@ -29,8 +29,8 @@
   *{margin:0;padding:0;box-sizing:border-box}
   input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   input[type=number]{-moz-appearance:textfield}
-  html{overflow-x:hidden}
-  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:19px;min-height:100vh;overflow-x:hidden}
+  html{overflow-x:hidden;overflow-x:clip}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:19px;min-height:100vh;overflow-x:hidden;overflow-x:clip}
   body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(168,208,141,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(168,208,141,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
 
   /* ── ANIMATIONS ── */
@@ -133,11 +133,10 @@
   .balance-sub-lines .sub-value.negative{color:var(--red)}
   .balance-sub-lines .btc-label{color:var(--btc)}
   .balance-sub-lines .btc-value{color:var(--btc)}
-  .balance-sub-lines .sub-fiat{grid-column:2;font-family:var(--mono);font-size:15px;color:var(--text-dim)}
   .balance-edit-input{background:var(--surface2);border:1px solid var(--accent-dim);border-radius:4px;color:var(--accent);font-family:var(--mono);font-size:22px;padding:2px 8px;outline:none;width:140px;text-align:right}
   .btc-balance-edit-input{background:var(--surface2);border:1px solid var(--btc);border-radius:4px;color:var(--btc);font-family:var(--mono);font-size:22px;padding:2px 8px;outline:none;width:140px;text-align:right}
-  /* ── SUMMARY BAR ── */
-  .summary-bar{position:fixed;top:0;left:0;right:0;z-index:50;display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border);background:var(--surface)}
+  /* ── SUMMARY BAR (inside Dashboard view) ── */
+  .summary-bar{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);margin-bottom:16px;overflow:hidden}
   .summary-item{padding:16px 32px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;cursor:help}
   .summary-item:last-child{border-right:none}
   .s-label{font-family:var(--mono);font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim)}
@@ -155,7 +154,7 @@
   .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
 
   /* ── VIEWS ── */
-  .view{display:none;position:relative;z-index:10;max-width:1100px;margin:0 auto;padding:24px 24px 80px}
+  .view{display:none;position:relative;z-index:10;max-width:1280px;margin:0 auto;padding:24px 24px 80px}
   .view.active{display:block}
 
   /* ── SECTIONS ── */
@@ -224,6 +223,24 @@
   .form-btn.cancel:hover{border-color:var(--text-dim);color:var(--text)}
 
   /* ── DIRECTION TOGGLE ── */
+  .rec-amt-edit-wrap{display:flex;gap:6px;align-items:stretch;justify-content:flex-end;width:100%}
+  .rec-amt-edit-wrap .rec-inline-amount{flex:1 1 auto;min-width:0}
+  .rec-unit-toggle{display:inline-flex;border:1px solid var(--border-light);border-radius:3px;overflow:hidden;flex:0 0 auto;align-self:stretch}
+  .rec-unit-btn{background:none;border:none;color:var(--text-dim);font-family:var(--mono);font-size:13px;padding:0 8px;cursor:pointer;line-height:1;transition:all .15s;display:flex;align-items:center;justify-content:center;min-width:24px}
+  .rec-unit-btn.active{background:var(--accent-glow);color:var(--accent)}
+  .rec-unit-btn.active.btc{background:var(--btc-glow);color:var(--btc)}
+  .rec-unit-btn:hover:not(.active){color:var(--text)}
+  .rec-unit-lock{display:inline-flex;align-items:center;justify-content:center;min-width:28px;padding:0 8px;border:1px solid var(--border-light);border-radius:3px;color:var(--btc);font-family:var(--mono);font-size:13px;flex:0 0 auto}
+  .rec-kind-toggle{display:flex;border:1px solid var(--border-light);border-radius:3px;overflow:hidden;width:100%}
+  .rec-kind-btn{flex:1 1 0;background:none;border:none;color:var(--text-dim);font-family:var(--mono);font-size:12px;letter-spacing:.5px;padding:3px 4px;cursor:pointer;line-height:1.2;transition:all .15s}
+  .rec-kind-btn.active{background:var(--accent-glow);color:var(--accent)}
+  .rec-kind-btn.active.env{background:var(--gold-glow,rgba(226,185,61,.15));color:var(--gold,#e2b93d)}
+  .rec-kind-btn:hover:not(.active){color:var(--text)}
+  .env-badge{font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:1px 5px;border-radius:2px;background:var(--gold-glow,rgba(226,185,61,.15));color:var(--gold,#e2b93d);vertical-align:middle}
+  .env-progress{margin-top:4px;text-align:right}
+  .env-progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:2px}
+  .env-progress-fill{height:100%;transition:width .3s ease,background .2s}
+  .env-progress-text{font-family:var(--mono);font-size:11px;letter-spacing:.3px}
   .dir-toggle{display:flex;width:100%;border:1px solid var(--border-light);border-radius:3px;overflow:hidden}
   .dir-toggle button{flex:1 1 0;min-width:0;background:none;border:none;color:var(--text-dim);font-family:var(--mono);font-size:14px;padding:6px 10px;cursor:pointer;transition:all .15s;text-align:center;white-space:nowrap}
   .dir-toggle button.active{background:var(--accent-glow);color:var(--accent)}
@@ -231,6 +248,8 @@
   .dir-toggle button.active.btc-active{background:var(--btc-glow);color:var(--btc)}
 
   /* ── TRANSACTIONS VIEW ── */
+  .tx-section{overflow:visible;animation:none;transform:none}
+  .tx-sticky-head{position:sticky;top:var(--sticky-top,0);z-index:30;background:var(--surface);border-top-left-radius:var(--radius);border-top-right-radius:var(--radius);box-shadow:0 4px 8px -4px rgba(0,0,0,.35)}
   .tx-toolbar{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px}
   .tx-toolbar-left{font-family:var(--mono);font-size:14px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);display:flex;align-items:center;gap:8px;white-space:nowrap}
   .horizon-btn{width:22px;height:22px;border-radius:4px;border:1px solid var(--border-light);background:var(--surface);color:var(--text-muted);font-family:var(--mono);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;line-height:1}
@@ -315,7 +334,6 @@
   /* ── PRIVACY MODE — blur monetary values ── */
   body[data-privacy="on"] .balance-value,
   body[data-privacy="on"] .balance-sub-lines .sub-value,
-  body[data-privacy="on"] .balance-sub-lines .sub-fiat,
   body[data-privacy="on"] .summary-bar .s-value,
   body[data-privacy="on"] .runway-days,
   body[data-privacy="on"] .runway-detail,
@@ -390,7 +408,7 @@
   .rec-inline-input{background:var(--surface);border:1px solid var(--border-light);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:16px;padding:4px 8px;outline:none;width:100%;transition:border-color .15s}
   .rec-inline-input:focus{border-color:var(--accent-dim)}
   .rec-inline-select{background:var(--surface);border:1px solid var(--border-light);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:15px;line-height:1.2;padding:4px 6px;outline:none;cursor:pointer;width:100%;max-width:100%;box-sizing:border-box;height:28px;appearance:none;-webkit-appearance:none;-moz-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--text-dim) 50%),linear-gradient(135deg,var(--text-dim) 50%,transparent 50%);background-position:calc(100% - 12px) 50%,calc(100% - 7px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:22px}
-  .rec-amt-cell{cursor:pointer;padding:4px 12px}
+  .rec-amt-cell{cursor:pointer;padding:4px 12px;white-space:nowrap}
   .rec-amt-cell:hover{background:rgba(168,208,141,.06);border-radius:3px}
   .rec-inline-amount{width:100%;max-width:100%;box-sizing:border-box;text-align:right}
   .rec-delete-btn{background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:3px;transition:all .15s}
@@ -399,23 +417,29 @@
   .rec-toggle.on{background:var(--accent-dim)}
   .rec-toggle-knob{width:10px;height:10px;border-radius:50%;background:var(--text-dim);position:absolute;top:2px;left:2px;transition:all .2s}
   .rec-toggle.on .rec-toggle-knob{left:16px;background:var(--accent)}
-  .rec-add-bar{padding:8px 16px;display:flex;gap:8px}
-  .rec-add-btn{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:14px;letter-spacing:1px;padding:6px 14px;border-radius:var(--radius);cursor:pointer;transition:all .15s}
-  .rec-add-btn:hover{color:var(--accent);border-color:var(--accent-dim)}
+  .rec-add-bar{padding:8px 16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .rec-add-btn{background:none;border:1px solid var(--border-light);color:var(--text);font-family:var(--mono);font-size:14px;letter-spacing:1px;padding:6px 14px;border-radius:var(--radius);cursor:pointer;transition:all .15s}
+  .rec-add-btn:hover{color:var(--accent);border-color:var(--accent-dim);background:var(--accent-glow)}
   .rec-due-cell{font-family:var(--mono);font-size:15px;color:var(--text-muted)}
   .rec-due-input{width:100%;max-width:100%;box-sizing:border-box}
   .rec-actions-cell{white-space:nowrap;padding-right:14px !important}
+  .rec-actions-row{display:flex;gap:6px;width:100%}
+  .rec-actions-row .rec-action-btn{flex:1 1 0;min-width:0;padding:4px 8px;font-size:13px}
   .rec-row-removing{animation:slideOut .3s ease forwards;overflow:hidden;pointer-events:none}
 
   /* ── RESPONSIVE ── */
   @media(max-width:600px){
-    header{flex-direction:column;align-items:center;gap:8px;padding:16px 16px 12px;text-align:center}
-    .header-left{display:flex;flex-direction:column;align-items:center}
+    header{flex-direction:column;align-items:center;gap:6px;padding:8px 16px 8px;text-align:center}
+    .header-left{display:none}
     .header-right{justify-content:center}
-    .balance-display{text-align:center}
-    .balance-sub-lines{justify-items:center}
-    .balance-value{font-size:32px}
-    .balance-sub-lines .sub-value{font-size:18px}
+    .balance-display{text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
+    .balance-label{display:none}
+    .balance-value{font-size:26px;line-height:1.05}
+    .fs-unit-toggle{margin-top:2px}
+    .fs-unit-toggle .unit-btn{padding:2px 8px;font-size:12px}
+    .balance-sub-lines{margin-top:4px;gap:1px 6px;justify-items:center}
+    .balance-sub-lines .sub-label{font-size:11px;letter-spacing:1px}
+    .balance-sub-lines .sub-value{font-size:16px}
     .summary-bar{grid-template-columns:1fr 1fr 1fr}
     .summary-item{padding:8px 4px;gap:1px}
     .s-label{font-size:10px;letter-spacing:1px}
@@ -514,6 +538,16 @@
   .chart-card-sub{font-family:var(--mono);font-size:14px;color:var(--text-dim);margin-top:3px}
   .chart-body{padding:20px}
   .chart-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;justify-content:center}
+  .budgets-list{padding:14px 20px 18px;display:flex;flex-direction:column;gap:14px}
+  .budget-row{display:flex;flex-direction:column;gap:5px}
+  .budget-row-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  .budget-row-name{font-family:var(--mono);font-size:15px;color:var(--text);display:flex;align-items:baseline;gap:8px;min-width:0;overflow:hidden}
+  .budget-row-cat{font-size:12px;color:var(--text-dim);letter-spacing:.5px;text-transform:uppercase}
+  .budget-remain{font-family:var(--mono);font-size:14px;color:var(--accent);white-space:nowrap}
+  .budget-remain.over{color:var(--red)}
+  .budget-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+  .budget-bar-fill{height:100%;transition:width .3s ease,background .2s}
+  .budget-row-foot{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:.3px}
   .legend-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:15px;color:var(--text-muted)}
   .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
   .runway-body{padding:24px 20px;text-align:center}
@@ -637,7 +671,6 @@
           <span class="sub-value editable" id="balanceDisplay">—</span>
           <span class="sub-label btc-label">₿</span>
           <span class="sub-value editable btc-value" id="btcBalanceDisplay">—</span>
-          <span class="sub-fiat" id="btcFiatDisplay"></span>
         </div>
       </div>
     </div>
@@ -649,21 +682,6 @@
   <button class="pwa-r-btn" onclick="triggerPWAInstall()">Install</button>
   <button class="pwa-r-dismiss" onclick="dismissPWAReminder()" title="Dismiss">&times;</button>
 </div>
-
-  <div class="summary-bar" id="summaryBar">
-    <div class="summary-item" title="Recurring items at their monthly rate, plus one-offs from the past 60 days and next 60 days averaged across that 120-day window.">
-      <div class="s-label">Avg Monthly Income <span class="s-info" aria-hidden="true">&#9432;</span></div>
-      <div class="s-value income" id="sumIncome">—</div>
-    </div>
-    <div class="summary-item" title="Recurring items at their monthly rate, plus one-offs from the past 60 days and next 60 days averaged across that 120-day window.">
-      <div class="s-label">Avg Monthly Expenses <span class="s-info" aria-hidden="true">&#9432;</span></div>
-      <div class="s-value expense" id="sumExpense">—</div>
-    </div>
-    <div class="summary-item" title="Recurring items at their monthly rate, plus one-offs from the past 60 days and next 60 days averaged across that 120-day window.">
-      <div class="s-label">Avg Net Cash Flow <span class="s-info" aria-hidden="true">&#9432;</span></div>
-      <div class="s-value" id="sumNet">—</div>
-    </div>
-  </div>
 
   <div class="tab-nav">
     <button class="tab-btn active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>
@@ -883,6 +901,9 @@
 </div>
 
 <script>
+// Always start at the top — disable browser scroll restoration on reload
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
 // ── PWA (early registration for install prompt) ──────────────────────────
 (function setupPWA() {
   if (location.protocol === 'file:') return;
@@ -910,8 +931,17 @@
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 const CHANGELOG = [
+  { version: '1.8.0', items: [
+    'Envelope budgeting: toggle any fiat-expense recurring to "Envelope" — one-offs in matching category deduct from a monthly budget. Progress bar shows on the Recurring row plus a new Budgets card on the Dashboard. Validation prevents two envelopes per category. Two new default categories — Groceries and Dining — for cleaner envelope tracking',
+    'SATS denomination for recurring expenses and income: $/₿ toggle in the inline edit row of any non-BTC recurring item. Sats-denominated recurring settle against BTC balance on Paid/Received',
+    'Default Transactions and Forecast horizon dropped from 6 to 1 month, and your chosen horizon now persists across sessions',
+    'Summary bar (Avg Monthly Income / Expenses / Net) moved from the persistent header into the top of the Dashboard, freeing significant vertical space on mobile across all other tabs',
+    'Transactions tab toolbar (horizon, Show paid, Quick Add, search, Collapse All) is now sticky — pins under the tab nav while transaction rows scroll past',
+    'Recurring tab polish: sections collapsed by default, equal-width Save/Cancel buttons, brighter + Add buttons, centered + Add bar; sats display no longer wraps and tables are wider on desktop',
+    'Mobile header diet: Cache Flow title block hidden, Total Balance label dropped, balance font shrunk, and the redundant "≈ $X" cash-equivalent of the sats balance removed'
+  ]},
   { version: '1.7.0', items: [
     'Custom categories: pick "+ New category…" at the bottom of any Category dropdown (Quick Add, Add Recurring, edit forms) to add your own. Income and expense lists stay separate; new entries are merged into the dropdown alphabetically with "Other" pinned last',
     'Settings → Custom Categories: rename or delete the categories you\'ve added. Renaming propagates the new name to every transaction using it; deleting confirms with the usage count and clears the category from referencing transactions',
@@ -1008,7 +1038,7 @@ let appData = {
 // ══════════════════════════════════════════════════════════════════════════
 
 const CATEGORIES = {
-  expense: ['Childcare','Debt','Dues & Memberships','Education','Entertainment','Fees & Charges','Food & Dining','Gifts & Donations','Healthcare','Housing','Insurance','Personal Care','Pets','Savings','Shopping','Subscriptions','Taxes','Transportation','Travel','Utilities','Other'],
+  expense: ['Childcare','Debt','Dining','Dues & Memberships','Education','Entertainment','Fees & Charges','Food & Dining','Gifts & Donations','Groceries','Healthcare','Housing','Insurance','Personal Care','Pets','Savings','Shopping','Subscriptions','Taxes','Transportation','Travel','Utilities','Other'],
   income: ['Bonus','Freelance','Gift','Investment','Rental','Salary','Side Hustle','Other']
 };
 
@@ -1315,23 +1345,25 @@ function hideLockScreen() {
   document.getElementById('lock-pw-input').value = '';
   document.getElementById('lock-set-pw').value = '';
   document.getElementById('lock-set-pw2').value = '';
-  requestAnimationFrame(setStickyOffsets);
+  requestAnimationFrame(() => {
+    setStickyOffsets();
+    window.scrollTo(0, 0);
+  });
   if (!btcFetchedAt) startBtcTicker();
 }
 
 function setStickyOffsets() {
   const btcBar = document.getElementById('btcBar');
   const header = document.querySelector('#app > header');
-  const summary = document.querySelector('.summary-bar');
   const tabNav = document.querySelector('.tab-nav');
   const bH = btcBar.offsetHeight;
   const hH = header.offsetHeight;
-  const sH = summary.offsetHeight;
   const tH = tabNav.offsetHeight;
   header.style.top = bH + 'px';
-  summary.style.top = (bH + hH) + 'px';
-  tabNav.style.top = (bH + hH + sH) + 'px';
-  document.querySelectorAll('.view').forEach(v => v.style.paddingTop = (bH + hH + sH + tH + 24) + 'px');
+  tabNav.style.top = (bH + hH) + 'px';
+  const stickyTop = bH + hH + tH;
+  document.documentElement.style.setProperty('--sticky-top', stickyTop + 'px');
+  document.querySelectorAll('.view').forEach(v => v.style.paddingTop = (stickyTop + 24) + 'px');
 }
 window.addEventListener('resize', () => { if (document.getElementById('app').style.display !== 'none') setStickyOffsets(); });
 
@@ -1373,6 +1405,7 @@ async function submitUnlock() {
     appData.recurring = appData.recurring || [];
     appData.oneoffs = appData.oneoffs || [];
     migrateOneoffUnits(appData.oneoffs);
+    migrateRecurringUnits(appData.recurring);
     appData.overrides = appData.overrides || [];
     appData.history = appData.history || [];
     appData.settings = appData.settings || { currency: 'USD' };
@@ -1388,6 +1421,7 @@ async function submitUnlock() {
     if (appData.settings.displayUnit === 'sats' || appData.settings.displayUnit === 'fiat') {
       displayUnit = appData.settings.displayUnit;
     }
+    restoreHorizonsFromSettings();
     refreshDisplayUnitToggle();
     applyPrivacyMode();
     setLockProgress('lock-progress', 'lock-progress-bar', 100, true);
@@ -1617,6 +1651,15 @@ function migrateOneoffUnits(oneoffs) {
   }
 }
 
+function migrateRecurringUnits(recurring) {
+  if (!Array.isArray(recurring)) return;
+  for (const r of recurring) {
+    if (!r) continue;
+    if (!r.unit) r.unit = (r.direction === 'btc-income') ? 'sats' : 'fiat';
+    if (!r.kind) r.kind = 'fixed';
+  }
+}
+
 const ONEOFF_WINDOW_DAYS = 60;
 const ONEOFF_WINDOW_MONTHS = (ONEOFF_WINDOW_DAYS * 2) / 30.4375;
 
@@ -1631,6 +1674,7 @@ function forEachWindowedOneoff(fn) {
     if (!o || !o.date) continue;
     const t = new Date(o.date + 'T00:00:00').getTime();
     if (t < winStart || t > winEnd) continue;
+    if (oneoffIsInEnvelope(o)) continue; // consumed by an envelope budget — counted via that envelope, not separately
     const raw = parseFloat(o.amount) || 0;
     const fiatAmt = o.unit === 'sats' ? satsToFiat(raw) : raw;
     fn(o, fiatAmt / ONEOFF_WINDOW_MONTHS);
@@ -1660,7 +1704,7 @@ function getUpcomingTransactions(daysAhead) {
   endDate.setDate(endDate.getDate() + daysAhead);
   const items = [];
 
-  appData.recurring.filter(r => r.enabled).forEach(r => {
+  appData.recurring.filter(r => r.enabled && !recIsEnvelope(r)).forEach(r => {
     let due = r.nextDue;
     const rEnd = r.endDate ? new Date(r.endDate + 'T00:00:00') : null;
     while (due && new Date(due + 'T00:00:00') <= endDate) {
@@ -1673,6 +1717,7 @@ function getUpcomingTransactions(daysAhead) {
         name: ov && ov.name != null ? ov.name : r.name,
         amount: ov && ov.amount != null ? parseFloat(ov.amount) || 0 : parseFloat(r.amount) || 0,
         direction: r.direction,
+        unit: r.unit || (r.direction === 'btc-income' ? 'sats' : 'fiat'),
         frequency: r.frequency,
         date: ov && ov.date ? ov.date : due
       });
@@ -1760,32 +1805,10 @@ function renderBalanceHeader() {
   btcEl.textContent = fmtSats(appData.btcBalance);
   btcEl.className = 'sub-value editable btc-value';
   btcEl.onclick = startBtcBalanceEdit;
-  const btcFiat = satsToFiat(appData.btcBalance);
-  document.getElementById('btcFiatDisplay').textContent = (btcFiat > 0 && displayUnit !== 'sats') ? '≈ ' + fmtMoney(btcFiat) : '';
 }
 
 function renderAll() {
   renderBalanceHeader();
-
-  // Summary bar
-  let monthlyIncome = 0, monthlyExpense = 0;
-  appData.recurring.filter(r => r.enabled).forEach(r => {
-    const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
-    if (r.direction === 'income') monthlyIncome += monthly;
-    else if (r.direction === 'expense' || r.direction === 'btc-buy') monthlyExpense += monthly;
-    // btc-income excluded from fiat summary — reflected in combined balance
-  });
-  forEachWindowedOneoff((o, monthly) => {
-    if (o.direction === 'income') monthlyIncome += monthly;
-    else if (o.direction === 'expense') monthlyExpense += monthly;
-  });
-  document.getElementById('sumIncome').textContent = fmtMoney(monthlyIncome);
-  document.getElementById('sumExpense').textContent = fmtMoney(monthlyExpense);
-  const net = monthlyIncome - monthlyExpense;
-  const netEl = document.getElementById('sumNet');
-  netEl.textContent = (net >= 0 ? '+' : '') + fmtMoney(net);
-  netEl.className = 's-value ' + (net >= 0 ? 'net-pos' : 'net-neg');
-
   renderDashboard();
   renderRecurring();
   renderTransactions();
@@ -1811,7 +1834,10 @@ function buildProfitabilityDashboard() {
   incomeItems.forEach((inc, incIdx) => {
     const grossMo = normalizeToMonthly(parseFloat(inc.amount) || 0, inc.frequency);
     const linked = appData.recurring.filter(e => e.direction === 'expense' && e.enabled && e.incomeSourceId === inc.id);
-    const linkedMo = linked.reduce((s, e) => s + normalizeToMonthly(parseFloat(e.amount) || 0, e.frequency), 0);
+    const linkedMo = linked.reduce((s, e) => {
+      const mo = normalizeToMonthly(parseFloat(e.amount) || 0, e.frequency);
+      return s + (e.unit === 'sats' ? satsToFiat(mo) : mo);
+    }, 0);
     const net = grossMo - linkedMo;
     const netPct = grossMo > 0 ? (net / grossMo) * 100 : 0;
     const overBudget = linkedMo > grossMo;
@@ -1828,10 +1854,12 @@ function buildProfitabilityDashboard() {
       html += '<div class="profit-bar-seg profit-bar-over" style="flex:1" title="Expenses exceed gross income"></div>';
     } else {
       linked.forEach((e, i) => {
-        const emo = normalizeToMonthly(parseFloat(e.amount) || 0, e.frequency);
+        const rawMo = normalizeToMonthly(parseFloat(e.amount) || 0, e.frequency);
+        const emo = e.unit === 'sats' ? satsToFiat(rawMo) : rawMo;
         const pct = grossMo > 0 ? (emo / grossMo) * 100 : 0;
         const color = CHART_PALETTE[(incIdx * 3 + i) % CHART_PALETTE.length];
-        html += '<div class="profit-bar-seg" style="width:' + pct.toFixed(2) + '%;background:' + color + '" title="' + escAttr(e.name) + ': ' + fmtMoney(emo) + '/mo"></div>';
+        const titleAmt = e.unit === 'sats' ? (fmtSats(rawMo) + ' sats/mo (~' + fmtMoney(emo) + ')') : (fmtMoney(emo) + '/mo');
+        html += '<div class="profit-bar-seg" style="width:' + pct.toFixed(2) + '%;background:' + color + '" title="' + escAttr(e.name) + ': ' + titleAmt + '"></div>';
       });
       if (net > 0) {
         const netPctWidth = (net / grossMo) * 100;
@@ -1864,6 +1892,50 @@ function buildProfitabilityDashboard() {
   return html;
 }
 
+function budgetsCardHtml() {
+  const envelopes = (appData.recurring || []).filter(r => r.enabled && recIsEnvelope(r));
+  if (envelopes.length === 0) return '';
+  let h = '<div class="chart-card budgets-card" style="margin-bottom:16px">';
+  h += '<div class="chart-card-header"><div class="chart-card-title">Budgets</div>';
+  h += '<div class="chart-card-sub">Spent this calendar month</div></div>';
+  h += '<div class="budgets-list">';
+  envelopes.sort((a, b) => (b.amount || 0) - (a.amount || 0)).forEach(r => {
+    const budget = envelopeBudget(r);
+    const spent = envelopeSpent(r);
+    const remaining = budget - spent;
+    const pct = budget > 0 ? (spent / budget) * 100 : 0;
+    const over = pct >= 100;
+    const fillPct = Math.min(100, pct);
+    const color = over ? 'var(--red)' : 'var(--accent)';
+    const remainCls = over ? 'budget-remain over' : 'budget-remain';
+    const remainText = over ? '&minus;' + fmtMoney(Math.abs(remaining)) + ' over' : fmtMoney(remaining) + ' left';
+    h += '<div class="budget-row">';
+    h += '<div class="budget-row-head">';
+    h += '<div class="budget-row-name">' + escHtml(r.name || '(unnamed)') + '<span class="budget-row-cat">' + escHtml(r.category || 'Uncategorized') + '</span></div>';
+    h += '<div class="' + remainCls + '">' + remainText + '</div>';
+    h += '</div>';
+    h += '<div class="budget-bar"><div class="budget-bar-fill" style="width:' + fillPct.toFixed(1) + '%;background:' + color + '"></div></div>';
+    h += '<div class="budget-row-foot">';
+    h += '<span>' + fmtMoney(spent) + ' of ' + fmtMoney(budget) + '</span>';
+    h += '<span>' + Math.round(pct) + '%</span>';
+    h += '</div>';
+    h += '</div>';
+  });
+  h += '</div></div>';
+  return h;
+}
+
+function summaryBarHtml(monthlyIncome, monthlyExpense) {
+  const net = monthlyIncome - monthlyExpense;
+  const tip = 'Recurring items at their monthly rate, plus one-offs from the past 60 days and next 60 days averaged across that 120-day window.';
+  let h = '<div class="summary-bar" id="summaryBar">';
+  h += '<div class="summary-item" title="' + escAttr(tip) + '"><div class="s-label">Avg Monthly Income <span class="s-info" aria-hidden="true">&#9432;</span></div><div class="s-value income">' + fmtMoney(monthlyIncome) + '</div></div>';
+  h += '<div class="summary-item" title="' + escAttr(tip) + '"><div class="s-label">Avg Monthly Expenses <span class="s-info" aria-hidden="true">&#9432;</span></div><div class="s-value expense">' + fmtMoney(monthlyExpense) + '</div></div>';
+  h += '<div class="summary-item" title="' + escAttr(tip) + '"><div class="s-label">Avg Net Cash Flow <span class="s-info" aria-hidden="true">&#9432;</span></div><div class="s-value ' + (net >= 0 ? 'net-pos' : 'net-neg') + '">' + (net >= 0 ? '+' : '') + fmtMoney(net) + '</div></div>';
+  h += '</div>';
+  return h;
+}
+
 function renderDashboard() {
   const container = document.getElementById('view-dashboard');
 
@@ -1893,7 +1965,10 @@ function renderDashboard() {
   let monthlyIncome = 0, monthlyExpense = 0;
 
   appData.recurring.filter(r => r.enabled).forEach(r => {
-    const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+    const rawMonthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+    // Sats-denominated recurring (direction expense/income with unit:sats) converts to fiat-equivalent
+    // for the dashboard's by-category breakdowns. btc-income and btc-buy retain their existing handling.
+    const monthly = (r.unit === 'sats' && r.direction !== 'btc-income') ? satsToFiat(rawMonthly) : rawMonthly;
     if (r.direction === 'income') {
       const cat = r.category || 'Uncategorized';
       incomeByCategory[cat] = (incomeByCategory[cat] || 0) + monthly;
@@ -1935,8 +2010,27 @@ function renderDashboard() {
     else if (runwayDays <= 90) runwayClass = 'warning';
   }
 
+  // ── Summary bar totals (fiat-only, sats-recurring excluded — matches prior summary-bar semantics) ──
+  let summaryIncome = 0, summaryExpense = 0;
+  appData.recurring.filter(r => r.enabled).forEach(r => {
+    if (recIsSats(r)) return;
+    const mo = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+    if (r.direction === 'income') summaryIncome += mo;
+    else if (r.direction === 'expense' || r.direction === 'btc-buy') summaryExpense += mo;
+  });
+  forEachWindowedOneoff((o, mo) => {
+    if (o.direction === 'income') summaryIncome += mo;
+    else if (o.direction === 'expense') summaryExpense += mo;
+  });
+
   // ── Build HTML ──
   let html = '';
+
+  // Summary bar (moved from persistent header — only shown on Dashboard)
+  html += summaryBarHtml(summaryIncome, summaryExpense);
+
+  // Budgets card (only renders if user has envelope-kind recurring)
+  html += budgetsCardHtml();
 
   // Row 1: Income + Expense pie charts
   html += '<div class="dash-grid">';
@@ -2071,7 +2165,7 @@ function renderDashboard() {
 // ── RECURRING PAGE ──────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-let recCollapsed = { income: false, expense: false, btc: false };
+let recCollapsed = { income: true, expense: true, btc: true };
 let recEditingId = null;
 let recSortCol = null;
 let recSortAsc = true;
@@ -2129,10 +2223,58 @@ function renderRecurring() {
   rebuildRecSection('expense');
 }
 
+function recIsSats(r) {
+  return r.direction === 'btc-income' || r.unit === 'sats';
+}
+
+function recCanBeEnvelope(r) {
+  return r.direction === 'expense' && r.unit !== 'sats';
+}
+
+function recIsEnvelope(r) {
+  return r.kind === 'envelope' && recCanBeEnvelope(r);
+}
+
+function currentMonthBounds() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return { startStr: toDateStr(start), endStr: toDateStr(end) };
+}
+
+// Spent this month against an envelope: sum fiat-expense one-offs in the matching category
+// dated within the current calendar month (paid or unpaid both count — committed spend).
+function envelopeSpent(r) {
+  if (!recIsEnvelope(r) || !r.category) return 0;
+  const { startStr, endStr } = currentMonthBounds();
+  let total = 0;
+  for (const o of (appData.oneoffs || [])) {
+    if (!o || o.direction !== 'expense' || o.unit === 'sats') continue;
+    if (o.category !== r.category) continue;
+    if (!o.date || o.date < startStr || o.date >= endStr) continue;
+    total += parseFloat(o.amount) || 0;
+  }
+  return total;
+}
+
+function envelopeBudget(r) {
+  return normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
+}
+
+// Find the envelope (if any) that consumes a given one-off (by matching category + fiat expense).
+function envelopeForOneoff(o) {
+  if (!o || o.direction !== 'expense' || o.unit === 'sats' || !o.category) return null;
+  return appData.recurring.find(r => r.enabled && recIsEnvelope(r) && r.category === o.category) || null;
+}
+
+function oneoffIsInEnvelope(o) {
+  return envelopeForOneoff(o) !== null;
+}
+
 function recSectionTotal(items) {
   return items.filter(r => r.enabled).reduce((s, r) => {
     const mo = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
-    return s + (r.direction === 'btc-income' ? satsToFiat(mo) : mo);
+    return s + (recIsSats(r) ? satsToFiat(mo) : mo);
   }, 0);
 }
 
@@ -2162,7 +2304,7 @@ function rebuildRecSection(dir) {
   html += '</div>';
   if (items.length) {
     html += '<div class="rec-table-wrap"><table class="rec-table">';
-    html += '<colgroup><col style="width:40px"><col style="width:160px"><col style="width:150px"><col style="width:130px"><col style="width:110px"><col style="width:140px"><col style="width:140px"><col style="width:155px"></colgroup>';
+    html += '<colgroup><col style="width:40px"><col style="width:170px"><col style="width:160px"><col style="width:120px"><col style="width:200px"><col style="width:140px"><col style="width:140px"><col style="width:180px"></colgroup>';
     html += '<thead><tr>';
     html += '<th></th>';
     html += '<th class="sortable" onclick="sortRecSection(\'' + dir + '\',\'name\')">' + sortHeader('name', 'Name') + '</th>';
@@ -2193,7 +2335,10 @@ function buildRecRow(r) {
   const isIncome = r.direction === 'income';
   const editing = recEditingId === r.id;
   const amt = parseFloat(r.amount) || 0;
-  const amtDisplay = amt > 0 ? (r.direction === 'btc-income' ? fmtSats(amt) : fmtMoney(amt)) : '<span style="color:var(--text-dim)">--</span>';
+  const isSats = recIsSats(r);
+  const amtDisplay = amt > 0
+    ? (isSats ? '<span style="color:var(--btc)">' + fmtSats(amt) + ' sats</span>' : fmtMoney(amt))
+    : '<span style="color:var(--text-dim)">--</span>';
 
   let html = '<tr data-rec-row="' + r.id + '" class="' + (!r.enabled ? 'rec-disabled ' : '') + (editing ? 'rec-editing' : '') + '">';
 
@@ -2211,6 +2356,13 @@ function buildRecRow(r) {
   // Category
   if (editing) {
     let catCell = categorySelectHtml('rec-cat-' + r.id, r.direction, r.category, 'rec-inline-select');
+    if (recCanBeEnvelope(r)) {
+      const isEnv = r.kind === 'envelope';
+      catCell += '<div class="rec-kind-toggle" style="margin-top:4px">';
+      catCell += '<button type="button" class="rec-kind-btn' + (!isEnv ? ' active' : '') + '" onclick="event.stopPropagation();setRecEditKind(\'' + r.id + '\',\'fixed\')" title="Fixed bill — appears in Transactions and is marked paid">Fixed</button>';
+      catCell += '<button type="button" class="rec-kind-btn' + (isEnv ? ' active env' : '') + '" onclick="event.stopPropagation();setRecEditKind(\'' + r.id + '\',\'envelope\')" title="Envelope budget — one-offs in this category deduct from the monthly budget">Envelope</button>';
+      catCell += '</div>';
+    }
     if (r.direction === 'expense') {
       const incomeItems = appData.recurring.filter(x => x.direction === 'income');
       if (incomeItems.length > 0) {
@@ -2224,6 +2376,7 @@ function buildRecRow(r) {
     html += '<td>' + catCell + '</td>';
   } else {
     let catDisplay = r.category ? '<span class="cat-badge">' + escHtml(r.category) + '</span>' : '<span style="color:var(--text-dim)">--</span>';
+    if (recIsEnvelope(r)) catDisplay += ' <span class="env-badge" title="Envelope budget">ENV</span>';
     if (r.direction === 'expense' && r.incomeSourceId) {
       const inc = appData.recurring.find(x => x.id === r.incomeSourceId);
       if (inc) catDisplay += '<div style="font-size:13px;color:var(--text-dim);margin-top:2px">\u21B3 ' + escHtml(inc.name) + '</div>';
@@ -2244,9 +2397,37 @@ function buildRecRow(r) {
 
   // Amount
   if (editing) {
-    html += '<td class="r"><input class="rec-inline-input rec-inline-amount" id="rec-amt-' + r.id + '" type="number" step="' + (r.direction === 'btc-income' ? '1' : '0.01') + '" min="0" value="' + (r.amount || '') + '" onkeydown="if(event.key===\'Enter\')saveRecEdit(\'' + r.id + '\');if(event.key===\'Escape\')cancelRecEdit()"></td>';
+    const editStep = isSats ? '1' : '0.01';
+    const dirLocksUnit = r.direction.startsWith('btc-');
+    let unitCtl;
+    if (dirLocksUnit) {
+      const lockLbl = r.direction === 'btc-income' ? '₿' : '$';
+      unitCtl = '<span class="rec-unit-lock">' + lockLbl + '</span>';
+    } else {
+      unitCtl = '<div class="rec-unit-toggle">' +
+        '<button type="button" class="rec-unit-btn' + (!isSats ? ' active' : '') + '" onclick="event.stopPropagation();setRecEditUnit(\'' + r.id + '\',\'fiat\')">$</button>' +
+        '<button type="button" class="rec-unit-btn' + (isSats ? ' active btc' : '') + '" onclick="event.stopPropagation();setRecEditUnit(\'' + r.id + '\',\'sats\')">&#8383;</button>' +
+        '</div>';
+    }
+    html += '<td class="r"><div class="rec-amt-edit-wrap">' +
+      '<input class="rec-inline-input rec-inline-amount" id="rec-amt-' + r.id + '" type="number" step="' + editStep + '" min="0" value="' + (r.amount || '') + '" onkeydown="if(event.key===\'Enter\')saveRecEdit(\'' + r.id + '\');if(event.key===\'Escape\')cancelRecEdit()">' +
+      unitCtl +
+      '</div></td>';
   } else {
-    html += '<td class="r rec-amt-cell" onclick="startRecEdit(\'' + r.id + '\')">' + amtDisplay + '</td>';
+    let cellInner = amtDisplay;
+    if (recIsEnvelope(r) && amt > 0) {
+      const budget = envelopeBudget(r);
+      const spent = envelopeSpent(r);
+      const pct = budget > 0 ? (spent / budget) * 100 : 0;
+      const over = pct >= 100;
+      const fillPct = Math.min(100, pct);
+      const color = over ? 'var(--red)' : 'var(--accent)';
+      cellInner += '<div class="env-progress">';
+      cellInner += '<div class="env-progress-bar"><div class="env-progress-fill" style="width:' + fillPct.toFixed(1) + '%;background:' + color + '"></div></div>';
+      cellInner += '<div class="env-progress-text" style="color:' + (over ? 'var(--red)' : 'var(--text-dim)') + '">' + fmtMoney(spent) + ' of ' + fmtMoney(budget) + (over ? ' &middot; OVER' : ' &middot; ' + Math.round(pct) + '%') + '</div>';
+      cellInner += '</div>';
+    }
+    html += '<td class="r rec-amt-cell" onclick="startRecEdit(\'' + r.id + '\')">' + cellInner + '</td>';
   }
 
   // Start Date (nextDue)
@@ -2265,8 +2446,10 @@ function buildRecRow(r) {
 
   // Delete / Save buttons
   if (editing) {
-    html += '<td class="rec-actions-cell"><button class="form-btn" style="padding:3px 8px;font-size:13px;margin-right:4px" onclick="saveRecEdit(\'' + r.id + '\')">Save</button>';
-    html += '<button class="form-btn cancel" style="padding:3px 8px;font-size:13px" onclick="cancelRecEdit()">Cancel</button></td>';
+    html += '<td class="rec-actions-cell"><div class="rec-actions-row">';
+    html += '<button class="form-btn rec-action-btn" onclick="saveRecEdit(\'' + r.id + '\')">Save</button>';
+    html += '<button class="form-btn cancel rec-action-btn" onclick="cancelRecEdit()">Cancel</button>';
+    html += '</div></td>';
   } else {
     html += '<td><button class="rec-delete-btn" onclick="deleteRecurringItem(\'' + r.id + '\')" title="Delete">\u2715</button></td>';
   }
@@ -2336,10 +2519,18 @@ async function saveRecEdit(id) {
   const catEl = document.getElementById('rec-cat-' + id);
   if (nameEl) r.name = nameEl.value.trim();
   if (freqEl) r.frequency = freqEl.value;
-  if (amtEl) r.amount = r.direction === 'btc-income' ? (parseInt(amtEl.value, 10) || 0) : (parseFloat(amtEl.value) || 0);
+  if (amtEl) r.amount = recIsSats(r) ? (parseInt(amtEl.value, 10) || 0) : (parseFloat(amtEl.value) || 0);
   if (dueEl) r.nextDue = dueEl.value;
   if (endEl) r.endDate = endEl.value || null;
   if (catEl) r.category = catEl.value || null;
+  // Re-validate envelope-per-category in case user changed category after toggling kind
+  if (recIsEnvelope(r) && r.category) {
+    const conflict = appData.recurring.find(x => x.id !== id && recIsEnvelope(x) && x.category === r.category);
+    if (conflict) {
+      showToast('"' + r.category + '" is already used by envelope "' + (conflict.name || 'unnamed') + '" — saving as Fixed instead', 'error');
+      r.kind = 'fixed';
+    }
+  }
   const incLinkEl = document.getElementById('rec-inclink-' + id);
   if (incLinkEl) r.incomeSourceId = incLinkEl.value || null;
   recEditingId = null;
@@ -2354,6 +2545,66 @@ async function saveRecEdit(id) {
   renderTransactions();
   await encryptAndSave();
   showToast('Updated ' + r.name, 'success');
+}
+
+function setRecEditKind(id, kind) {
+  const r = appData.recurring.find(x => x.id === id);
+  if (!r) return;
+  if (!recCanBeEnvelope(r)) return;
+  if ((r.kind || 'fixed') === kind) return;
+  // Validation: only one envelope per category
+  if (kind === 'envelope') {
+    const catEl = document.getElementById('rec-cat-' + id);
+    const proposedCat = catEl ? (catEl.value || null) : (r.category || null);
+    if (proposedCat) {
+      const conflict = appData.recurring.find(x => x.id !== id && recIsEnvelope(x) && x.category === proposedCat);
+      if (conflict) { showToast('"' + proposedCat + '" is already used by envelope "' + (conflict.name || 'unnamed') + '"', 'error'); return; }
+    }
+  }
+  // Persist any in-progress edits before re-rendering
+  const nameEl = document.getElementById('rec-name-' + id);
+  const amtEl = document.getElementById('rec-amt-' + id);
+  const freqEl = document.getElementById('rec-freq-' + id);
+  const dueEl = document.getElementById('rec-due-' + id);
+  const endEl = document.getElementById('rec-end-' + id);
+  const catEl = document.getElementById('rec-cat-' + id);
+  if (nameEl) r.name = nameEl.value;
+  if (freqEl) r.frequency = freqEl.value;
+  if (dueEl) r.nextDue = dueEl.value;
+  if (endEl) r.endDate = endEl.value || null;
+  if (catEl) r.category = catEl.value || null;
+  if (amtEl) r.amount = recIsSats(r) ? (parseInt(amtEl.value, 10) || 0) : (parseFloat(amtEl.value) || 0);
+  r.kind = kind;
+  swapRecRow(id);
+  const focused = document.getElementById('rec-name-' + id);
+  if (focused) focused.focus();
+}
+
+function setRecEditUnit(id, unit) {
+  const r = appData.recurring.find(x => x.id === id);
+  if (!r) return;
+  if (r.direction.startsWith('btc-')) return; // unit locked for BTC directions
+  if ((r.unit || 'fiat') === unit) return;
+  // Persist any in-progress field edits before re-rendering the row
+  const nameEl = document.getElementById('rec-name-' + id);
+  const amtEl = document.getElementById('rec-amt-' + id);
+  const freqEl = document.getElementById('rec-freq-' + id);
+  const dueEl = document.getElementById('rec-due-' + id);
+  const endEl = document.getElementById('rec-end-' + id);
+  const catEl = document.getElementById('rec-cat-' + id);
+  if (nameEl) r.name = nameEl.value;
+  if (freqEl) r.frequency = freqEl.value;
+  if (dueEl) r.nextDue = dueEl.value;
+  if (endEl) r.endDate = endEl.value || null;
+  if (catEl) r.category = catEl.value || null;
+  if (amtEl) {
+    const raw = amtEl.value;
+    r.amount = unit === 'sats' ? (parseInt(raw, 10) || 0) : (parseFloat(raw) || 0);
+  }
+  r.unit = unit;
+  swapRecRow(id);
+  const focused = document.getElementById('rec-amt-' + id);
+  if (focused) focused.focus();
 }
 
 async function toggleRecEnabled(id) {
@@ -2376,6 +2627,8 @@ async function addRecurringItem(dir) {
     amount: null,
     frequency: 'monthly',
     direction: dir,
+    unit: dir === 'btc-income' ? 'sats' : 'fiat',
+    kind: 'fixed',
     nextDue: today,
     endDate: null,
     enabled: true,
@@ -2452,8 +2705,8 @@ async function deleteRecurringItem(id) {
 let showPaidHistory = false;
 let editingTxId = null;
 let txSearchQuery = '';
-let txHorizonMonths = 6;
-let fcHorizonMonths = 6;
+let txHorizonMonths = 1;
+let fcHorizonMonths = 1;
 let collapsedMonths = {};
 let txAllCollapsed = false;
 
@@ -2462,7 +2715,8 @@ function renderTransactions() {
   const horizonDays = Math.round(txHorizonMonths * 30.44);
   const items = getUpcomingTransactions(horizonDays);
 
-  let html = '<div class="section">';
+  let html = '<div class="section tx-section">';
+  html += '<div class="tx-sticky-head">';
   html += '<div class="tx-toolbar">';
   html += '<div class="tx-toolbar-left">';
   html += '<button class="horizon-btn" onclick="event.stopPropagation();setHorizon(1)"' + (txHorizonMonths <= 1 ? ' disabled' : '') + '>&laquo;</button>';
@@ -2486,6 +2740,7 @@ function renderTransactions() {
   html += '<button class="collapse-all-btn" onclick="event.stopPropagation();toggleCollapseAll()">' + (txAllCollapsed ? 'Expand All' : 'Collapse All') + '</button>';
   html += '</div>';
   html += '<div id="quick-add-form"></div>';
+  html += '</div>'; // /tx-sticky-head
 
   let allItems = [...items.map(i => ({ ...i, isPaid: false }))];
   if (showPaidHistory) {
@@ -2689,24 +2944,45 @@ function togglePaidHistory() {
   }
 }
 
+function persistHorizons() {
+  appData.settings = appData.settings || { currency: 'USD' };
+  appData.settings.txHorizonMonths = txHorizonMonths;
+  appData.settings.fcHorizonMonths = fcHorizonMonths;
+  encryptAndSave();
+}
+
 function adjustHorizon(delta) {
   txHorizonMonths = Math.max(1, Math.min(24, txHorizonMonths + delta));
   renderTransactions();
+  persistHorizons();
 }
 
 function setHorizon(value) {
   txHorizonMonths = Math.max(1, Math.min(24, value));
   renderTransactions();
+  persistHorizons();
 }
 
 function adjustFcHorizon(delta) {
   fcHorizonMonths = Math.max(1, Math.min(24, fcHorizonMonths + delta));
   renderForecast();
+  persistHorizons();
 }
 
 function setFcHorizon(value) {
   fcHorizonMonths = Math.max(1, Math.min(24, value));
   renderForecast();
+  persistHorizons();
+}
+
+function restoreHorizonsFromSettings() {
+  const s = appData.settings || {};
+  if (Number.isFinite(s.txHorizonMonths)) {
+    txHorizonMonths = Math.max(1, Math.min(24, s.txHorizonMonths));
+  }
+  if (Number.isFinite(s.fcHorizonMonths)) {
+    fcHorizonMonths = Math.max(1, Math.min(24, s.fcHorizonMonths));
+  }
 }
 
 function toggleEditTx(recurringId) {
@@ -2751,8 +3027,11 @@ function renderEditPanel(editKey) {
     const date = ov.date || parsed.originalDate;
     const category = ov.category != null ? ov.category : r.category;
     const hasOverride = !!findOverride(r.id, parsed.originalDate);
+    const recSats = recIsSats(r);
+    const recAmtStep = recSats ? '1' : '0.01';
+    const recAmtLabel = recSats ? 'Amount (sats)' : 'Amount';
     html += '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="edit-name-' + domId + '" value="' + escAttr(name) + '"></div>';
-    html += '<div class="form-field"><label>Amount</label><input class="form-input" id="edit-amount-' + domId + '" type="number" step="0.01" value="' + amount + '"></div>';
+    html += '<div class="form-field"><label>' + recAmtLabel + '</label><input class="form-input" id="edit-amount-' + domId + '" type="number" step="' + recAmtStep + '" value="' + amount + '"></div>';
     html += '<div class="form-field"><label>Category</label>' + categorySelectHtml('edit-cat-' + domId, r.direction, category) + '</div>';
     html += '<div class="form-field"><label>Date</label><input class="form-input" id="edit-date-' + domId + '" type="date" value="' + date + '"></div>';
     html += '<div class="form-actions">';
@@ -2789,7 +3068,8 @@ async function saveEditTx(editKey) {
     const r = appData.recurring.find(x => x.id === parsed.id);
     if (!r) return;
     const name = document.getElementById('edit-name-' + domId).value.trim();
-    const amount = parseFloat(document.getElementById('edit-amount-' + domId).value) || 0;
+    const rawAmt = document.getElementById('edit-amount-' + domId).value;
+    const amount = recIsSats(r) ? (parseInt(rawAmt, 10) || 0) : (parseFloat(rawAmt) || 0);
     const date = document.getElementById('edit-date-' + domId).value;
     const category = document.getElementById('edit-cat-' + domId)?.value || null;
     const patch = {};
@@ -2851,25 +3131,6 @@ function animateRowOut(btn, callback) {
 
 function renderSummaryAndBalance() {
   renderBalanceHeader();
-
-  let monthlyIncome = 0, monthlyExpense = 0;
-  appData.recurring.filter(r => r.enabled).forEach(r => {
-    const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
-    if (r.direction === 'income') monthlyIncome += monthly;
-    else if (r.direction === 'expense' || r.direction === 'btc-buy') monthlyExpense += monthly;
-    // btc-income excluded from fiat summary — reflected in combined balance
-  });
-  forEachWindowedOneoff((o, monthly) => {
-    if (o.direction === 'income') monthlyIncome += monthly;
-    else if (o.direction === 'expense') monthlyExpense += monthly;
-  });
-  document.getElementById('sumIncome').textContent = fmtMoney(monthlyIncome);
-  document.getElementById('sumExpense').textContent = fmtMoney(monthlyExpense);
-  const net = monthlyIncome - monthlyExpense;
-  const netEl = document.getElementById('sumNet');
-  netEl.textContent = (net >= 0 ? '+' : '') + fmtMoney(net);
-  netEl.className = 's-value ' + (net >= 0 ? 'net-pos' : 'net-neg');
-
   if (currentTab === 'dashboard') renderDashboard();
   if (currentTab === 'forecast') renderForecast();
 }
@@ -2906,16 +3167,31 @@ async function deleteRecurring(id) {
 
 let addRecurringVisible = false;
 let arDirection = 'expense';
+let arUnit = 'fiat';
+
+function arSatsImplied(dir) {
+  return dir === 'btc-income' || dir === 'btc-buy';
+}
+
+function arEffectiveUnit() {
+  if (arDirection === 'btc-income') return 'sats';
+  if (arDirection === 'btc-buy') return 'fiat';
+  return arUnit;
+}
 
 function toggleAddRecurring() {
   addRecurringVisible = !addRecurringVisible;
   const container = document.getElementById('add-recurring-form');
   if (!container) return;
   if (!addRecurringVisible) { container.innerHTML = ''; return; }
+  arUnit = 'fiat';
   const today = toDateStr(new Date());
   container.innerHTML = '<div class="inline-form">' +
     '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="ar-name" placeholder="Description"></div>' +
     '<div class="form-field"><label>Amount</label><input class="form-input" id="ar-amount" type="number" step="0.01" min="0" placeholder="0.00"></div>' +
+    '<div class="form-field toggle-field" style="flex:0 0 auto"><label>Unit</label><div class="dir-toggle" id="ar-unit">' +
+    '<button class="active" onclick="setArUnit(\'fiat\')">$</button>' +
+    '<button onclick="setArUnit(\'sats\')">&#8383;</button></div></div>' +
     '<div class="form-field"><label>Frequency</label><select class="form-select" id="ar-freq">' +
     '<option value="weekly">Weekly</option><option value="biweekly">Biweekly</option>' +
     '<option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option>' +
@@ -2929,6 +3205,8 @@ function toggleAddRecurring() {
     '<div class="form-field"><label>Next Due</label><input class="form-input" id="ar-due" type="date" value="' + today + '"></div>' +
     '<div class="form-actions"><button class="form-btn cancel" onclick="toggleAddRecurring()">Cancel</button><button class="form-btn" onclick="submitAddRecurring()">Add</button></div>' +
     '</div>';
+  refreshArAmountField();
+  refreshArUnitToggle();
   document.getElementById('ar-name').focus();
 }
 
@@ -2940,25 +3218,54 @@ function setArDir(dir) {
     const cls = dir === 'expense' ? ' expense-active' : (dir.startsWith('btc-') ? ' btc-active' : '');
     b.className = isThis ? ('active' + cls) : '';
   });
-  // Update amount field label/step
+  refreshArAmountField();
+  refreshArUnitToggle();
+  refreshCategorySelect(document.getElementById('ar-cat'), dir, null);
+}
+
+function setArUnit(unit) {
+  if (arSatsImplied(arDirection)) return;
+  arUnit = unit;
+  refreshArUnitToggle();
+  refreshArAmountField();
+}
+
+function refreshArUnitToggle() {
+  const wrap = document.getElementById('ar-unit');
+  if (!wrap) return;
+  const implied = arSatsImplied(arDirection);
+  const effective = arEffectiveUnit();
+  wrap.querySelectorAll('button').forEach(b => {
+    const isFiatBtn = b.textContent === '$';
+    const isThis = (isFiatBtn && effective === 'fiat') || (!isFiatBtn && effective === 'sats');
+    let cls = '';
+    if (isThis) cls = 'active' + (effective === 'sats' ? ' btc-active' : '');
+    b.className = cls;
+    b.disabled = implied;
+    b.style.opacity = implied ? '0.5' : '';
+    b.style.cursor = implied ? 'not-allowed' : '';
+  });
+}
+
+function refreshArAmountField() {
   const amtInput = document.getElementById('ar-amount');
   const amtLabel = amtInput?.parentElement?.querySelector('label');
-  if (amtInput && amtLabel) {
-    if (dir === 'btc-income') {
-      amtLabel.textContent = 'Amount (sats)';
-      amtInput.step = '1'; amtInput.placeholder = '0';
-    } else {
-      amtLabel.textContent = 'Amount';
-      amtInput.step = '0.01'; amtInput.placeholder = '0.00';
-    }
+  if (!amtInput || !amtLabel) return;
+  const effective = arEffectiveUnit();
+  if (effective === 'sats') {
+    amtLabel.textContent = 'Amount (sats)';
+    amtInput.step = '1'; amtInput.placeholder = 'sats (e.g. 50000)';
+  } else {
+    amtLabel.textContent = 'Amount';
+    amtInput.step = '0.01'; amtInput.placeholder = '0.00';
   }
-  refreshCategorySelect(document.getElementById('ar-cat'), dir, null);
 }
 
 async function submitAddRecurring() {
   const name = document.getElementById('ar-name').value.trim();
   const rawAmt = document.getElementById('ar-amount').value;
-  const amount = arDirection === 'btc-income' ? parseInt(rawAmt, 10) : parseFloat(rawAmt);
+  const effectiveUnit = arEffectiveUnit();
+  const amount = effectiveUnit === 'sats' ? parseInt(rawAmt, 10) : parseFloat(rawAmt);
   const freq = document.getElementById('ar-freq').value;
   const cat = document.getElementById('ar-cat')?.value || null;
   const due = document.getElementById('ar-due').value;
@@ -2970,6 +3277,8 @@ async function submitAddRecurring() {
     amount: amount,
     frequency: freq,
     direction: arDirection,
+    unit: effectiveUnit,
+    kind: 'fixed',
     nextDue: due,
     endDate: null,
     enabled: true,
@@ -2991,15 +3300,16 @@ function renderForecast() {
 
   let monthlyIncome = 0, monthlyExpense = 0;
   appData.recurring.filter(r => r.enabled).forEach(r => {
+    if (recIsSats(r)) return; // sats recurring excluded from fiat forecast — projected via BTC sim
     const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
     if (r.direction === 'income') monthlyIncome += monthly;
     else if (r.direction === 'expense' || r.direction === 'btc-buy') monthlyExpense += monthly;
-    // btc-income excluded from fiat summary — reflected in combined balance
   });
 
   const oneoffByMonth = {};
   appData.oneoffs.filter(o => !o.paid).forEach(o => {
     if (o.unit === 'sats') return; // sats one-offs don't affect fiat balance
+    if (oneoffIsInEnvelope(o)) return; // counted via the envelope budget, not as a separate cash event
     const key = o.date.slice(0, 7);
     if (!oneoffByMonth[key]) oneoffByMonth[key] = { income: 0, expense: 0 };
     if (o.direction === 'income') oneoffByMonth[key].income += parseFloat(o.amount) || 0;
@@ -3038,16 +3348,40 @@ function renderForecast() {
   const cashTxByDate = {};
   const btcTxByDate = {};
   txItems.forEach(t => {
-    if (!cashTxByDate[t.date]) cashTxByDate[t.date] = 0;
-    if (t.direction === 'income') cashTxByDate[t.date] += t.amount;
-    else if (t.direction === 'expense' || t.direction === 'btc-buy') cashTxByDate[t.date] -= t.amount;
-    // Track BTC sats separately
-    if (t.direction === 'btc-income') {
+    const isSatsTx = t.unit === 'sats' || t.direction === 'btc-income';
+    if (isSatsTx) {
+      // Sats items affect BTC balance only
       if (!btcTxByDate[t.date]) btcTxByDate[t.date] = 0;
-      btcTxByDate[t.date] += t.amount;
-    } else if (t.direction === 'btc-buy' && btcPrice) {
-      if (!btcTxByDate[t.date]) btcTxByDate[t.date] = 0;
-      btcTxByDate[t.date] += Math.round((t.amount / btcPrice) * 1e8);
+      const sign = (t.direction === 'income' || t.direction === 'btc-income') ? 1 : -1;
+      btcTxByDate[t.date] += sign * t.amount;
+    } else {
+      if (oneoffIsInEnvelope(t)) return; // counted via envelope debit below
+      if (!cashTxByDate[t.date]) cashTxByDate[t.date] = 0;
+      if (t.direction === 'income') cashTxByDate[t.date] += t.amount;
+      else if (t.direction === 'expense' || t.direction === 'btc-buy') cashTxByDate[t.date] -= t.amount;
+      // btc-buy also adds sats
+      if (t.direction === 'btc-buy' && btcPrice) {
+        if (!btcTxByDate[t.date]) btcTxByDate[t.date] = 0;
+        btcTxByDate[t.date] += Math.round((t.amount / btcPrice) * 1e8);
+      }
+    }
+  });
+
+  // Envelope debits: one end-of-month debit per envelope per month in horizon (current month prorated).
+  appData.recurring.filter(r => r.enabled && recIsEnvelope(r)).forEach(r => {
+    const monthly = envelopeBudget(r);
+    if (monthly <= 0) return;
+    for (let i = 0; i < fcHorizonMonths; i++) {
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + i + 1, 0);
+      let amt = monthly;
+      if (i === 0) {
+        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const daysLeft = totalDays - now.getDate() + 1;
+        amt = monthly * (daysLeft / totalDays);
+      }
+      const key = toDateStr(monthEnd);
+      if (!cashTxByDate[key]) cashTxByDate[key] = 0;
+      cashTxByDate[key] -= amt;
     }
   });
 
@@ -3056,7 +3390,7 @@ function renderForecast() {
   const dailyBal = [];
   let cashBal = appData.balance;
   let btcBal = appData.btcBalance || 0;
-  const hasBtcData = btcBal > 0 || appData.recurring.some(r => r.enabled && (r.direction === 'btc-income' || r.direction === 'btc-buy'));
+  const hasBtcData = btcBal > 0 || appData.recurring.some(r => r.enabled && (r.direction === 'btc-income' || r.direction === 'btc-buy' || r.unit === 'sats'));
   for (let d = 0; d <= horizonDays; d++) {
     const dt = new Date(today); dt.setDate(dt.getDate() + d);
     const key = toDateStr(dt);
@@ -3686,6 +4020,7 @@ async function confirmBackupImport() {
   appData.recurring = d.recurring || [];
   appData.oneoffs = d.oneoffs || [];
   migrateOneoffUnits(appData.oneoffs);
+  migrateRecurringUnits(appData.recurring);
   appData.history = d.history || [];
   appData.settings = d.settings || { currency: 'USD' };
   appData.importedAt = d.importedAt ?? null;
@@ -3697,6 +4032,7 @@ async function confirmBackupImport() {
   }
   displayUnit = (appData.settings.displayUnit === 'sats' || appData.settings.displayUnit === 'fiat')
     ? appData.settings.displayUnit : 'fiat';
+  restoreHorizonsFromSettings();
   refreshDisplayUnitToggle();
   applyPrivacyMode();
   await fetchFxRate();
@@ -3808,6 +4144,7 @@ async function markPaid(recurringId, oneoffId, date, btn, originalDate) {
       name: paidName,
       amount: paidAmount,
       direction: r.direction,
+      unit: r.unit || (r.direction === 'btc-income' ? 'sats' : 'fiat'),
       paidAt: new Date().toISOString(),
       recurringId: r.id,
       prevNextDue: r.nextDue
@@ -3836,7 +4173,8 @@ async function markPaid(recurringId, oneoffId, date, btn, originalDate) {
   let toastMsg;
   if (entry.unit === 'sats') {
     const sats = Math.round(entry.amount);
-    if (entry.direction === 'income') {
+    const isIncomeSide = entry.direction === 'income' || entry.direction === 'btc-income';
+    if (isIncomeSide) {
       appData.btcBalance += sats;
       entry.btcPriceAtTime = btcPrice;
       toastMsg = 'Received: ' + entry.name + ' — +' + fmtSats(sats);
@@ -3892,7 +4230,8 @@ async function undoPaid(historyId, btn) {
   // Reverse balance change
   if (entry.unit === 'sats') {
     const sats = Math.round(entry.amount);
-    if (entry.direction === 'income') appData.btcBalance -= sats;
+    const isIncomeSide = entry.direction === 'income' || entry.direction === 'btc-income';
+    if (isIncomeSide) appData.btcBalance -= sats;
     else appData.btcBalance += sats;
   } else if (entry.direction === 'expense') {
     appData.balance += entry.amount;
@@ -4105,7 +4444,7 @@ const TOUR_STEPS = [
   { target: null, label: 'Welcome', body: 'Welcome to <strong>Cache Flow</strong>, your encrypted personal cash flow planner.<br><br>One HTML file. No servers. No accounts. No tracking. Your data is encrypted and stored locally and never leaves this device.' },
   { target: '#btcBar', label: 'Live BTC Ticker', body: 'The <strong>Bitcoin price ticker</strong> updates from CoinGecko every 90 seconds. Your BTC holdings are automatically converted to fiat so you always see a combined balance.' },
   { target: '.balance-display', label: 'Combined Balance', body: 'Your <strong>combined balance</strong> merges cash and BTC into one number. Below it you can see your <strong>cash balance</strong> and <strong>BTC balance in sats</strong> with its fiat equivalent. Tap either to edit inline.' },
-  { target: '.summary-bar', label: 'Monthly Summary', body: 'The <strong>summary bar</strong> shows your projected monthly <strong>income</strong> and <strong>expenses</strong> along with <strong>net cash flow</strong> from all recurring items in both fiat and BTC.' },
+  { target: '.summary-bar', label: 'Monthly Summary', body: 'The <strong>summary bar</strong> at the top of the <strong>Dashboard</strong> shows your projected monthly <strong>income</strong> and <strong>expenses</strong> along with <strong>net cash flow</strong> from all recurring items in both fiat and BTC.', onEnter: () => switchTab('dashboard') },
   { target: '#chartAlloc', label: 'BTC vs Fiat', body: 'The <strong>allocation chart</strong> shows how your wealth splits between <strong>Bitcoin</strong> and <strong>fiat cash</strong>. As BTC price moves this updates automatically.', onEnter: () => switchTab('dashboard') },
   { target: '.runway-body', label: 'Cash Runway', body: 'The <strong>runway calculator</strong> estimates how many days your combined balance will last based on net monthly burn.' },
   { target: '#rec-section-btc', label: 'BTC Recurring', body: 'The <strong>Bitcoin recurring</strong> section tracks BTC-denominated income and expenses like DCA purchases and mining payouts in sats.', onEnter: () => switchTab('recurring') },

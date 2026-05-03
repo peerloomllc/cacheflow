@@ -28,6 +28,10 @@ Each item: `- [ ] Description` with metadata tags: `[type]` `[complexity]` `[pri
 
 ### Forecast Page Enhancements
 
+### Budgeting
+
+- [ ] Envelope / zero-based budgeting Phase 2: sinking funds for non-monthly fixed bills + reserved-cash header layer (Available = checking − sum reserved) `[feature]` `[large]` `[low]`
+
 ### DevOps
 
 ### Bitcoin Integration
