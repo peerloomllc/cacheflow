@@ -527,6 +527,10 @@
     .dash-grid{grid-template-columns:1fr}
     .runway-days{font-size:45px}
     #tour-tooltip{width:calc(100vw - 32px);max-width:340px}
+    .rec-table tr:not(.rec-editing) td.rec-amt-cell{flex-direction:column;align-items:flex-end;gap:6px}
+    .rec-table td.rec-amt-cell .env-progress{margin-top:0}
+    .rec-table td.rec-amt-cell .env-progress-bar{min-width:140px}
+    .rec-table td.rec-amt-cell .env-progress-text{font-size:12px}
   }
   /* ── DASHBOARD CHARTS ── */
   .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
@@ -931,8 +935,13 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 const CHANGELOG = [
+  { version: '1.9.0', items: [
+    'Multiple envelopes per category: the one-envelope-per-category limit is gone — keep "Food & Dining" as a single category but track separate Groceries and Restaurants envelopes underneath. Quick Add and the transaction edit modal show an Envelope picker whenever a category has more than one envelope; existing one-offs migrate automatically based on their current category match',
+    'Semi-annual recurring frequency: option for bills that hit every six months — car insurance, vehicle registration, and similar',
+    'Mobile: envelope progress bar on the Recurring tab now stacks neatly below the amount with proper breathing room, instead of cramming horizontally beside it'
+  ]},
   { version: '1.8.0', items: [
     'Envelope budgeting: toggle any fiat-expense recurring to "Envelope" — one-offs in matching category deduct from a monthly budget. Progress bar shows on the Recurring row plus a new Budgets card on the Dashboard. Validation prevents two envelopes per category. Two new default categories — Groceries and Dining — for cleaner envelope tracking',
     'SATS denomination for recurring expenses and income: $/₿ toggle in the inline edit row of any non-BTC recurring item. Sats-denominated recurring settle against BTC balance on Paid/Received',
@@ -1075,15 +1084,66 @@ function buildCategoryOptions(dir, selected) {
   return html;
 }
 
-function categorySelectHtml(id, dir, selected, extraClass) {
+function categorySelectHtml(id, dir, selected, extraClass, envOpts) {
   const cls = extraClass || 'form-select';
+  let envAttrs = '';
+  if (envOpts && envOpts.fieldId && envOpts.selectId) {
+    envAttrs = ' data-env-field="' + escAttr(envOpts.fieldId) + '" data-env-select="' + escAttr(envOpts.selectId) + '"';
+  }
+  const unitAttr = envOpts && envOpts.unit ? ' data-unit="' + escAttr(envOpts.unit) + '"' : '';
   return '<select class="' + cls + '" id="' + id + '"' +
          ' data-dir="' + escAttr(dir) + '"' +
          ' data-prev="' + escAttr(selected || '') + '"' +
+         envAttrs + unitAttr +
          ' onfocus="this.dataset.prev=this.value"' +
          ' onchange="handleCategoryChange(this)">' +
          buildCategoryOptions(dir, selected) +
          '</select>';
+}
+
+// Update the conditional envelope picker bound to a category <select>.
+// State (dir, unit, target field/select ids) lives on data-* attrs of the cat el.
+// 0 envelopes match → field hidden, value cleared.
+// 1 envelope matches → field hidden, value auto-set (so submit captures the explicit id).
+// 2+ matches → field shown with [None, env1, env2, …]; defaults to currentEnvId if still valid, else first.
+function refreshEnvelopePickerForCat(catEl, currentEnvId) {
+  if (!catEl) return;
+  const fieldId = catEl.dataset.envField;
+  const selectId = catEl.dataset.envSelect;
+  if (!fieldId || !selectId) return;
+  const fieldEl = document.getElementById(fieldId);
+  const selectEl = document.getElementById(selectId);
+  if (!fieldEl || !selectEl) return;
+  const dir = catEl.dataset.dir || 'expense';
+  const unit = catEl.dataset.unit || 'fiat';
+  const effectiveCurrent = currentEnvId !== undefined ? currentEnvId : (selectEl.value || null);
+  const category = catEl.value || null;
+  if (dir !== 'expense' || unit === 'sats' || !category) {
+    fieldEl.style.display = 'none';
+    selectEl.innerHTML = '';
+    selectEl.value = '';
+    return;
+  }
+  const matches = appData.recurring.filter(r => r.enabled && recIsEnvelope(r) && r.category === category);
+  if (matches.length === 0) {
+    fieldEl.style.display = 'none';
+    selectEl.innerHTML = '';
+    selectEl.value = '';
+    return;
+  }
+  if (matches.length === 1) {
+    fieldEl.style.display = 'none';
+    selectEl.innerHTML = '<option value="' + escAttr(matches[0].id) + '"></option>';
+    selectEl.value = matches[0].id;
+    return;
+  }
+  let opts = '<option value="">None</option>';
+  for (const m of matches) {
+    opts += '<option value="' + escAttr(m.id) + '">' + escHtml(m.name || 'Unnamed') + '</option>';
+  }
+  selectEl.innerHTML = opts;
+  selectEl.value = (effectiveCurrent && matches.some(m => m.id === effectiveCurrent)) ? effectiveCurrent : matches[0].id;
+  fieldEl.style.display = '';
 }
 
 function refreshCategorySelect(selectEl, dir, selected) {
@@ -1097,6 +1157,7 @@ async function handleCategoryChange(selectEl) {
   if (!selectEl) return;
   if (selectEl.value !== '__add_new__') {
     selectEl.dataset.prev = selectEl.value;
+    refreshEnvelopePickerForCat(selectEl, null);
     return;
   }
   const dir = selectEl.dataset.dir || 'expense';
@@ -1130,6 +1191,7 @@ async function handleCategoryChange(selectEl) {
   await encryptAndSave();
   selectEl.innerHTML = buildCategoryOptions(dir, name);
   selectEl.dataset.prev = name;
+  refreshEnvelopePickerForCat(selectEl, null);
   showToast('Added category: ' + name, 'success');
 }
 
@@ -1406,6 +1468,7 @@ async function submitUnlock() {
     appData.oneoffs = appData.oneoffs || [];
     migrateOneoffUnits(appData.oneoffs);
     migrateRecurringUnits(appData.recurring);
+    migrateOneoffEnvelopeIds(appData.oneoffs, appData.recurring);
     appData.overrides = appData.overrides || [];
     appData.history = appData.history || [];
     appData.settings = appData.settings || { currency: 'USD' };
@@ -1637,9 +1700,14 @@ function normalizeToMonthly(amount, frequency) {
     case 'biweekly': return amount * 2.17;
     case 'monthly': return amount;
     case 'quarterly': return amount / 3;
+    case 'semiannual': return amount / 6;
     case 'annual': return amount / 12;
     default: return amount;
   }
+}
+
+function freqLabel(f) {
+  return f === 'semiannual' ? 'Semi-annual' : f.charAt(0).toUpperCase() + f.slice(1);
 }
 
 function migrateOneoffUnits(oneoffs) {
@@ -1657,6 +1725,19 @@ function migrateRecurringUnits(recurring) {
     if (!r) continue;
     if (!r.unit) r.unit = (r.direction === 'btc-income') ? 'sats' : 'fiat';
     if (!r.kind) r.kind = 'fixed';
+  }
+}
+
+// One-shot: assign envelopeId to legacy oneoffs based on the (then-unique) envelope-per-category.
+// Idempotent — only sets when missing. Pre-Path-B data has at most one envelope per category, so
+// the unique-match branch always fires for legacy oneoffs.
+function migrateOneoffEnvelopeIds(oneoffs, recurring) {
+  if (!Array.isArray(oneoffs) || !Array.isArray(recurring)) return;
+  for (const o of oneoffs) {
+    if (!o || o.envelopeId) continue;
+    if (o.direction !== 'expense' || o.unit === 'sats' || !o.category) continue;
+    const matches = recurring.filter(r => r && r.enabled && r.kind === 'envelope' && r.direction === 'expense' && r.unit !== 'sats' && r.category === o.category);
+    if (matches.length === 1) o.envelopeId = matches[0].id;
   }
 }
 
@@ -1688,6 +1769,7 @@ function advanceDate(dateStr, frequency) {
     case 'biweekly': d.setDate(d.getDate() + 14); break;
     case 'monthly': d.setMonth(d.getMonth() + 1); break;
     case 'quarterly': d.setMonth(d.getMonth() + 3); break;
+    case 'semiannual': d.setMonth(d.getMonth() + 6); break;
     case 'annual': d.setFullYear(d.getFullYear() + 1); break;
   }
   return d.toISOString().slice(0, 10);
@@ -2242,16 +2324,16 @@ function currentMonthBounds() {
   return { startStr: toDateStr(start), endStr: toDateStr(end) };
 }
 
-// Spent this month against an envelope: sum fiat-expense one-offs in the matching category
-// dated within the current calendar month (paid or unpaid both count — committed spend).
+// Spent this month against an envelope: sum fiat-expense one-offs resolved to this envelope
+// (via envelopeForOneoff — id-based with category fallback) dated within the current calendar
+// month. Paid or unpaid both count — committed spend.
 function envelopeSpent(r) {
-  if (!recIsEnvelope(r) || !r.category) return 0;
+  if (!recIsEnvelope(r)) return 0;
   const { startStr, endStr } = currentMonthBounds();
   let total = 0;
   for (const o of (appData.oneoffs || [])) {
-    if (!o || o.direction !== 'expense' || o.unit === 'sats') continue;
-    if (o.category !== r.category) continue;
-    if (!o.date || o.date < startStr || o.date >= endStr) continue;
+    if (!o || !o.date || o.date < startStr || o.date >= endStr) continue;
+    if (envelopeForOneoff(o)?.id !== r.id) continue;
     total += parseFloat(o.amount) || 0;
   }
   return total;
@@ -2261,10 +2343,19 @@ function envelopeBudget(r) {
   return normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
 }
 
-// Find the envelope (if any) that consumes a given one-off (by matching category + fiat expense).
+// Find the envelope (if any) that consumes a given one-off.
+// Prefer explicit envelopeId; fall back to category-match only when exactly one envelope exists
+// for that category (back-compat for legacy/un-migrated oneoffs; ambiguous when 2+ exist).
 function envelopeForOneoff(o) {
-  if (!o || o.direction !== 'expense' || o.unit === 'sats' || !o.category) return null;
-  return appData.recurring.find(r => r.enabled && recIsEnvelope(r) && r.category === o.category) || null;
+  if (!o || o.direction !== 'expense' || o.unit === 'sats') return null;
+  if (o.envelopeId) {
+    const r = appData.recurring.find(x => x.id === o.envelopeId);
+    if (r && r.enabled && recIsEnvelope(r)) return r;
+    // stale id (envelope deleted or kind toggled) — fall through to category match
+  }
+  if (!o.category) return null;
+  const matches = appData.recurring.filter(r => r.enabled && recIsEnvelope(r) && r.category === o.category);
+  return matches.length === 1 ? matches[0] : null;
 }
 
 function oneoffIsInEnvelope(o) {
@@ -2360,7 +2451,7 @@ function buildRecRow(r) {
       const isEnv = r.kind === 'envelope';
       catCell += '<div class="rec-kind-toggle" style="margin-top:4px">';
       catCell += '<button type="button" class="rec-kind-btn' + (!isEnv ? ' active' : '') + '" onclick="event.stopPropagation();setRecEditKind(\'' + r.id + '\',\'fixed\')" title="Fixed bill — appears in Transactions and is marked paid">Fixed</button>';
-      catCell += '<button type="button" class="rec-kind-btn' + (isEnv ? ' active env' : '') + '" onclick="event.stopPropagation();setRecEditKind(\'' + r.id + '\',\'envelope\')" title="Envelope budget — one-offs in this category deduct from the monthly budget">Envelope</button>';
+      catCell += '<button type="button" class="rec-kind-btn' + (isEnv ? ' active env' : '') + '" onclick="event.stopPropagation();setRecEditKind(\'' + r.id + '\',\'envelope\')" title="Envelope budget — one-offs assigned to this envelope deduct from the monthly budget">Envelope</button>';
       catCell += '</div>';
     }
     if (r.direction === 'expense') {
@@ -2387,12 +2478,12 @@ function buildRecRow(r) {
   // Frequency
   if (editing) {
     html += '<td><select class="rec-inline-select" id="rec-freq-' + r.id + '">';
-    ['weekly', 'biweekly', 'monthly', 'quarterly', 'annual'].forEach(f => {
-      html += '<option value="' + f + '"' + (r.frequency === f ? ' selected' : '') + '>' + f.charAt(0).toUpperCase() + f.slice(1) + '</option>';
+    ['weekly', 'biweekly', 'monthly', 'quarterly', 'semiannual', 'annual'].forEach(f => {
+      html += '<option value="' + f + '"' + (r.frequency === f ? ' selected' : '') + '>' + freqLabel(f) + '</option>';
     });
     html += '</select></td>';
   } else {
-    html += '<td style="cursor:pointer" onclick="startRecEdit(\'' + r.id + '\')"><span class="freq-badge">' + r.frequency.toUpperCase() + '</span></td>';
+    html += '<td style="cursor:pointer" onclick="startRecEdit(\'' + r.id + '\')"><span class="freq-badge">' + freqLabel(r.frequency).toUpperCase() + '</span></td>';
   }
 
   // Amount
@@ -2523,14 +2614,6 @@ async function saveRecEdit(id) {
   if (dueEl) r.nextDue = dueEl.value;
   if (endEl) r.endDate = endEl.value || null;
   if (catEl) r.category = catEl.value || null;
-  // Re-validate envelope-per-category in case user changed category after toggling kind
-  if (recIsEnvelope(r) && r.category) {
-    const conflict = appData.recurring.find(x => x.id !== id && recIsEnvelope(x) && x.category === r.category);
-    if (conflict) {
-      showToast('"' + r.category + '" is already used by envelope "' + (conflict.name || 'unnamed') + '" — saving as Fixed instead', 'error');
-      r.kind = 'fixed';
-    }
-  }
   const incLinkEl = document.getElementById('rec-inclink-' + id);
   if (incLinkEl) r.incomeSourceId = incLinkEl.value || null;
   recEditingId = null;
@@ -2552,15 +2635,6 @@ function setRecEditKind(id, kind) {
   if (!r) return;
   if (!recCanBeEnvelope(r)) return;
   if ((r.kind || 'fixed') === kind) return;
-  // Validation: only one envelope per category
-  if (kind === 'envelope') {
-    const catEl = document.getElementById('rec-cat-' + id);
-    const proposedCat = catEl ? (catEl.value || null) : (r.category || null);
-    if (proposedCat) {
-      const conflict = appData.recurring.find(x => x.id !== id && recIsEnvelope(x) && x.category === proposedCat);
-      if (conflict) { showToast('"' + proposedCat + '" is already used by envelope "' + (conflict.name || 'unnamed') + '"', 'error'); return; }
-    }
-  }
   // Persist any in-progress edits before re-rendering
   const nameEl = document.getElementById('rec-name-' + id);
   const amtEl = document.getElementById('rec-amt-' + id);
@@ -2996,7 +3070,16 @@ function toggleEditTx(recurringId) {
   // Open new
   if (editingTxId) {
     const panel = document.querySelector('[data-edit-for="' + editingTxId + '"]');
-    if (panel) panel.style.display = '';
+    if (panel) {
+      panel.style.display = '';
+      // Initialize the envelope picker (oneoff edits only) from the saved envelopeId
+      const catEl = panel.querySelector('[data-env-field]');
+      if (catEl) {
+        const parsed = parseEditKey(editingTxId);
+        const o = parsed.kind === 'oneoff' ? appData.oneoffs.find(x => x.id === parsed.id) : null;
+        refreshEnvelopePickerForCat(catEl, o?.envelopeId || null);
+      }
+    }
   }
 }
 
@@ -3049,7 +3132,8 @@ function renderEditPanel(editKey) {
     const amtLabel = isSats ? 'Amount (sats)' : 'Amount';
     html += '<div class="form-field" style="flex:2"><label>Name</label><input class="form-input" id="edit-name-' + domId + '" value="' + escAttr(o.name) + '"></div>';
     html += '<div class="form-field"><label>' + amtLabel + '</label><input class="form-input" id="edit-amount-' + domId + '" type="number" step="' + amtStep + '" value="' + o.amount + '"></div>';
-    html += '<div class="form-field"><label>Category</label>' + categorySelectHtml('edit-cat-' + domId, o.direction, o.category) + '</div>';
+    html += '<div class="form-field"><label>Category</label>' + categorySelectHtml('edit-cat-' + domId, o.direction, o.category, null, { fieldId: 'edit-env-field-' + domId, selectId: 'edit-env-' + domId, unit: o.unit }) + '</div>';
+    html += '<div class="form-field" id="edit-env-field-' + domId + '" style="display:none"><label>Envelope</label><select class="form-select" id="edit-env-' + domId + '"></select></div>';
     html += '<div class="form-field"><label>Date</label><input class="form-input" id="edit-date-' + domId + '" type="date" value="' + o.date + '"></div>';
     html += '<div class="form-actions">';
     html += '<button class="form-btn cancel" onclick="event.stopPropagation();var p=this.closest(\'[data-edit-for]\');if(p)p.style.display=\'none\';editingTxId=null">Cancel</button>';
@@ -3091,11 +3175,13 @@ async function saveEditTx(editKey) {
     o.amount = o.unit === 'sats' ? (parseInt(rawAmt, 10) || 0) : (parseFloat(rawAmt) || 0);
     o.date = document.getElementById('edit-date-' + domId).value;
     o.category = document.getElementById('edit-cat-' + domId)?.value || null;
+    o.envelopeId = document.getElementById('edit-env-' + domId)?.value || null;
     displayName = o.name;
   }
   editingTxId = null;
   await encryptAndSave();
   renderTransactions();
+  renderRecurring();
   renderSummaryAndBalance();
   showToast('Updated ' + displayName, 'success');
 }
@@ -3195,7 +3281,7 @@ function toggleAddRecurring() {
     '<div class="form-field"><label>Frequency</label><select class="form-select" id="ar-freq">' +
     '<option value="weekly">Weekly</option><option value="biweekly">Biweekly</option>' +
     '<option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option>' +
-    '<option value="annual">Annual</option></select></div>' +
+    '<option value="semiannual">Semi-annual</option><option value="annual">Annual</option></select></div>' +
     '<div class="form-field"><label>Category</label>' + categorySelectHtml('ar-cat', arDirection, null) + '</div>' +
     '<div class="form-field"><label>Type</label><div class="dir-toggle" id="ar-dir">' +
     '<button class="active expense-active" onclick="setArDir(\'expense\')">Expense</button>' +
@@ -4021,6 +4107,7 @@ async function confirmBackupImport() {
   appData.oneoffs = d.oneoffs || [];
   migrateOneoffUnits(appData.oneoffs);
   migrateRecurringUnits(appData.recurring);
+  migrateOneoffEnvelopeIds(appData.oneoffs, appData.recurring);
   appData.history = d.history || [];
   appData.settings = d.settings || { currency: 'USD' };
   appData.importedAt = d.importedAt ?? null;
@@ -4298,10 +4385,12 @@ function showQuickAdd() {
     '<div class="form-field toggle-field" style="flex:0 0 auto"><label>Type</label><div class="dir-toggle" id="qa-dir">' +
     '<button class="active expense-active" onclick="setQaDir(\'expense\')">Expense</button>' +
     '<button onclick="setQaDir(\'income\')">Income</button></div></div>' +
-    '<div class="form-field"><label>Category</label>' + categorySelectHtml('qa-cat', qaDirection, null) + '</div>' +
+    '<div class="form-field"><label>Category</label>' + categorySelectHtml('qa-cat', qaDirection, null, null, { fieldId: 'qa-env-field', selectId: 'qa-env', unit: qaUnit }) + '</div>' +
+    '<div class="form-field" id="qa-env-field" style="display:none"><label>Envelope</label><select class="form-select" id="qa-env"></select></div>' +
     '<div class="form-field"><label>Date</label><input class="form-input" id="qa-date" type="date" value="' + today + '"></div>' +
     '<div class="form-actions"><button class="form-btn cancel" onclick="showQuickAdd()">Cancel</button><button class="form-btn" onclick="submitQuickAdd()">Add</button></div>' +
     '</div>';
+  refreshEnvelopePickerForCat(document.getElementById('qa-cat'), null);
   document.getElementById('qa-name').focus();
 }
 
@@ -4313,6 +4402,7 @@ function setQaDir(dir) {
     b.className = isThis ? ('active' + (dir === 'expense' ? ' expense-active' : '')) : '';
   });
   refreshCategorySelect(document.getElementById('qa-cat'), dir, null);
+  refreshEnvelopePickerForCat(document.getElementById('qa-cat'), null);
 }
 
 function setQaUnit(unit) {
@@ -4334,6 +4424,11 @@ function setQaUnit(unit) {
       amtInput.placeholder = '0.00';
     }
   }
+  const catEl = document.getElementById('qa-cat');
+  if (catEl) {
+    catEl.dataset.unit = unit;
+    refreshEnvelopePickerForCat(catEl, null);
+  }
 }
 
 async function submitQuickAdd() {
@@ -4342,6 +4437,7 @@ async function submitQuickAdd() {
   const amount = qaUnit === 'sats' ? parseInt(rawAmt, 10) : parseFloat(rawAmt);
   const date = document.getElementById('qa-date').value;
   const category = document.getElementById('qa-cat')?.value || null;
+  const envelopeId = document.getElementById('qa-env')?.value || null;
   if (!name || !amount || !date) { showToast('Fill in all fields', 'error'); return; }
 
   appData.oneoffs.push({
@@ -4351,6 +4447,7 @@ async function submitQuickAdd() {
     direction: qaDirection,
     unit: qaUnit,
     category: category,
+    envelopeId: envelopeId,
     date: date,
     paid: false
   });
