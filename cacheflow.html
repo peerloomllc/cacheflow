@@ -410,6 +410,9 @@
   .whats-new-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
   .whats-new-list li{font-family:var(--mono);font-size:16px;color:var(--text-muted);line-height:1.6;padding-left:16px;position:relative}
   .whats-new-list li::before{content:'\2022';color:var(--accent);position:absolute;left:0}
+  .whats-new-list li.whats-new-version-sep{padding-left:0;margin-top:14px;color:var(--accent);font-size:14px;letter-spacing:1px}
+  .whats-new-list li.whats-new-version-sep::before{content:''}
+  .whats-new-list li.whats-new-version-sep:first-child{margin-top:0}
   .whats-new-btn{background:var(--accent);border:none;color:var(--bg);font-family:var(--mono);font-size:16px;font-weight:600;letter-spacing:1px;padding:10px 16px;border-radius:4px;cursor:pointer;transition:opacity .15s;width:100%;text-align:center}
   .whats-new-btn:hover{opacity:0.85}
 
@@ -802,8 +805,8 @@
     <div class="settings-section">
       <div class="settings-section-label" style="margin-bottom:8px">Mode</div>
       <div style="display:flex;gap:8px">
-        <button class="settings-btn" id="sync-mode-generate" onclick="syncSetupSetMode('generate')" style="flex:1">Generate new key</button>
-        <button class="settings-btn" id="sync-mode-paste" onclick="syncSetupSetMode('paste')" style="flex:1">Paste existing nsec</button>
+        <button class="settings-btn" id="sync-mode-generate" onclick="syncSetupSetMode('generate')" style="flex:1">Create New</button>
+        <button class="settings-btn" id="sync-mode-paste" onclick="syncSetupSetMode('paste')" style="flex:1">Use Existing</button>
       </div>
     </div>
 
@@ -878,7 +881,7 @@
   <div class="btn-group">
     <button class="bar-btn bar-btn-privacy" id="privacyBtn" onclick="togglePrivacy()" title="Toggle privacy mode" aria-label="Toggle privacy mode">&#128065; <span class="privacy-label">Privacy</span></button>
     <button class="bar-btn bar-btn-about" onclick="openAbout()" title="About"><span class="about-icon">i</span> <span class="bar-btn-label">About</span></button>
-    <button class="bar-btn bar-btn-secondary" onclick="openSettings()" title="Settings">&#9881; <span class="bar-btn-label">Settings</span></button>
+    <button class="bar-btn bar-btn-secondary" id="settingsBtn" onclick="openSettings()" title="Settings">&#9881; <span class="bar-btn-label">Settings</span></button>
     <button class="bar-btn bar-btn-secondary" onclick="lockApp()" title="Lock now">&#128274; <span class="bar-btn-label">Lock</span></button>
     <button class="bar-btn bar-btn-primary" onclick="encryptAndSave().then(()=>showToast('Saved','success'))">Save &#10003;</button>
   </div>
@@ -1032,8 +1035,13 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.10.1';
 const CHANGELOG = [
+  { version: '1.10.1', items: [
+    'Guided tour for cross-device sync: existing users see a short walkthrough after dismissing the What\'s New popup that points out where to set up sync. The full first-run tour also includes the new sync steps',
+    'Setup wizard button labels: "Generate new key" / "Paste existing nsec" renamed to "Create New" / "Use Existing"',
+    'What\'s New popup now shows release notes from every version since you last looked, so skipping a version no longer loses its notes'
+  ]},
   { version: '1.10.0', items: [
     'Cross-device sync via Nostr: pair multiple devices using a single sync key (nsec) so your data stays in sync across them. Settings → Configure sync → Set up sync, then either generate a fresh key or paste an existing one. Data is end-to-end encrypted with NIP-44 before being published, so relay operators only see ciphertext. Public defaults: Damus, nos.lol, nostr.band, nostr.wine — fully editable, and self-hosted relays (e.g. wss://your-relay.example) work too. Auto-pulls newer snapshots on unlock and auto-pushes after every save',
     'Settings modal redesign: desktop now uses a two-column layout — Theme, Currency, Custom Categories on the left; Change Password, Cross-device sync, Export/Import/Clear on the right. Mobile keeps the single-column stacked flow'
@@ -4637,17 +4645,66 @@ const CHANGELOG_SEEN_KEY = 'cacheflow-changelog-seen';
 function checkWhatsNew() {
   const seen = localStorage.getItem(CHANGELOG_SEEN_KEY);
   if (seen === APP_VERSION) return;
-  const entry = CHANGELOG.find(c => c.version === APP_VERSION);
-  if (!entry) return;
-  document.getElementById('whats-new-version').textContent = 'v' + entry.version;
-  const list = document.getElementById('whats-new-list');
-  list.innerHTML = entry.items.map(item => '<li>' + item + '</li>').join('');
+  // For first-time users (no seen key), show only the current version's entry —
+  // they got the full guided tour during setup. For upgraders, show every
+  // changelog entry newer than what they last acknowledged, so skipping a
+  // version doesn't lose its release notes.
+  let entries;
+  if (!seen) {
+    entries = CHANGELOG.filter(c => c.version === APP_VERSION);
+  } else {
+    entries = CHANGELOG.filter(c => versionLt(seen, c.version));
+  }
+  if (entries.length === 0) return;
+  // Newest first
+  entries.sort((a, b) => versionLt(a.version, b.version) ? 1 : -1);
+  const versionEl = document.getElementById('whats-new-version');
+  const listEl = document.getElementById('whats-new-list');
+  if (entries.length === 1) {
+    versionEl.textContent = 'v' + entries[0].version;
+    versionEl.style.display = '';
+    listEl.innerHTML = entries[0].items.map(item => '<li>' + item + '</li>').join('');
+  } else {
+    // Multiple versions to surface — hide the single-version label and use
+    // inline per-version section markers within the list instead.
+    versionEl.style.display = 'none';
+    let html = '';
+    entries.forEach(entry => {
+      html += '<li class="whats-new-version-sep">v' + entry.version + '</li>';
+      html += entry.items.map(item => '<li>' + item + '</li>').join('');
+    });
+    listEl.innerHTML = html;
+  }
   document.getElementById('whats-new-modal').classList.remove('hidden');
 }
 
+// Compare semver-ish strings ("1.10.0" > "1.9.0"). Components beyond the first
+// missing one default to 0.
+function versionLt(a, b) {
+  const pa = String(a || '').split('.').map(n => parseInt(n, 10) || 0);
+  const pb = String(b || '').split('.').map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const va = pa[i] || 0, vb = pb[i] || 0;
+    if (va < vb) return true;
+    if (va > vb) return false;
+  }
+  return false;
+}
+
+// Versions that introduced features worth a mini-tour after What's New.
+const SYNC_TOUR_INTRODUCED_IN = '1.10.0';
+
 function dismissWhatsNew() {
+  const previousSeen = localStorage.getItem(CHANGELOG_SEEN_KEY);
   document.getElementById('whats-new-modal').classList.add('hidden');
   localStorage.setItem(CHANGELOG_SEEN_KEY, APP_VERSION);
+  // For existing users (previousSeen exists and is older than the sync release),
+  // launch the sync mini-tour after a short delay so the modal close animation
+  // finishes first. First-run users don't hit this — they see the full tour from
+  // setPassword and previousSeen is null.
+  if (previousSeen && versionLt(previousSeen, SYNC_TOUR_INTRODUCED_IN) && !versionLt(APP_VERSION, SYNC_TOUR_INTRODUCED_IN)) {
+    setTimeout(() => startSyncMiniTour(), 350);
+  }
 }
 
 const DONATE_REMIND_KEY = 'cacheflow-donate-remind';
@@ -5308,6 +5365,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
 // ── GUIDED TOUR ──────────────────────────────────────────────────────────
 
+// Sync-specific steps — appended to the full first-run tour, AND used standalone
+// as a "mini-tour" for existing users when they upgrade to a version that ships sync.
+const SYNC_TOUR_STEPS = [
+  { target: null, label: 'Cross-device sync', body: 'Cache Flow can now sync your data across devices over <strong>Nostr</strong>. Pair your phone, laptop, and tablet with a single <strong>sync key</strong> and changes on one device propagate to the others.<br><br>Your data stays end-to-end encrypted with NIP-44 — relay operators only see ciphertext. Off by default.' },
+  { target: '#settingsBtn', label: 'Where to set it up', body: 'Open <strong>Settings</strong> from the bottom bar, then click <strong>Configure sync…</strong> to start. The wizard will walk you through generating a fresh sync key (recommended) or pasting an existing one.', onEnter: () => switchTab('dashboard') }
+];
+
 const TOUR_STEPS = [
   { target: null, label: 'Welcome', body: 'Welcome to <strong>Cache Flow</strong>, your encrypted personal cash flow planner.<br><br>One HTML file. No servers. No accounts. No tracking. Your data is encrypted and stored locally and never leaves this device.' },
   { target: '#btcBar', label: 'Live BTC Ticker', body: 'The <strong>Bitcoin price ticker</strong> updates from CoinGecko every 90 seconds. Your BTC holdings are automatically converted to fiat so you always see a combined balance.' },
@@ -5317,10 +5381,12 @@ const TOUR_STEPS = [
   { target: '.runway-body', label: 'Cash Runway', body: 'The <strong>runway calculator</strong> estimates how many days your combined balance will last based on net monthly burn.' },
   { target: '#rec-section-btc', label: 'BTC Recurring', body: 'The <strong>Bitcoin recurring</strong> section tracks BTC-denominated income and expenses like DCA purchases and mining payouts in sats.', onEnter: () => switchTab('recurring') },
   { target: '#view-forecast', label: '12-Month Forecast', body: 'The <strong>forecast tab</strong> projects your cash and BTC balances month by month so you can see where you will be in 3 or 6 or 12 months.', onEnter: () => switchTab('forecast') },
-  { target: '.bar-btn-primary', label: 'Save Your Data', body: 'Your data is encrypted with <strong>AES-256-GCM</strong> and stored locally. Hit <strong>Save</strong> often. Use <strong>Settings</strong> to export a JSON backup for portability.', onEnter: () => switchTab('dashboard') }
+  { target: '.bar-btn-primary', label: 'Save Your Data', body: 'Your data is encrypted with <strong>AES-256-GCM</strong> and stored locally. Hit <strong>Save</strong> often. Use <strong>Settings</strong> to export a JSON backup for portability.', onEnter: () => switchTab('dashboard') },
+  ...SYNC_TOUR_STEPS
 ];
 let tourIndex = -1;
 let tourDemoData = false;
+let currentTourSteps = TOUR_STEPS;
 
 const TOUR_DEMO_RECURRING = [
   { id: '_demo1', name: 'Salary', amount: 5000, frequency: 'monthly', direction: 'income', nextDue: '2026-05-01', endDate: null, enabled: true, sourceId: null, category: 'Salary', _liabId: null },
@@ -5352,13 +5418,25 @@ function startTour() {
   injectDemoData();
   switchTab('dashboard');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  currentTourSteps = TOUR_STEPS;
+  tourIndex = 0;
+  document.getElementById('tour-overlay').classList.remove('hidden');
+  showTourStep();
+}
+
+// Existing-user mini-tour: just the sync-related steps. No demo data injection
+// (the user has their real data) and no clearDemoData on end.
+function startSyncMiniTour() {
+  switchTab('dashboard');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  currentTourSteps = SYNC_TOUR_STEPS;
   tourIndex = 0;
   document.getElementById('tour-overlay').classList.remove('hidden');
   showTourStep();
 }
 
 function showTourStep() {
-  const step = TOUR_STEPS[tourIndex];
+  const step = currentTourSteps[tourIndex];
   if (step.onEnter) step.onEnter();
   const overlay   = document.getElementById('tour-overlay');
   const spotlight = document.getElementById('tour-spotlight');
@@ -5371,9 +5449,9 @@ function showTourStep() {
 
   label.textContent = step.label;
   body.innerHTML = step.body;
-  counter.textContent = `${tourIndex + 1} / ${TOUR_STEPS.length}`;
+  counter.textContent = `${tourIndex + 1} / ${currentTourSteps.length}`;
   backBtn.style.display = tourIndex === 0 ? 'none' : '';
-  nextBtn.textContent = tourIndex === TOUR_STEPS.length - 1 ? 'Done' : 'Next';
+  nextBtn.textContent = tourIndex === currentTourSteps.length - 1 ? 'Done' : 'Next';
 
   if (!step.target) {
     spotlight.classList.add('hidden');
@@ -5429,7 +5507,7 @@ function showTourStep() {
 }
 
 function nextTourStep() {
-  if (tourIndex >= TOUR_STEPS.length - 1) { endTour(); return; }
+  if (tourIndex >= currentTourSteps.length - 1) { endTour(); return; }
   tourIndex++;
   showTourStep();
 }
