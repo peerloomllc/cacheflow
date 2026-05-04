@@ -2220,9 +2220,12 @@ function buildProfitabilityDashboard() {
     if (linked.length > 0) {
       let legendHtml = '<div class="profit-row-legend">';
       linked.forEach((e, i) => {
-        const emo = normalizeToMonthly(parseFloat(e.amount) || 0, e.frequency);
+        const rawMo = normalizeToMonthly(parseFloat(e.amount) || 0, e.frequency);
+        const amtTxt = e.unit === 'sats'
+          ? (fmtSats(rawMo) + ' sats (~' + fmtMoney(satsToFiat(rawMo)) + ')')
+          : fmtMoney(rawMo);
         const color = overBudget ? 'var(--red)' : CHART_PALETTE[(incIdx * 3 + i) % CHART_PALETTE.length];
-        legendHtml += '<span><span class="profit-row-legend-dot" style="background:' + color + '"></span>' + escHtml(e.name) + ' ' + fmtMoney(emo) + '</span>';
+        legendHtml += '<span><span class="profit-row-legend-dot" style="background:' + color + '"></span>' + escHtml(e.name) + ' ' + amtTxt + '</span>';
       });
       legendHtml += '</div>';
       html += legendHtml;
