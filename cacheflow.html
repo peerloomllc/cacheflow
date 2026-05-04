@@ -2225,7 +2225,9 @@ function buildProfitabilityDashboard() {
           ? (fmtSats(rawMo) + ' sats (~' + fmtMoney(satsToFiat(rawMo)) + ')')
           : fmtMoney(rawMo);
         const color = overBudget ? 'var(--red)' : CHART_PALETTE[(incIdx * 3 + i) % CHART_PALETTE.length];
-        legendHtml += '<span><span class="profit-row-legend-dot" style="background:' + color + '"></span>' + escHtml(e.name) + ' ' + amtTxt + '</span>';
+        legendHtml +=
+          '<span><span class="profit-row-legend-dot" style="background:' + color + '"></span>' +
+          escHtml(e.name) + ' ' + amtTxt + '</span>';
       });
       legendHtml += '</div>';
       html += legendHtml;
