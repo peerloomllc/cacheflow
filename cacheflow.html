@@ -590,6 +590,11 @@
   .chart-card-title{font-family:var(--mono);font-size:15px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)}
   .chart-card-sub{font-family:var(--mono);font-size:14px;color:var(--text-dim);margin-top:3px}
   .chart-body{padding:20px}
+  /* iOS Safari paints a translucent overlay across the entire canvas on tap
+     because the canvas owns a click listener (from Chart.js). Suppressing it
+     keeps bar/slice taps from flashing the whole card. touch-action also
+     removes the 300ms tap-delay so axis-label taps register immediately. */
+  .chart-body canvas{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   .chart-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;justify-content:center}
   .chart-type-toggle{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;font-family:var(--mono);margin-top:10px}
   .chart-type-btn{background:transparent;border:none;color:var(--text-dim);padding:4px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:color .15s, background .15s}
@@ -606,7 +611,9 @@
   .budget-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
   .budget-bar-fill{height:100%;transition:width .3s ease,background .2s}
   .budget-row-foot{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:.3px}
-  .legend-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:15px;color:var(--text-muted)}
+  .legend-item{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:15px;color:var(--text-muted);background:transparent;border:1px solid transparent;padding:6px 10px;border-radius:6px;cursor:pointer;transition:background .15s,border-color .15s,color .15s;-webkit-tap-highlight-color:transparent}
+  .legend-item:hover{color:var(--text);background:var(--accent-glow)}
+  .legend-item.active{color:var(--text);background:var(--accent-glow);border-color:var(--accent)}
   .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
   .runway-body{padding:24px 20px;text-align:center}
   .runway-days{font-family:var(--serif);font-size:60px;color:var(--accent);line-height:1}
@@ -1060,8 +1067,12 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.11.1';
+const APP_VERSION = '1.11.2';
 const CHANGELOG = [
+  { version: '1.11.2', items: [
+    'Dashboard charts on mobile: tap a category name to surface its tooltip — small pie slices and narrow bars can be hard to hit, so the category names double as tap targets. Pie charts: tap any entry in the legend below the chart. Bar charts: tap the category label on the axis (y-axis in horizontal mode, x-axis in vertical mode). Tap the active item again or anywhere outside the chart to dismiss',
+    'Suppressed the iOS Safari tap-highlight overlay that was flashing across the entire chart card on every bar tap'
+  ]},
   { version: '1.11.1', items: [
     'Dashboard charts stack one-per-line on phones and tablets in portrait — single-column breakpoint raised from 600px to 900px so each chart has room to breathe',
     'Bar chart mode auto-flips to a horizontal layout when a chart has more than 8 categories. Category labels live on the y-axis where they always fit, and the canvas grows in height instead of Chart.js skipping ticks on a cramped x-axis',
@@ -2552,15 +2563,27 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
   const hasData = values.length > 0 && values.some(v => v > 0);
   const legendEl = document.getElementById(legendId);
 
+  // Drop any prior bar-mode axis-label click listener attached to this canvas
+  // so toggling bar → pie (or re-rendering) doesn't leave a stale handler that
+  // would compute tick indices against a now-doughnut chart.
+  if (ctx._cfLabelClickHandler) {
+    ctx.removeEventListener('click', ctx._cfLabelClickHandler);
+    delete ctx._cfLabelClickHandler;
+  }
+  ctx.style.cursor = '';
+
   // Reset canvas wrapper height (bar mode in horizontal layout may grow it).
   const wrap = ctx.parentElement;
   if (wrap) wrap.style.height = '260px';
 
-  // Pie legend below the chart — bar mode uses axis labels instead.
+  // Pie/doughnut legend below the chart — clickable on mobile so users can tap
+  // the category name to surface the tooltip when slices are too small to hit
+  // reliably. Bar mode skips the legend (axis tick labels serve the same role
+  // and are wired separately via the chart's onClick handler).
   if (legendEl) {
     if (type === 'pie' && hasData) {
       legendEl.innerHTML = labels.map(function(l, i) {
-        return '<span class="legend-item"><span class="legend-dot" style="background:' + colors[i] + '"></span>' + l + '</span>';
+        return '<button type="button" class="legend-item" data-idx="' + i + '"><span class="legend-dot" style="background:' + colors[i] + '"></span>' + l + '</button>';
       }).join('');
     } else {
       legendEl.innerHTML = '';
@@ -2619,6 +2642,33 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
       grid: { display: false }
     };
 
+    // Categories live on whichever axis isn't the value axis. Mapping a click
+    // back to a tick index lets us treat the axis labels as tap targets — the
+    // narrow bars are hard to hit on mobile so tapping the name is the escape
+    // hatch.
+    const categoryAxisKey = useHorizontal ? 'y' : 'x';
+    const tickIndexAt = function(x, y, chart) {
+      const ca = chart.chartArea;
+      const cs = chart.scales[categoryAxisKey];
+      if (!ca || !cs) return -1;
+      if (categoryAxisKey === 'y') {
+        // Horizontal mode: y-axis labels sit between cs.left and ca.left.
+        if (x >= ca.left || x < cs.left) return -1;
+        if (y < ca.top || y > ca.bottom) return -1;
+        const i = Math.round(cs.getValueForPixel(y));
+        return (i >= 0 && i < sLabels.length) ? i : -1;
+      }
+      // Vertical mode: rotated x-axis labels sit below ca.bottom. Allow a
+      // little slack on the x side since 45°-rotated label glyphs drift past
+      // their tick's column.
+      if (y <= ca.bottom) return -1;
+      const slack = 20;
+      if (x < ca.left - slack || x > ca.right + slack) return -1;
+      const clamped = Math.min(ca.right, Math.max(ca.left, x));
+      const i = Math.round(cs.getValueForPixel(clamped));
+      return (i >= 0 && i < sLabels.length) ? i : -1;
+    };
+
     dashCharts[canvasId] = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -2638,9 +2688,54 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
         plugins: { legend: { display: false }, tooltip: tooltipCfg },
         scales: useHorizontal
           ? { x: valueScale, y: categoryScale }
-          : { x: categoryScale, y: valueScale }
+          : { x: categoryScale, y: valueScale },
+        // Desktop affordance only — onHover gives us `elements` for free.
+        // Tap handling is on the canvas directly (below) since Chart.js'
+        // onClick is unreliable for synthetic touch clicks on axis labels.
+        onHover: function(evt, elements, chart) {
+          if (!chart || !chart.canvas || evt == null) return;
+          let cursor = '';
+          if (elements && elements.length) cursor = 'pointer';
+          else if (evt.x != null && evt.y != null && tickIndexAt(evt.x, evt.y, chart) >= 0) cursor = 'pointer';
+          chart.canvas.style.cursor = cursor;
+        }
       }
     });
+
+    // Native click listener — runs for both mouse clicks and tap-synthesized
+    // clicks. Computes coords from getBoundingClientRect so we don't depend on
+    // Chart.js' event normalization (which sometimes skips axis-label hits on
+    // mobile). We delegate bar hits to Chart.js' own tooltip behavior.
+    const chart = dashCharts[canvasId];
+    const onLabelClick = function(e) {
+      if (!chart || !chart.chartArea) return;
+      const rect = ctx.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const hits = chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+      if (hits && hits.length) return;
+      const idx = tickIndexAt(x, y, chart);
+      if (idx < 0) return;
+      const m = chart.getDatasetMeta(0);
+      const el = m && m.data && m.data[idx];
+      if (!el) return;
+      // Toggle: tapping the already-pinned label clears it (parity with the
+      // pie legend behavior).
+      const current = chart.tooltip.getActiveElements();
+      if (current && current.length && current[0].index === idx) {
+        chart.setActiveElements([]);
+        chart.tooltip.setActiveElements([], { x: 0, y: 0 });
+      } else {
+        const pos = el.tooltipPosition ? el.tooltipPosition() : { x: el.x, y: el.y };
+        chart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        chart.tooltip.setActiveElements([{ datasetIndex: 0, index: idx }], pos);
+      }
+      chart.update();
+    };
+    ctx.addEventListener('click', onLabelClick);
+    ctx._cfLabelClickHandler = onLabelClick;
+
+    wireLegendTooltips(canvasId, legendEl);
     return;
   }
 
@@ -2664,6 +2759,74 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
       plugins: { legend: { display: false }, tooltip: tooltipCfg }
     }
   });
+  wireLegendTooltips(canvasId, legendEl);
+}
+
+// Pie mode wires legend-item taps to programmatically pin the matching slice
+// tooltip; bar mode pins via its own onClick (axis-label taps). Either way we
+// also install a document-level dismiss listener so tapping anywhere outside
+// the chart + legend clears the pinned tooltip — important for the bar case
+// where Chart.js' default hover-clear never fires (no mouse on mobile).
+const _chartDismissHandlers = {};
+function wireLegendTooltips(canvasId, legendEl) {
+  // Remove any prior dismiss listener for this canvas — renderAll() rebuilds
+  // the legend container via innerHTML so the old DOM node is gone, but the
+  // document-level listener it registered would otherwise stay attached.
+  if (_chartDismissHandlers[canvasId]) {
+    document.removeEventListener('click', _chartDismissHandlers[canvasId]);
+    delete _chartDismissHandlers[canvasId];
+  }
+  const chart = dashCharts[canvasId];
+  if (!chart) return;
+
+  if (legendEl) {
+    legendEl.querySelectorAll('.legend-item').forEach(function(item) {
+      item.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const idx = parseInt(this.dataset.idx, 10);
+        if (isNaN(idx)) return;
+        const meta = chart.getDatasetMeta(0);
+        const el = meta && meta.data && meta.data[idx];
+        if (!el) return;
+        const siblings = legendEl.querySelectorAll('.legend-item');
+        const wasActive = this.classList.contains('active');
+        siblings.forEach(function(it) { it.classList.remove('active'); });
+        if (wasActive) {
+          chart.setActiveElements([]);
+          chart.tooltip.setActiveElements([], { x: 0, y: 0 });
+        } else {
+          this.classList.add('active');
+          const pos = el.tooltipPosition ? el.tooltipPosition() : { x: el.x, y: el.y };
+          chart.setActiveElements([{ datasetIndex: 0, index: idx }]);
+          chart.tooltip.setActiveElements([{ datasetIndex: 0, index: idx }], pos);
+        }
+        chart.update();
+      });
+    });
+  }
+
+  const legendElId = legendEl ? legendEl.id : null;
+  const dismiss = function(e) {
+    const canvas = document.getElementById(canvasId);
+    if (canvas && canvas.contains(e.target)) return;
+    if (legendElId) {
+      const liveLegend = document.getElementById(legendElId);
+      if (liveLegend && liveLegend.contains(e.target)) return;
+    }
+    const c = dashCharts[canvasId];
+    if (!c || !c.tooltip) return;
+    const active = c.tooltip.getActiveElements();
+    if (!active || !active.length) return;
+    if (legendElId) {
+      const liveLegend = document.getElementById(legendElId);
+      if (liveLegend) liveLegend.querySelectorAll('.legend-item.active').forEach(function(it) { it.classList.remove('active'); });
+    }
+    c.setActiveElements([]);
+    c.tooltip.setActiveElements([], { x: 0, y: 0 });
+    c.update();
+  };
+  _chartDismissHandlers[canvasId] = dismiss;
+  document.addEventListener('click', dismiss);
 }
 
 function getChartType(key) {
