@@ -571,6 +571,11 @@
   .chart-card-sub{font-family:var(--mono);font-size:14px;color:var(--text-dim);margin-top:3px}
   .chart-body{padding:20px}
   .chart-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;justify-content:center}
+  .chart-type-toggle{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;font-family:var(--mono);margin-top:10px}
+  .chart-type-btn{background:transparent;border:none;color:var(--text-dim);padding:4px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:color .15s, background .15s}
+  .chart-type-btn:hover{color:var(--text)}
+  .chart-type-btn.active{background:var(--accent-glow);color:var(--accent)}
+  .chart-type-btn + .chart-type-btn{border-left:1px solid var(--border)}
   .budgets-list{padding:14px 20px 18px;display:flex;flex-direction:column;gap:14px}
   .budget-row{display:flex;flex-direction:column;gap:5px}
   .budget-row-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
@@ -902,8 +907,8 @@
     <div id="donate-ln-panel" class="ln-panel" style="display:none"></div>
     <hr class="about-divider">
     <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px">
-      <button class="form-btn" onclick="dismissDonateReminder()" style="min-width:120px">Maybe Later</button>
-      <button class="form-btn" onclick="permanentlyDismissDonate()" style="min-width:120px;font-size:13px;opacity:0.7">Already Donated</button>
+      <button class="form-btn" onclick="dismissDonateReminder()" style="width:160px">Maybe Later</button>
+      <button class="form-btn" onclick="permanentlyDismissDonate()" style="width:160px;font-size:13px;opacity:0.7">Already Donated</button>
     </div>
   </div>
 </div>
@@ -1035,8 +1040,13 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.10.1';
+const APP_VERSION = '1.11.0';
 const CHANGELOG = [
+  { version: '1.11.0', items: [
+    'Dashboard: replaced the BTC vs Fiat allocation chart with Month-to-Date Expenses — actual spend so far this month, broken down by category. Sats expenses convert to fiat using the price at time of payment, and DCA purchases show as BTC DCA',
+    'Pie/Bar toggle on the Income Breakdown, Expense Breakdown, and Month-to-Date Expenses charts — each card has its own switch and the preference persists with your data',
+    'Donation reminder popup: Maybe Later and Already Donated buttons now render at identical width'
+  ]},
   { version: '1.10.1', items: [
     'Guided tour for cross-device sync: existing users see a short walkthrough after dismissing the What\'s New popup that points out where to set up sync. The full first-run tour also includes the new sync steps',
     'Setup wizard button labels: "Generate new key" / "Paste existing nsec" renamed to "Create New" / "Use Existing"',
@@ -1719,6 +1729,7 @@ async function submitUnlock() {
     appData.overrides = appData.overrides || [];
     appData.history = appData.history || [];
     appData.settings = appData.settings || { currency: 'USD' };
+    appData.settings.chartTypes = appData.settings.chartTypes || { income: 'pie', expense: 'pie', mtd: 'pie' };
     appData.customCategories = appData.customCategories || { expense: [], income: [] };
     appData.customCategories.expense = appData.customCategories.expense || [];
     appData.customCategories.income = appData.customCategories.income || [];
@@ -2346,10 +2357,44 @@ function renderDashboard() {
     }
   });
 
-  // ── BTC vs Fiat allocation ──
-  const fiatBal = Math.abs(appData.balance);
-  const btcFiat = satsToFiat(appData.btcBalance);
-  const hasBtcNoPrice = appData.btcBalance > 0 && !btcPrice;
+  // ── Month-to-date expenses (from history) ──
+  const _now = new Date();
+  const _monthStart = new Date(_now.getFullYear(), _now.getMonth(), 1).getTime();
+  const mtdExpenseByCategory = {};
+  let mtdExpenseTotal = 0;
+  (appData.history || []).forEach(h => {
+    if (!h.paidAt) return;
+    if (new Date(h.paidAt).getTime() < _monthStart) return;
+    let fiatAmount = 0;
+    let cat;
+    if (h.unit === 'sats') {
+      if (h.direction !== 'expense') return; // sats income/btc-income not expense-side
+      const price = h.btcPriceAtTime || btcPrice;
+      if (!price) return;
+      fiatAmount = (h.amount / 1e8) * price;
+    } else if (h.direction === 'expense') {
+      fiatAmount = h.amount;
+    } else if (h.direction === 'btc-buy') {
+      fiatAmount = h.amount;
+      cat = 'BTC DCA';
+    } else {
+      return;
+    }
+    if (fiatAmount <= 0) return;
+    if (!cat) {
+      if (h.recurringId) {
+        const src = appData.recurring.find(x => x.id === h.recurringId);
+        cat = (src && src.category) || 'Uncategorized';
+      } else if (h.oneoffId) {
+        const src = appData.oneoffs.find(x => x.id === h.oneoffId);
+        cat = (src && src.category) || 'Uncategorized';
+      } else {
+        cat = 'Uncategorized';
+      }
+    }
+    mtdExpenseByCategory[cat] = (mtdExpenseByCategory[cat] || 0) + fiatAmount;
+    mtdExpenseTotal += fiatAmount;
+  });
 
   // ── Cash runway ──
   const netMonthly = monthlyIncome - monthlyExpense;
@@ -2389,7 +2434,8 @@ function renderDashboard() {
 
   html += '<div class="chart-card">';
   html += '<div class="chart-card-header"><div class="chart-card-title">Income Breakdown</div>';
-  html += '<div class="chart-card-sub">Avg / mo by category &middot; one-offs averaged across &plusmn;60d</div></div>';
+  html += '<div class="chart-card-sub">Avg / mo by category &middot; one-offs averaged across &plusmn;60d</div>';
+  html += chartTypeToggleHtml('income') + '</div>';
   html += '<div class="chart-body">';
   html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartIncome"></canvas></div>';
   html += '<div id="legend-income" class="chart-legend"></div></div>';
@@ -2397,7 +2443,8 @@ function renderDashboard() {
 
   html += '<div class="chart-card">';
   html += '<div class="chart-card-header"><div class="chart-card-title">Expense Breakdown</div>';
-  html += '<div class="chart-card-sub">Avg / mo by category &middot; one-offs averaged across &plusmn;60d</div></div>';
+  html += '<div class="chart-card-sub">Avg / mo by category &middot; one-offs averaged across &plusmn;60d</div>';
+  html += chartTypeToggleHtml('expense') + '</div>';
   html += '<div class="chart-body">';
   html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartExpense"></canvas></div>';
   html += '<div id="legend-expense" class="chart-legend"></div></div>';
@@ -2405,15 +2452,17 @@ function renderDashboard() {
 
   html += '</div>';
 
-  // Row 2: BTC/Fiat allocation + Cash Runway
+  // Row 2: Month-to-Date Expenses + Cash Runway
   html += '<div class="dash-grid">';
 
+  const _mtdMonthLabel = _now.toLocaleString(undefined, { month: 'long' });
   html += '<div class="chart-card">';
-  html += '<div class="chart-card-header"><div class="chart-card-title">BTC vs Fiat</div>';
-  html += '<div class="chart-card-sub">Allocation by value' + (hasBtcNoPrice ? ' (awaiting BTC price\u2026)' : '') + '</div></div>';
+  html += '<div class="chart-card-header"><div class="chart-card-title">Month-to-Date Expenses</div>';
+  html += '<div class="chart-card-sub">' + _mtdMonthLabel + ' actual spend &middot; ' + fmtMoney(mtdExpenseTotal) + '</div>';
+  html += chartTypeToggleHtml('mtd') + '</div>';
   html += '<div class="chart-body">';
-  html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartAlloc"></canvas></div>';
-  html += '<div id="legend-alloc" class="chart-legend"></div></div>';
+  html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartMtd"></canvas></div>';
+  html += '<div id="legend-mtd" class="chart-legend"></div></div>';
   html += '</div>';
 
   html += '<div class="chart-card">';
@@ -2441,76 +2490,169 @@ function renderDashboard() {
 
   container.innerHTML = html;
 
-  // ── Create charts ──
-  function mkDoughnut(canvasId, legendId, labels, values, colors) {
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) return;
-    const hasData = values.length > 0 && values.some(v => v > 0);
-    const legendEl = document.getElementById(legendId);
+  // Cache aggregated chart data so per-chart toggle can re-render one canvas
+  // without rebuilding the whole dashboard.
+  var paletteFor = function(arr) { return arr.map(function(_, i) { return CHART_PALETTE[i % CHART_PALETTE.length]; }); };
+  chartData.income  = { labels: Object.keys(incomeByCategory),     values: Object.values(incomeByCategory),     colors: paletteFor(Object.keys(incomeByCategory)) };
+  chartData.expense = { labels: Object.keys(expenseByCategory),    values: Object.values(expenseByCategory),    colors: paletteFor(Object.keys(expenseByCategory)) };
+  chartData.mtd     = { labels: Object.keys(mtdExpenseByCategory), values: Object.values(mtdExpenseByCategory), colors: paletteFor(Object.keys(mtdExpenseByCategory)) };
 
-    if (legendEl && hasData) {
+  renderDashChart('income');
+  renderDashChart('expense');
+  renderDashChart('mtd');
+}
+
+const CHART_META = {
+  income:  { canvasId: 'chartIncome',  legendId: 'legend-income'  },
+  expense: { canvasId: 'chartExpense', legendId: 'legend-expense' },
+  mtd:     { canvasId: 'chartMtd',     legendId: 'legend-mtd'     }
+};
+let chartData = { income: null, expense: null, mtd: null };
+
+function renderDashChart(key) {
+  const meta = CHART_META[key];
+  const data = chartData[key];
+  if (!meta || !data) return;
+  if (dashCharts[meta.canvasId]) {
+    dashCharts[meta.canvasId].destroy();
+    delete dashCharts[meta.canvasId];
+  }
+  mkChart(meta.canvasId, meta.legendId, data.labels, data.values, data.colors, getChartType(key));
+}
+
+function mkChart(canvasId, legendId, labels, values, colors, type) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  const hasData = values.length > 0 && values.some(v => v > 0);
+  const legendEl = document.getElementById(legendId);
+
+  // Pie legend below the chart — bar mode uses x-axis labels instead.
+  if (legendEl) {
+    if (type === 'pie' && hasData) {
       legendEl.innerHTML = labels.map(function(l, i) {
         return '<span class="legend-item"><span class="legend-dot" style="background:' + colors[i] + '"></span>' + l + '</span>';
       }).join('');
-    } else if (legendEl) {
+    } else {
       legendEl.innerHTML = '';
     }
+  }
 
+  const tooltipCfg = {
+    enabled: hasData,
+    backgroundColor: themeColor('#1a1e1a', '#ffffff'),
+    borderColor: themeColor('#2e352e', '#d0d8d0'),
+    borderWidth: 1,
+    titleColor: themeColor('#e8ede8', '#1a1e1a'),
+    bodyColor: themeColor('#7a8a7a', '#5a6a5a'),
+    padding: 10,
+    callbacks: {
+      label: function(c) {
+        var total = c.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+        var pct = total > 0 ? ((c.raw / total) * 100).toFixed(1) : 0;
+        return ' ' + fmtMoney(c.raw) + ' (' + pct + '%)';
+      }
+    }
+  };
+
+  if (type === 'bar') {
+    // Sort bars high → low for readability.
+    const order = labels.map(function(_, i) { return i; }).sort(function(a, b) { return values[b] - values[a]; });
+    const sLabels = hasData ? order.map(function(i) { return labels[i]; }) : ['No data'];
+    const sValues = hasData ? order.map(function(i) { return values[i]; }) : [0];
+    const sColors = hasData ? order.map(function(i) { return colors[i]; }) : [themeColor('#252a25', '#d0d8d0')];
     dashCharts[canvasId] = new Chart(ctx, {
-      type: 'doughnut',
+      type: 'bar',
       data: {
-        labels: hasData ? labels : ['No data'],
+        labels: sLabels,
         datasets: [{
-          data: hasData ? values : [1],
-          backgroundColor: hasData ? colors : [themeColor('#252a25', '#d0d8d0')],
+          data: sValues,
+          backgroundColor: sColors,
           borderColor: themeColor('#0d0f0e', '#f4f6f4'),
-          borderWidth: 3,
-          hoverOffset: 6
+          borderWidth: 1,
+          borderRadius: 4
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '68%',
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            enabled: hasData,
-            backgroundColor: themeColor('#1a1e1a', '#ffffff'),
-            borderColor: themeColor('#2e352e', '#d0d8d0'),
-            borderWidth: 1,
-            titleColor: themeColor('#e8ede8', '#1a1e1a'),
-            bodyColor: themeColor('#7a8a7a', '#5a6a5a'),
-            padding: 10,
-            callbacks: {
-              label: function(c) {
-                var total = c.dataset.data.reduce(function(a, b) { return a + b; }, 0);
-                var pct = total > 0 ? ((c.raw / total) * 100).toFixed(1) : 0;
-                return ' ' + fmtMoney(c.raw) + ' (' + pct + '%)';
-              }
-            }
+        plugins: { legend: { display: false }, tooltip: tooltipCfg },
+        scales: {
+          x: {
+            ticks: {
+              color: themeColor('#7a8a7a', '#5a6a5a'),
+              font: { family: 'monospace', size: 11 },
+              maxRotation: 45,
+              minRotation: 0
+            },
+            grid: { display: false }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: themeColor('#7a8a7a', '#5a6a5a'),
+              font: { family: 'monospace', size: 11 },
+              callback: function(v) { return fmtMoney(v); }
+            },
+            grid: { color: themeColor('rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)') }
           }
         }
       }
     });
+    return;
   }
 
-  // Income chart
-  var incLabels = Object.keys(incomeByCategory);
-  var incValues = Object.values(incomeByCategory);
-  var incColors = incLabels.map(function(_, i) { return CHART_PALETTE[i % CHART_PALETTE.length]; });
-  mkDoughnut('chartIncome', 'legend-income', incLabels, incValues, incColors);
+  // Default: doughnut/pie.
+  dashCharts[canvasId] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: hasData ? labels : ['No data'],
+      datasets: [{
+        data: hasData ? values : [1],
+        backgroundColor: hasData ? colors : [themeColor('#252a25', '#d0d8d0')],
+        borderColor: themeColor('#0d0f0e', '#f4f6f4'),
+        borderWidth: 3,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: tooltipCfg }
+    }
+  });
+}
 
-  // Expense chart
-  var expLabels = Object.keys(expenseByCategory);
-  var expValues = Object.values(expenseByCategory);
-  var expColors = expLabels.map(function(_, i) { return CHART_PALETTE[i % CHART_PALETTE.length]; });
-  mkDoughnut('chartExpense', 'legend-expense', expLabels, expValues, expColors);
+function getChartType(key) {
+  var t = appData && appData.settings && appData.settings.chartTypes && appData.settings.chartTypes[key];
+  return t === 'bar' ? 'bar' : 'pie';
+}
 
-  // BTC vs Fiat allocation chart
-  var allocLabels = ['Fiat (Cash)', 'Bitcoin'];
-  var allocValues = [fiatBal, Math.max(0, btcFiat)];
-  mkDoughnut('chartAlloc', 'legend-alloc', allocLabels, allocValues, [themeColor('#a8d08d', '#3d7a22'), themeColor('#f7931a', '#e67e00')]);
+async function setChartType(key, type) {
+  if (type !== 'pie' && type !== 'bar') return;
+  appData.settings = appData.settings || {};
+  appData.settings.chartTypes = appData.settings.chartTypes || { income: 'pie', expense: 'pie', mtd: 'pie' };
+  if (appData.settings.chartTypes[key] === type) return;
+  appData.settings.chartTypes[key] = type;
+
+  // Flip the active class on this chart's toggle buttons without a full re-render.
+  document.querySelectorAll('.chart-type-btn[data-chart-key="' + key + '"]').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.chartType === type);
+  });
+
+  // Re-render just this chart from cached data (fallback to full dashboard if cache missing).
+  if (chartData[key]) renderDashChart(key);
+  else renderDashboard();
+
+  await encryptAndSave();
+}
+
+function chartTypeToggleHtml(key) {
+  var cur = getChartType(key);
+  return '<div class="chart-type-toggle" role="group" aria-label="Chart type">'
+    + '<button type="button" data-chart-key="' + key + '" data-chart-type="pie" class="chart-type-btn' + (cur === 'pie' ? ' active' : '') + '" onclick="setChartType(\'' + key + '\',\'pie\')">Pie</button>'
+    + '<button type="button" data-chart-key="' + key + '" data-chart-type="bar" class="chart-type-btn' + (cur === 'bar' ? ' active' : '') + '" onclick="setChartType(\'' + key + '\',\'bar\')">Bar</button>'
+    + '</div>';
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -5382,7 +5524,7 @@ const TOUR_STEPS = [
   { target: '#btcBar', label: 'Live BTC Ticker', body: 'The <strong>Bitcoin price ticker</strong> updates from CoinGecko every 90 seconds. Your BTC holdings are automatically converted to fiat so you always see a combined balance.' },
   { target: '.balance-display', label: 'Combined Balance', body: 'Your <strong>combined balance</strong> merges cash and BTC into one number. Below it you can see your <strong>cash balance</strong> and <strong>BTC balance in sats</strong> with its fiat equivalent. Tap either to edit inline.' },
   { target: '.summary-bar', label: 'Monthly Summary', body: 'The <strong>summary bar</strong> at the top of the <strong>Dashboard</strong> shows your projected monthly <strong>income</strong> and <strong>expenses</strong> along with <strong>net cash flow</strong> from all recurring items in both fiat and BTC.', onEnter: () => switchTab('dashboard') },
-  { target: '#chartAlloc', label: 'BTC vs Fiat', body: 'The <strong>allocation chart</strong> shows how your wealth splits between <strong>Bitcoin</strong> and <strong>fiat cash</strong>. As BTC price moves this updates automatically.', onEnter: () => switchTab('dashboard') },
+  { target: '#chartMtd', label: 'Month-to-Date Expenses', body: 'The <strong>month-to-date expenses</strong> chart breaks down what you have actually spent so far this month, by category. Sats expenses are converted to fiat and BTC purchases show as <strong>BTC DCA</strong>.', onEnter: () => switchTab('dashboard') },
   { target: '.runway-body', label: 'Cash Runway', body: 'The <strong>runway calculator</strong> estimates how many days your combined balance will last based on net monthly burn.' },
   { target: '#rec-section-btc', label: 'BTC Recurring', body: 'The <strong>Bitcoin recurring</strong> section tracks BTC-denominated income and expenses like DCA purchases and mining payouts in sats.', onEnter: () => switchTab('recurring') },
   { target: '#view-forecast', label: '12-Month Forecast', body: 'The <strong>forecast tab</strong> projects your cash and BTC balances month by month so you can see where you will be in 3 or 6 or 12 months.', onEnter: () => switchTab('forecast') },
