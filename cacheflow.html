@@ -368,6 +368,7 @@
   body[data-privacy="on"] .profit-row-legend,
   body[data-privacy="on"] .profit-bar,
   body[data-privacy="on"] .chart-card .chart-body,
+  body[data-privacy="on"] .mtd-total,
   body[data-privacy="on"] .month-group-header > span:last-child,
   body[data-privacy="on"] .tx-amount,
   body[data-privacy="on"] .tx-eq,
@@ -553,7 +554,6 @@
     .btc-bar{padding:4px 12px 3px;gap:2px}
     .btc-price-label{display:none}
     .btc-bar-right{font-size:11px;margin-top:0}
-    .dash-grid{grid-template-columns:1fr}
     .runway-days{font-size:45px}
     #tour-tooltip{width:calc(100vw - 32px);max-width:340px}
     .rec-table tr:not(.rec-editing) td.rec-amt-cell{flex-direction:column;align-items:flex-end;gap:6px}
@@ -561,8 +561,28 @@
     .rec-table td.rec-amt-cell .env-progress-bar{min-width:140px}
     .rec-table td.rec-amt-cell .env-progress-text{font-size:12px}
   }
+  /* Phone landscape: short height — hide the BTC ticker, compress the header
+     into a single row, drop sub-balance lines, and trim the bottom save bar
+     so actual content has breathing room. setStickyOffsets() re-measures the
+     visible bars on resize/orientationchange, so JS offsets follow along. */
+  @media (max-height:500px) and (orientation:landscape){
+    .btc-bar{display:none}
+    header{flex-direction:row;align-items:center;padding:4px 14px;gap:12px;text-align:left}
+    .header-left{display:none}
+    .header-right{justify-content:flex-end;flex:1 1 auto;min-width:0}
+    .balance-display{display:flex;flex-direction:row;align-items:center;gap:10px;text-align:right}
+    .balance-label{display:none}
+    .balance-value{font-size:18px;line-height:1.1}
+    .balance-sub-lines{display:none}
+    .fs-unit-toggle{display:none}
+    .tab-btn{padding:6px 8px;font-size:12px}
+    .save-bar{padding:6px 10px;gap:6px}
+    .save-hint{display:none}
+    .view{padding:12px 12px 50px}
+  }
   /* ── DASHBOARD CHARTS ── */
   .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  @media(max-width:900px){.dash-grid{grid-template-columns:1fr}}
   .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;animation:fadeUp .4s ease both}
   .chart-card:nth-child(1){animation-delay:.05s}
   .chart-card:nth-child(2){animation-delay:.1s}
@@ -1040,8 +1060,14 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.11.0';
+const APP_VERSION = '1.11.1';
 const CHANGELOG = [
+  { version: '1.11.1', items: [
+    'Dashboard charts stack one-per-line on phones and tablets in portrait — single-column breakpoint raised from 600px to 900px so each chart has room to breathe',
+    'Bar chart mode auto-flips to a horizontal layout when a chart has more than 8 categories. Category labels live on the y-axis where they always fit, and the canvas grows in height instead of Chart.js skipping ticks on a cramped x-axis',
+    'Phone landscape: hidden the BTC ticker, collapsed the main header to a single row, and trimmed the bottom save bar to icons-only on short, rotated viewports — recovers ~100px of vertical content space',
+    'Privacy mode now blurs the dollar amount in the Month-to-Date Expenses subtitle (the chart canvas itself was already blurred)'
+  ]},
   { version: '1.11.0', items: [
     'Dashboard: replaced the BTC vs Fiat allocation chart with Month-to-Date Expenses — actual spend so far this month, broken down by category. Sats expenses convert to fiat using the price at time of payment, and DCA purchases show as BTC DCA',
     'Pie/Bar toggle on the Income Breakdown, Expense Breakdown, and Month-to-Date Expenses charts — each card has its own switch and the preference persists with your data',
@@ -2458,7 +2484,7 @@ function renderDashboard() {
   const _mtdMonthLabel = _now.toLocaleString(undefined, { month: 'long' });
   html += '<div class="chart-card">';
   html += '<div class="chart-card-header"><div class="chart-card-title">Month-to-Date Expenses</div>';
-  html += '<div class="chart-card-sub">' + _mtdMonthLabel + ' actual spend &middot; ' + fmtMoney(mtdExpenseTotal) + '</div>';
+  html += '<div class="chart-card-sub">' + _mtdMonthLabel + ' actual spend &middot; <span class="mtd-total">' + fmtMoney(mtdExpenseTotal) + '</span></div>';
   html += chartTypeToggleHtml('mtd') + '</div>';
   html += '<div class="chart-body">';
   html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartMtd"></canvas></div>';
@@ -2526,7 +2552,11 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
   const hasData = values.length > 0 && values.some(v => v > 0);
   const legendEl = document.getElementById(legendId);
 
-  // Pie legend below the chart — bar mode uses x-axis labels instead.
+  // Reset canvas wrapper height (bar mode in horizontal layout may grow it).
+  const wrap = ctx.parentElement;
+  if (wrap) wrap.style.height = '260px';
+
+  // Pie legend below the chart — bar mode uses axis labels instead.
   if (legendEl) {
     if (type === 'pie' && hasData) {
       legendEl.innerHTML = labels.map(function(l, i) {
@@ -2560,6 +2590,35 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
     const sLabels = hasData ? order.map(function(i) { return labels[i]; }) : ['No data'];
     const sValues = hasData ? order.map(function(i) { return values[i]; }) : [0];
     const sColors = hasData ? order.map(function(i) { return colors[i]; }) : [themeColor('#252a25', '#d0d8d0')];
+
+    // Hybrid: ≤8 categories use classic vertical bars; >8 flip horizontal so
+    // every label stays readable and the canvas grows in height instead of
+    // skipping ticks on a cramped x-axis.
+    const useHorizontal = hasData && sLabels.length > 8;
+    if (useHorizontal && wrap) {
+      wrap.style.height = Math.max(260, sLabels.length * 28) + 'px';
+    }
+
+    const valueScale = {
+      beginAtZero: true,
+      ticks: {
+        color: themeColor('#7a8a7a', '#5a6a5a'),
+        font: { family: 'monospace', size: 11 },
+        callback: function(v) { return fmtMoney(v); }
+      },
+      grid: { color: themeColor('rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)') }
+    };
+    const categoryScale = {
+      ticks: {
+        color: themeColor('#7a8a7a', '#5a6a5a'),
+        font: { family: 'monospace', size: 11 },
+        autoSkip: false,
+        maxRotation: useHorizontal ? 0 : 45,
+        minRotation: 0
+      },
+      grid: { display: false }
+    };
+
     dashCharts[canvasId] = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -2575,27 +2634,11 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        indexAxis: useHorizontal ? 'y' : 'x',
         plugins: { legend: { display: false }, tooltip: tooltipCfg },
-        scales: {
-          x: {
-            ticks: {
-              color: themeColor('#7a8a7a', '#5a6a5a'),
-              font: { family: 'monospace', size: 11 },
-              maxRotation: 45,
-              minRotation: 0
-            },
-            grid: { display: false }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              color: themeColor('#7a8a7a', '#5a6a5a'),
-              font: { family: 'monospace', size: 11 },
-              callback: function(v) { return fmtMoney(v); }
-            },
-            grid: { color: themeColor('rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)') }
-          }
-        }
+        scales: useHorizontal
+          ? { x: valueScale, y: categoryScale }
+          : { x: categoryScale, y: valueScale }
       }
     });
     return;
