@@ -477,6 +477,8 @@
     .tx-toolbar{padding:10px 12px}
     .tx-toolbar-left{width:100%;justify-content:center}
     .tx-toolbar>div:last-child{width:100%;justify-content:center}
+    .tx-filter-row{justify-content:center}
+    .tx-filter-row #tx-search{flex-basis:100% !important}
     .tab-nav{padding:0}
     .tab-btn{padding:10px 8px;font-size:12px;letter-spacing:.5px}
     .tab-nav .tab-btn:first-child{padding-left:4px}
@@ -1067,8 +1069,12 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.11.2';
+const APP_VERSION = '1.12.0';
 const CHANGELOG = [
+  { version: '1.12.0', items: [
+    'Transactions tab: new Category filter dropdown beside the search bar. Options are derived from the categories present in the current view, with Uncategorized pinned at the bottom. Combines with the search box. On phones the search input takes its own row and the dropdown sits centered below it',
+    'Dashboard → Transactions shortcut: double-click (desktop) or double-tap (mobile) any category on the Month-to-Date Expenses chart — slice, bar, axis label, or legend item — to jump straight to the Transactions tab with Show Paid turned on and the category filter applied. BTC DCA is now also a first-class filter option on the Transactions tab'
+  ]},
   { version: '1.11.2', items: [
     'Dashboard charts on mobile: tap a category name to surface its tooltip — small pie slices and narrow bars can be hard to hit, so the category names double as tap targets. Pie charts: tap any entry in the legend below the chart. Bar charts: tap the category label on the axis (y-axis in horizontal mode, x-axis in vertical mode). Tap the active item again or anywhere outside the chart to dismiss',
     'Suppressed the iOS Safari tap-highlight overlay that was flashing across the entire chart card on every bar tap'
@@ -2114,7 +2120,8 @@ function getUpcomingTransactions(daysAhead) {
         direction: r.direction,
         unit: r.unit || (r.direction === 'btc-income' ? 'sats' : 'fiat'),
         frequency: r.frequency,
-        date: ov && ov.date ? ov.date : due
+        date: ov && ov.date ? ov.date : due,
+        category: ov && ov.category != null ? ov.category : r.category
       });
       due = advanceDate(due, r.frequency);
     }
@@ -2131,7 +2138,8 @@ function getUpcomingTransactions(daysAhead) {
         direction: o.direction,
         unit: o.unit || 'fiat',
         frequency: null,
-        date: o.date
+        date: o.date,
+        category: o.category
       });
     }
   });
@@ -2555,6 +2563,60 @@ function renderDashChart(key) {
     delete dashCharts[meta.canvasId];
   }
   mkChart(meta.canvasId, meta.legendId, data.labels, data.values, data.colors, getChartType(key));
+  if (key === 'mtd') attachMtdChartNavigation();
+}
+
+// Double-click a slice/bar/axis-label/legend-item on the MTD Expenses chart →
+// jump to the Transactions tab, enable Show Paid, and filter by that category.
+function attachMtdChartNavigation() {
+  const meta = CHART_META.mtd;
+  const canvas = document.getElementById(meta.canvasId);
+  const chart = dashCharts[meta.canvasId];
+  if (!canvas || !chart) return;
+
+  if (canvas._cfMtdDblClick) {
+    canvas.removeEventListener('dblclick', canvas._cfMtdDblClick);
+  }
+  const onCanvasDbl = function(e) {
+    const c = dashCharts[meta.canvasId];
+    if (!c) return;
+    const hits = c.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+    let idx = -1;
+    if (hits && hits.length) {
+      idx = hits[0].index;
+    } else if (canvas._cfTickIndexAt) {
+      const rect = canvas.getBoundingClientRect();
+      idx = canvas._cfTickIndexAt(e.clientX - rect.left, e.clientY - rect.top, c);
+    }
+    if (idx < 0) return;
+    const cat = c.data.labels[idx];
+    if (cat && cat !== 'No data') openTxFilteredByCategory(cat);
+  };
+  canvas.addEventListener('dblclick', onCanvasDbl);
+  canvas._cfMtdDblClick = onCanvasDbl;
+
+  const legendEl = document.getElementById(meta.legendId);
+  if (legendEl) {
+    legendEl.querySelectorAll('.legend-item').forEach(function(item) {
+      item.addEventListener('dblclick', function(e) {
+        e.stopPropagation();
+        const c = dashCharts[meta.canvasId];
+        if (!c) return;
+        const idx = parseInt(this.dataset.idx, 10);
+        if (isNaN(idx)) return;
+        const cat = c.data.labels[idx];
+        if (cat && cat !== 'No data') openTxFilteredByCategory(cat);
+      });
+    });
+  }
+}
+
+function openTxFilteredByCategory(category) {
+  txCategoryFilter = category;
+  showPaidHistory = true;
+  switchTab('transactions');
+  renderTransactions();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function mkChart(canvasId, legendId, labels, values, colors, type) {
@@ -2569,6 +2631,7 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
   if (ctx._cfLabelClickHandler) {
     ctx.removeEventListener('click', ctx._cfLabelClickHandler);
     delete ctx._cfLabelClickHandler;
+    delete ctx._cfTickIndexAt;
   }
   ctx.style.cursor = '';
 
@@ -2734,6 +2797,7 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
     };
     ctx.addEventListener('click', onLabelClick);
     ctx._cfLabelClickHandler = onLabelClick;
+    ctx._cfTickIndexAt = tickIndexAt;
 
     wireLegendTooltips(canvasId, legendEl);
     return;
@@ -3397,15 +3461,72 @@ async function deleteRecurringItem(id) {
 let showPaidHistory = false;
 let editingTxId = null;
 let txSearchQuery = '';
+let txCategoryFilter = '';
 let txHorizonMonths = 1;
 let fcHorizonMonths = 1;
 let collapsedMonths = {};
 let txAllCollapsed = false;
 
+// Display-only category mapping: btc-buy items roll up under 'BTC DCA' (matches
+// the dashboard's MTD Expenses breakdown) so the Transactions filter and the
+// dashboard's category labels stay in sync.
+function txDisplayCategory(item) {
+  if (item.direction === 'btc-buy') return 'BTC DCA';
+  return item.category || 'Uncategorized';
+}
+
 function renderTransactions() {
   const container = document.getElementById('view-transactions');
   const horizonDays = Math.round(txHorizonMonths * 30.44);
   const items = getUpcomingTransactions(horizonDays);
+
+  let allItems = [...items.map(i => ({ ...i, isPaid: false }))];
+  if (showPaidHistory) {
+    appData.history.forEach(h => {
+      let hCat = null;
+      if (h.recurringId) {
+        const src = appData.recurring.find(x => x.id === h.recurringId);
+        if (src && src.category) hCat = src.category;
+      } else if (h.oneoffId) {
+        const src = appData.oneoffs.find(x => x.id === h.oneoffId);
+        if (src && src.category) hCat = src.category;
+      }
+      allItems.push({
+        type: 'history',
+        historyId: h.id,
+        name: h.name,
+        amount: h.amount,
+        direction: h.direction,
+        unit: h.unit || 'fiat',
+        date: h.paidAt.slice(0, 10),
+        paidAt: h.paidAt,
+        isPaid: true,
+        frequency: null,
+        category: hCat
+      });
+    });
+    allItems.sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  let projBal = appData.balance;
+  allItems.forEach(i => {
+    if (i.isPaid) return;
+    if (i.direction === 'btc-income' || i.unit === 'sats') return;
+    i.balanceBefore = projBal;
+    if (i.direction === 'income') projBal += i.amount;
+    else if (i.direction === 'expense' || i.direction === 'btc-buy') projBal -= i.amount;
+    i.runningBalance = projBal;
+  });
+
+  // Categories present in the current (unfiltered) view, for the dropdown
+  const catSet = new Set();
+  allItems.forEach(i => catSet.add(txDisplayCategory(i)));
+  if (txCategoryFilter) catSet.add(txCategoryFilter);
+  const availableCats = Array.from(catSet).sort((a, b) => {
+    if (a === 'Uncategorized') return 1;
+    if (b === 'Uncategorized') return -1;
+    return a.localeCompare(b);
+  });
 
   let html = '<div class="section tx-section">';
   html += '<div class="tx-sticky-head">';
@@ -3424,8 +3545,14 @@ function renderTransactions() {
   html += '</div>';
   html += '<button class="quick-add-btn" onclick="showQuickAdd()">+ Quick Add</button>';
   html += '</div></div>';
-  html += '<div style="padding:8px 16px;border-bottom:1px solid var(--border);background:var(--surface2)">';
-  html += '<input class="form-input" id="tx-search" type="text" placeholder="Search transactions\u2026" value="' + escAttr(txSearchQuery) + '" oninput="txSearchQuery=this.value;renderTransactions()" style="width:100%;font-size:15px;padding:6px 10px">';
+  html += '<div class="tx-filter-row" style="padding:8px 16px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
+  html += '<input class="form-input" id="tx-search" type="text" placeholder="Search transactions\u2026" value="' + escAttr(txSearchQuery) + '" oninput="txSearchQuery=this.value;renderTransactions()" style="flex:1 1 200px;min-width:0;font-size:15px;padding:6px 10px">';
+  html += '<select class="form-select" id="tx-cat-filter" onchange="txCategoryFilter=this.value;renderTransactions()" style="font-size:15px;padding:6px 24px 6px 8px;flex:0 0 auto;max-width:200px" title="Filter by category">';
+  html += '<option value=""' + (!txCategoryFilter ? ' selected' : '') + '>All categories</option>';
+  availableCats.forEach(c => {
+    html += '<option value="' + escAttr(c) + '"' + (txCategoryFilter === c ? ' selected' : '') + '>' + escHtml(c) + '</option>';
+  });
+  html += '</select>';
   html += '</div>';
 
   html += '<div style="padding:6px 16px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center">';
@@ -3434,38 +3561,12 @@ function renderTransactions() {
   html += '<div id="quick-add-form"></div>';
   html += '</div>'; // /tx-sticky-head
 
-  let allItems = [...items.map(i => ({ ...i, isPaid: false }))];
-  if (showPaidHistory) {
-    appData.history.forEach(h => {
-      allItems.push({
-        type: 'history',
-        historyId: h.id,
-        name: h.name,
-        amount: h.amount,
-        direction: h.direction,
-        unit: h.unit || 'fiat',
-        date: h.paidAt.slice(0, 10),
-        paidAt: h.paidAt,
-        isPaid: true,
-        frequency: null
-      });
-    });
-    allItems.sort((a, b) => a.date.localeCompare(b.date));
-  }
-
-  let projBal = appData.balance;
-  allItems.forEach(i => {
-    if (i.isPaid) return;
-    if (i.direction === 'btc-income' || i.unit === 'sats') return;
-    i.balanceBefore = projBal;
-    if (i.direction === 'income') projBal += i.amount;
-    else if (i.direction === 'expense' || i.direction === 'btc-buy') projBal -= i.amount;
-    i.runningBalance = projBal;
-  });
-
   if (txSearchQuery) {
     const q = txSearchQuery.toLowerCase();
     allItems = allItems.filter(i => i.name.toLowerCase().includes(q));
+  }
+  if (txCategoryFilter) {
+    allItems = allItems.filter(i => txDisplayCategory(i) === txCategoryFilter);
   }
 
   const today = toDateStr(new Date());
@@ -3553,7 +3654,7 @@ function renderTransactions() {
   });
 
   if (allItems.length === 0) {
-    html += '<div style="padding:24px 16px;text-align:center;font-family:var(--mono);font-size:15px;color:var(--text-dim)">' + (txSearchQuery ? 'No matching transactions' : 'No upcoming transactions') + '</div>';
+    html += '<div style="padding:24px 16px;text-align:center;font-family:var(--mono);font-size:15px;color:var(--text-dim)">' + (txSearchQuery || txCategoryFilter ? 'No matching transactions' : 'No upcoming transactions') + '</div>';
   }
 
   html += '</div>';
