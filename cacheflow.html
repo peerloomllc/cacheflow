@@ -1069,8 +1069,11 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.12.0';
+const APP_VERSION = '1.12.1';
 const CHANGELOG = [
+  { version: '1.12.1', items: [
+    'Mobile: fixed an intermittent bug where tapping a collapsed month header on the Transactions tab would start to expand and then immediately snap shut. A child row\'s background transition was bubbling up and aborting the body\'s expand animation — the listener now ignores transitionend events that didn\'t originate on the body itself'
+  ]},
   { version: '1.12.0', items: [
     'Transactions tab: new Category filter dropdown beside the search bar. Options are derived from the categories present in the current view, with Uncategorized pinned at the bottom. Combines with the search box. On phones the search input takes its own row and the dropdown sits centered below it',
     'Dashboard → Transactions shortcut: double-click (desktop) or double-tap (mobile) any category on the Month-to-Date Expenses chart — slice, bar, axis label, or legend item — to jump straight to the Transactions tab with Show Paid turned on and the category filter applied. BTC DCA is now also a first-class filter option on the Transactions tab'
@@ -3673,7 +3676,8 @@ function toggleCollapse(body, arrow, collapsed) {
       body.style.maxHeight = '0';
       body.style.opacity = '0';
     });
-    body.addEventListener('transitionend', function handler() {
+    body.addEventListener('transitionend', function handler(e) {
+      if (e.target !== body || e.propertyName !== 'max-height') return;
       body.removeEventListener('transitionend', handler);
       body.style.display = 'none';
       body.style.transition = '';
@@ -3691,7 +3695,8 @@ function toggleCollapse(body, arrow, collapsed) {
       body.style.maxHeight = body.scrollHeight + 'px';
       body.style.opacity = '1';
     });
-    body.addEventListener('transitionend', function handler() {
+    body.addEventListener('transitionend', function handler(e) {
+      if (e.target !== body || e.propertyName !== 'max-height') return;
       body.removeEventListener('transitionend', handler);
       body.style.transition = '';
       body.style.overflow = '';
