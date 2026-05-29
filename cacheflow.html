@@ -95,6 +95,8 @@
   .lock-btn.secondary:hover{border-color:var(--text-dim);color:var(--text);background:transparent}
   .lock-error{font-family:var(--mono);font-size:15px;color:var(--red);text-align:center;min-height:16px}
   .lock-hint{font-family:var(--mono);font-size:14px;color:var(--text-dim);text-align:center}
+  .lock-forgot{font-family:var(--mono);font-size:13px;color:var(--text-muted);text-align:center;background:none;border:none;cursor:pointer;letter-spacing:.5px;padding:2px;text-decoration:underline;text-underline-offset:3px}
+  .lock-forgot:hover{color:var(--red)}
   .lock-progress{height:2px;background:var(--border);border-radius:1px;overflow:hidden;display:none}
   .lock-progress-bar{height:100%;background:var(--accent);width:0%;transition:width .1s}
   .lock-progress.active{display:block}
@@ -687,6 +689,7 @@
       <div class="lock-progress" id="lock-progress"><div class="lock-progress-bar" id="lock-progress-bar"></div></div>
       <div class="lock-error" id="lock-error"></div>
       <button class="lock-btn" id="lock-submit-btn" onclick="submitUnlock()">Unlock</button>
+      <button class="lock-forgot" onclick="forgotPassword()">Forgot password? Reset app</button>
     </div>
     <div id="lock-form-set" style="display:none;flex-direction:column;gap:12px">
       <div class="lock-field">
@@ -1069,8 +1072,11 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.12.1';
+const APP_VERSION = '1.12.2';
 const CHANGELOG = [
+  { version: '1.12.2', items: [
+    'Lock screen: added a "Forgot password? Reset app" link beneath the Unlock button. Because your data is encrypted and the password is never stored, a forgotten password can\'t be recovered — the link offers a confirm-gated way to wipe everything and start fresh, instead of having to manually clear browser storage'
+  ]},
   { version: '1.12.1', items: [
     'Mobile: fixed an intermittent bug where tapping a collapsed month header on the Transactions tab would start to expand and then immediately snap shut. A child row\'s background transition was bubbling up and aborting the body\'s expand animation — the listener now ignores transitionend events that didn\'t originate on the body itself'
   ]},
@@ -1819,6 +1825,23 @@ async function submitUnlock() {
     input.value = '';
     setTimeout(() => input.classList.remove('error'), 500);
   }
+}
+
+// ── FORGOT PASSWORD ───────────────────────────────────────────────────────
+function forgotPassword() {
+  if (!confirm('Forgot your password?\n\nYour data is encrypted and CANNOT be recovered without it. Resetting will permanently delete everything and start fresh.')) return;
+  if (!confirm('Really reset? This cannot be undone.')) return;
+  localStorage.removeItem(STORAGE_ENC);
+  localStorage.removeItem(STORAGE_META);
+  sessionKey = null;
+  if (currentNsec) currentNsec.fill(0);
+  currentNsec = null;
+  appData = { balance: 0, btcBalance: 0, recurring: [], oneoffs: [], overrides: [], history: [], settings: { currency: 'USD' }, customCategories: { expense: [], income: [] }, importedAt: null, savedAt: null, sync: defaultSyncState() };
+  theme = 'dark';
+  applyTheme();
+  isFirstRun = true;
+  document.getElementById('lock-pw-input').value = '';
+  showLockScreen('set');
 }
 
 // ── SET / CHANGE PASSWORD ─────────────────────────────────────────────────
