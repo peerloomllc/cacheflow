@@ -267,6 +267,8 @@
   .date-group-header{padding:5px 16px;background:var(--surface2);font-family:var(--mono);font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);border-bottom:1px solid var(--border)}
   .month-group-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--surface2);font-family:var(--mono);font-size:15px;letter-spacing:1px;color:var(--text-muted);border-bottom:1px solid var(--border);user-select:none;transition:background .1s}
   .month-group-header:hover{background:var(--surface);color:var(--text)}
+  @keyframes txMonthFlash{0%,40%{background:var(--accent-glow);color:var(--accent)}100%{background:var(--surface2);color:var(--text-muted)}}
+  .month-group-header.tx-month-flash{animation:txMonthFlash 1.6s ease}
 
   /* ── EDIT PANEL ── */
   .edit-panel{animation:fadeUp .15s ease}
@@ -294,13 +296,14 @@
   #settings-modal{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease}
   #settings-modal.hidden{display:none}
   .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:32px 36px;width:100%;max-width:760px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:20px;animation:fadeUp .2s ease}
-  .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px 28px;align-items:start;grid-template-areas:"theme      pw" "currency   sync" "categories export"}
+  .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px 28px;align-items:start;grid-template-areas:"theme      pw" "currency   sync" "categories export" "history    history"}
   .ga-theme{grid-area:theme}
   .ga-currency{grid-area:currency}
   .ga-pw{grid-area:pw}
   .ga-categories{grid-area:categories}
   .ga-sync{grid-area:sync}
   .ga-export{grid-area:export}
+  .ga-history{grid-area:history}
   @media(max-width:700px){
     .settings-grid{grid-template-columns:1fr;grid-template-areas:none;gap:14px}
     .settings-grid > *{grid-area:auto}
@@ -605,6 +608,11 @@
   .chart-type-btn:hover{color:var(--text)}
   .chart-type-btn.active{background:var(--accent-glow);color:var(--accent)}
   .chart-type-btn + .chart-type-btn{border-left:1px solid var(--border)}
+  .mtd-controls{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .mtd-controls .chart-type-toggle{margin-top:0}
+  .mtd-month-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text-muted);font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:4px 24px 4px 10px;outline:none;cursor:pointer}
+  .mtd-month-select:hover{color:var(--text)}
+  .mtd-month-select:focus{border-color:var(--accent-dim)}
   .budgets-list{padding:14px 20px 18px;display:flex;flex-direction:column;gap:14px}
   .budget-row{display:flex;flex-direction:column;gap:5px}
   .budget-row-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
@@ -816,6 +824,12 @@
           <button class="settings-btn danger" onclick="clearAllData()">Clear All Data</button>
         </div>
         <div class="settings-help">Export saves an unencrypted backup. Import restores a Cache Flow backup. Clear permanently removes all data.</div>
+      </div>
+
+      <div class="settings-section ga-history">
+        <div class="settings-section-label">History Retention</div>
+        <select class="settings-input" id="settings-history-retention" onchange="setHistoryRetention(this.value)"></select>
+        <div class="settings-help" style="margin-top:6px">How long paid &amp; received transactions are kept for the &ldquo;Show paid&rdquo; view and Month-to-Date totals. Entries older than this are permanently removed on the next save. Recurring schedules and one-off items are unaffected.</div>
       </div>
     </div>
 
@@ -1072,8 +1086,14 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.12.2';
+const APP_VERSION = '1.13.0';
 const CHANGELOG = [
+  { version: '1.13.0', items: [
+    'Month-to-Date Expenses card: new month dropdown to look back at previous months’ spending, not just the current one. The card reads "Month-to-Date Expenses" for the current (partial) month and "Monthly Expenses" for a completed past month. How far back you can look depends on the new History Retention setting',
+    'Settings: new History Retention option (30 days / 90 days / 6 months / 1 year / Keep everything). Paid & received transactions older than the chosen window are pruned on save — previously history was always trimmed to 30 days. Shrinking the window asks for confirmation before removing anything',
+    'Fixed: a transaction scheduled for one month but marked paid in the next (e.g. due May 31, paid June 1) now groups under its scheduled month in the "Show paid" view, and counts toward that month’s Month-to-Date total — instead of the day you tapped Paid',
+    'Drill-down from the Month-to-Date chart now focuses the selected month on the Transactions tab: that month is expanded and scrolled into view while the others collapse'
+  ]},
   { version: '1.12.2', items: [
     'Lock screen: added a "Forgot password? Reset app" link beneath the Unlock button. Because your data is encrypted and the password is never stored, a forgotten password can\'t be recovered — the link offers a confirm-gated way to wipe everything and start fresh, instead of having to manually clear browser storage'
   ]},
@@ -1782,6 +1802,7 @@ async function submitUnlock() {
     appData.history = appData.history || [];
     appData.settings = appData.settings || { currency: 'USD' };
     appData.settings.chartTypes = appData.settings.chartTypes || { income: 'pie', expense: 'pie', mtd: 'pie' };
+    if (appData.settings.historyRetentionDays == null) appData.settings.historyRetentionDays = 30;
     appData.customCategories = appData.customCategories || { expense: [], income: [] };
     appData.customCategories.expense = appData.customCategories.expense || [];
     appData.customCategories.income = appData.customCategories.income || [];
@@ -1953,7 +1974,10 @@ async function encryptAndSave() {
 }
 
 function pruneHistory() {
-  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const days = appData.settings && appData.settings.historyRetentionDays;
+  if (days === 0) return; // 0 = keep everything
+  const eff = (typeof days === 'number' && days > 0) ? days : 30; // null/unset → 30-day default
+  const cutoff = Date.now() - eff * 24 * 60 * 60 * 1000;
   appData.history = appData.history.filter(h => new Date(h.paidAt).getTime() > cutoff);
 }
 
@@ -2428,44 +2452,23 @@ function renderDashboard() {
     }
   });
 
-  // ── Month-to-date expenses (from history) ──
-  const _now = new Date();
-  const _monthStart = new Date(_now.getFullYear(), _now.getMonth(), 1).getTime();
-  const mtdExpenseByCategory = {};
-  let mtdExpenseTotal = 0;
-  (appData.history || []).forEach(h => {
-    if (!h.paidAt) return;
-    if (new Date(h.paidAt).getTime() < _monthStart) return;
-    let fiatAmount = 0;
-    let cat;
-    if (h.unit === 'sats') {
-      if (h.direction !== 'expense') return; // sats income/btc-income not expense-side
-      const price = h.btcPriceAtTime || btcPrice;
-      if (!price) return;
-      fiatAmount = (h.amount / 1e8) * price;
-    } else if (h.direction === 'expense') {
-      fiatAmount = h.amount;
-    } else if (h.direction === 'btc-buy') {
-      fiatAmount = h.amount;
-      cat = 'BTC DCA';
-    } else {
-      return;
-    }
-    if (fiatAmount <= 0) return;
-    if (!cat) {
-      if (h.recurringId) {
-        const src = appData.recurring.find(x => x.id === h.recurringId);
-        cat = (src && src.category) || 'Uncategorized';
-      } else if (h.oneoffId) {
-        const src = appData.oneoffs.find(x => x.id === h.oneoffId);
-        cat = (src && src.category) || 'Uncategorized';
-      } else {
-        cat = 'Uncategorized';
-      }
-    }
-    mtdExpenseByCategory[cat] = (mtdExpenseByCategory[cat] || 0) + fiatAmount;
-    mtdExpenseTotal += fiatAmount;
-  });
+  // ── Monthly expenses (from history), aggregated per calendar month ──
+  // Build a {YYYY-MM: {cats, total}} map once, then the card shows the selected
+  // month (defaulting to the current month). The selectable range is bounded by
+  // how much history is retained (Settings → History Retention).
+  const _curMonthKey = curMonthKey();
+  mtdMonthlyData = computeMtdByMonth();
+  // Months offered in the dropdown: every month with history + always the current
+  // month, newest first.
+  const _mtdMonthSet = new Set(Object.keys(mtdMonthlyData));
+  _mtdMonthSet.add(_curMonthKey);
+  const _mtdMonths = Array.from(_mtdMonthSet).sort().reverse();
+  // Keep a valid selection across re-renders (e.g. after a month rolls over or
+  // the selected month gets pruned away).
+  if (!mtdSelectedMonth || !_mtdMonthSet.has(mtdSelectedMonth)) mtdSelectedMonth = _curMonthKey;
+  const _mtdSel = mtdMonthlyData[mtdSelectedMonth] || { cats: {}, total: 0 };
+  const mtdExpenseByCategory = _mtdSel.cats;
+  let mtdExpenseTotal = _mtdSel.total;
 
   // ── Cash runway ──
   const netMonthly = monthlyIncome - monthlyExpense;
@@ -2526,11 +2529,16 @@ function renderDashboard() {
   // Row 2: Month-to-Date Expenses + Cash Runway
   html += '<div class="dash-grid">';
 
-  const _mtdMonthLabel = _now.toLocaleString(undefined, { month: 'long' });
+  const _mtdIsCurrent = mtdSelectedMonth === _curMonthKey;
+  let _mtdSelectHtml = '<select class="mtd-month-select" id="mtd-month-select" onchange="setMtdMonth(this.value)" title="Select month">';
+  _mtdMonths.forEach(mk => {
+    _mtdSelectHtml += '<option value="' + mk + '"' + (mk === mtdSelectedMonth ? ' selected' : '') + '>' + monthKeyOptionLabel(mk, _curMonthKey) + '</option>';
+  });
+  _mtdSelectHtml += '</select>';
   html += '<div class="chart-card">';
-  html += '<div class="chart-card-header"><div class="chart-card-title">Month-to-Date Expenses</div>';
-  html += '<div class="chart-card-sub">' + _mtdMonthLabel + ' actual spend &middot; <span class="mtd-total">' + fmtMoney(mtdExpenseTotal) + '</span></div>';
-  html += chartTypeToggleHtml('mtd') + '</div>';
+  html += '<div class="chart-card-header"><div class="chart-card-title" id="mtd-card-title">' + (_mtdIsCurrent ? 'Month-to-Date Expenses' : 'Monthly Expenses') + '</div>';
+  html += '<div class="chart-card-sub">Actual spend &middot; <span class="mtd-total">' + fmtMoney(mtdExpenseTotal) + '</span></div>';
+  html += '<div class="mtd-controls">' + _mtdSelectHtml + chartTypeToggleHtml('mtd') + '</div></div>';
   html += '<div class="chart-body">';
   html += '<div style="position:relative;width:100%;height:260px"><canvas id="chartMtd"></canvas></div>';
   html += '<div id="legend-mtd" class="chart-legend"></div></div>';
@@ -2580,6 +2588,83 @@ const CHART_META = {
 };
 let chartData = { income: null, expense: null, mtd: null };
 
+// Monthly-expense state for the MTD card's month selector.
+let mtdSelectedMonth = null;       // YYYY-MM currently shown (null → current month)
+let mtdMonthlyData = {};           // { 'YYYY-MM': { cats: {cat: amt}, total } }
+
+function curMonthKey() {
+  const n = new Date();
+  return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+}
+
+// Aggregate paid/received history into per-calendar-month expense buckets.
+// Effective month = scheduled due date when known (else actual paid date), keyed
+// as a YYYY-MM string to stay consistent with the Transactions grouping and avoid
+// timezone drift from parsing date-only strings. Matches Transactions: an item due
+// 5/31 but paid 6/1 counts toward May, not June.
+function computeMtdByMonth() {
+  const byMonth = {};
+  (appData.history || []).forEach(h => {
+    const eff = h.dueDate || h.paidAt;
+    if (!eff) return;
+    const mk = eff.slice(0, 7);
+    let fiatAmount = 0;
+    let cat;
+    if (h.unit === 'sats') {
+      if (h.direction !== 'expense') return; // sats income/btc-income not expense-side
+      const price = h.btcPriceAtTime || btcPrice;
+      if (!price) return;
+      fiatAmount = (h.amount / 1e8) * price;
+    } else if (h.direction === 'expense') {
+      fiatAmount = h.amount;
+    } else if (h.direction === 'btc-buy') {
+      fiatAmount = h.amount;
+      cat = 'BTC DCA';
+    } else {
+      return;
+    }
+    if (fiatAmount <= 0) return;
+    if (!cat) {
+      if (h.recurringId) {
+        const src = appData.recurring.find(x => x.id === h.recurringId);
+        cat = (src && src.category) || 'Uncategorized';
+      } else if (h.oneoffId) {
+        const src = appData.oneoffs.find(x => x.id === h.oneoffId);
+        cat = (src && src.category) || 'Uncategorized';
+      } else {
+        cat = 'Uncategorized';
+      }
+    }
+    if (!byMonth[mk]) byMonth[mk] = { cats: {}, total: 0 };
+    byMonth[mk].cats[cat] = (byMonth[mk].cats[cat] || 0) + fiatAmount;
+    byMonth[mk].total += fiatAmount;
+  });
+  return byMonth;
+}
+
+function monthKeyOptionLabel(mk, curKey) {
+  const d = new Date(mk + '-01T00:00:00');
+  const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return mk === curKey ? label + ' (current)' : label;
+}
+
+// Switch the MTD card to a different month without rebuilding the whole dashboard:
+// recompute that month's chart data, refresh the title + total text, re-render the
+// single canvas (re-attaching its drill-down navigation).
+function setMtdMonth(mk) {
+  if (!mk) return;
+  mtdSelectedMonth = mk;
+  const sel = mtdMonthlyData[mk] || { cats: {}, total: 0 };
+  const labels = Object.keys(sel.cats);
+  const values = Object.values(sel.cats);
+  chartData.mtd = { labels, values, colors: labels.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]) };
+  const titleEl = document.getElementById('mtd-card-title');
+  if (titleEl) titleEl.textContent = (mk === curMonthKey()) ? 'Month-to-Date Expenses' : 'Monthly Expenses';
+  const totalEl = document.querySelector('#view-dashboard .mtd-total');
+  if (totalEl) totalEl.textContent = fmtMoney(sel.total);
+  renderDashChart('mtd');
+}
+
 function renderDashChart(key) {
   const meta = CHART_META[key];
   const data = chartData[key];
@@ -2616,7 +2701,7 @@ function attachMtdChartNavigation() {
     }
     if (idx < 0) return;
     const cat = c.data.labels[idx];
-    if (cat && cat !== 'No data') openTxFilteredByCategory(cat);
+    if (cat && cat !== 'No data') openTxFilteredByCategory(cat, mtdSelectedMonth);
   };
   canvas.addEventListener('dblclick', onCanvasDbl);
   canvas._cfMtdDblClick = onCanvasDbl;
@@ -2631,18 +2716,39 @@ function attachMtdChartNavigation() {
         const idx = parseInt(this.dataset.idx, 10);
         if (isNaN(idx)) return;
         const cat = c.data.labels[idx];
-        if (cat && cat !== 'No data') openTxFilteredByCategory(cat);
+        if (cat && cat !== 'No data') openTxFilteredByCategory(cat, mtdSelectedMonth);
       });
     });
   }
 }
 
-function openTxFilteredByCategory(category) {
+function openTxFilteredByCategory(category, monthKey) {
   txCategoryFilter = category;
   showPaidHistory = true;
+  // Focus the target month: render it expanded and all other months collapsed.
+  if (monthKey) txSoloExpandMonth = monthKey;
   switchTab('transactions');
   renderTransactions();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (monthKey) scrollToTxMonth(monthKey);
+  else window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Scroll the Transactions view to a given month group, landing it just below the
+// sticky page chrome + the tx toolbar, and briefly flash it to orient the user.
+function scrollToTxMonth(monthKey) {
+  requestAnimationFrame(function() {
+    const header = document.querySelector('[data-month-header="' + monthKey + '"]');
+    if (!header) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    const stickyTop = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sticky-top'), 10) || 0;
+    const txHead = document.querySelector('.tx-sticky-head');
+    const txHeadH = txHead ? txHead.offsetHeight : 0;
+    const y = header.getBoundingClientRect().top + window.scrollY - stickyTop - txHeadH - 8;
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    header.classList.remove('tx-month-flash');
+    void header.offsetWidth; // reflow so the animation restarts on repeat drill-downs
+    header.classList.add('tx-month-flash');
+    setTimeout(function() { header.classList.remove('tx-month-flash'); }, 1600);
+  });
 }
 
 function mkChart(canvasId, legendId, labels, values, colors, type) {
@@ -3492,6 +3598,7 @@ let txHorizonMonths = 1;
 let fcHorizonMonths = 1;
 let collapsedMonths = {};
 let txAllCollapsed = false;
+let txSoloExpandMonth = null; // one-shot: on next render, expand only this month, collapse the rest
 
 // Display-only category mapping: btc-buy items roll up under 'BTC DCA' (matches
 // the dashboard's MTD Expenses breakdown) so the Transactions filter and the
@@ -3524,7 +3631,7 @@ function renderTransactions() {
         amount: h.amount,
         direction: h.direction,
         unit: h.unit || 'fiat',
-        date: h.paidAt.slice(0, 10),
+        date: (h.dueDate || h.paidAt).slice(0, 10),
         paidAt: h.paidAt,
         isPaid: true,
         frequency: null,
@@ -3602,6 +3709,12 @@ function renderTransactions() {
     if (!monthGroups[key]) monthGroups[key] = [];
     monthGroups[key].push(i);
   });
+
+  // One-shot drill-down focus: expand only the requested month, collapse all others.
+  if (txSoloExpandMonth) {
+    Object.keys(monthGroups).forEach(k => { collapsedMonths[k] = (k !== txSoloExpandMonth); });
+    txSoloExpandMonth = null;
+  }
 
   Object.keys(monthGroups).sort().forEach(monthKey => {
     const items = monthGroups[monthKey];
@@ -4551,6 +4664,10 @@ function openSettings() {
     '<option value="' + k + '"' + (k===cur?' selected':'') + '>' + v.label + '</option>'
   ).join('');
   renderCustomCategoriesList();
+  const retSel = document.getElementById('settings-history-retention');
+  const curRet = appData.settings.historyRetentionDays == null ? 30 : appData.settings.historyRetentionDays;
+  retSel.innerHTML = [[30,'30 days'],[90,'90 days'],[180,'6 months'],[365,'1 year'],[0,'Keep everything']]
+    .map(([v,l]) => '<option value="' + v + '"' + (v === curRet ? ' selected' : '') + '>' + l + '</option>').join('');
   document.getElementById('settings-modal').classList.remove('hidden');
 }
 
@@ -5074,6 +5191,29 @@ async function setCurrencySetting(val) {
   await encryptAndSave();
 }
 
+function retentionLabel(days) {
+  return ({ 30: '30 days', 90: '90 days', 180: '6 months', 365: '1 year', 0: 'Keep everything' })[days] || (days + ' days');
+}
+
+async function setHistoryRetention(val) {
+  const days = parseInt(val, 10) || 0; // 0 = keep everything
+  // Reducing the window permanently deletes entries on save — confirm first.
+  if (days > 0) {
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const toRemove = (appData.history || []).filter(h => new Date(h.paidAt).getTime() <= cutoff).length;
+    if (toRemove > 0 && !confirm('Set history retention to ' + retentionLabel(days) + '?\n\nThis permanently removes ' + toRemove + ' paid/received ' + (toRemove === 1 ? 'entry' : 'entries') + ' older than the new window. This cannot be undone.')) {
+      const sel = document.getElementById('settings-history-retention');
+      const prev = appData.settings.historyRetentionDays;
+      if (sel) sel.value = String(prev == null ? 30 : prev);
+      return;
+    }
+  }
+  appData.settings.historyRetentionDays = days;
+  await encryptAndSave(); // prunes history to the new window, then persists
+  renderAll();
+  showToast('History retention set to ' + retentionLabel(days), 'success');
+}
+
 async function setDisplayUnit(unit) {
   if (unit !== 'fiat' && unit !== 'sats') return;
   if (unit === 'sats' && !btcPrice) {
@@ -5543,6 +5683,7 @@ async function markPaid(recurringId, oneoffId, date, btn, originalDate) {
       direction: r.direction,
       unit: r.unit || (r.direction === 'btc-income' ? 'sats' : 'fiat'),
       paidAt: new Date().toISOString(),
+      dueDate: origDate,
       recurringId: r.id,
       prevNextDue: r.nextDue
     };
@@ -5560,6 +5701,7 @@ async function markPaid(recurringId, oneoffId, date, btn, originalDate) {
       direction: o.direction,
       unit: o.unit || 'fiat',
       paidAt: new Date().toISOString(),
+      dueDate: o.date,
       oneoffId: o.id
     };
     o.paid = true;
