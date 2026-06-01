@@ -29,7 +29,7 @@ Everything lives in one file organized in this order:
    - Crypto helpers (`deriveKey`, `encryptPayload`, `decryptPayload`)
    - Lock screen functions (`showLockScreen`, `submitUnlock`, `submitSetPassword`, `lockApp`)
    - Idle timer (`resetIdleTimer`, 15-min auto-lock)
-   - `encryptAndSave()` — encrypts `appData` and writes to localStorage; also prunes history >30 days
+   - `encryptAndSave()` — encrypts `appData` and writes to localStorage; also prunes history older than the configured retention window (`appData.settings.historyRetentionDays`, default 30; `0` = keep everything)
    - Helpers (`generateId`, `fmtMoney`, `normalizeToMonthly`, `advanceDate`, `getUpcomingTransactions`)
    - Tab switching
    - `renderAll()` → calls `renderDashboard()`, `renderTransactions()`, `renderForecast()`
@@ -41,7 +41,7 @@ Everything lives in one file organized in this order:
 
 - **Encryption**: AES-256-GCM + PBKDF2 (310k iterations) via Web Crypto API. Session key held in memory, cleared on lock. Salt in `cacheflow-v1-meta`, ciphertext in `cacheflow-v1-enc`.
 - **Single balance model**: One checking account balance, adjusted by Paid/Received actions. No multi-account.
-- **Transaction lifecycle**: Recurring items have `nextDue` dates. `markPaid()` adjusts balance, pushes to `history[]`, advances `nextDue`. History pruned to 30 days on save.
+- **Transaction lifecycle**: Recurring items have `nextDue` dates. `markPaid()` adjusts balance, pushes to `history[]`, advances `nextDue`. History pruned on save to the user-configurable retention window (Settings → History Retention; default 30 days, `0` = keep everything).
 - **Rendering**: All views re-render via `innerHTML` on each `renderAll()` call. No virtual DOM, no diffing. State lives in the `appData` object.
 - **Cache import**: Reads the `recurring` array from a Cache JSON export. Matches existing items by `sourceId` for re-import updates.
 
