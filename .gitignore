@@ -1,2 +1,6 @@
 .superpowers/
 .env
+
+# Local task-tracking files (untracked in #26; ignored here)
+TODO.md
+DONE.md
