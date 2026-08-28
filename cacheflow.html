@@ -362,7 +362,7 @@
   .bar-btn-primary{background:var(--accent);color:var(--bg);font-weight:500}
   .bar-btn-primary:hover{background:#bfe0a0}
 
-  /* ── PRIVACY MODE — blur monetary values ── */
+  /* ── PRIVACY MODE - blur monetary values ── */
   body[data-privacy="on"] .balance-value,
   body[data-privacy="on"] .balance-sub-lines .sub-value,
   body[data-privacy="on"] .summary-bar .s-value,
@@ -568,7 +568,7 @@
     .rec-table td.rec-amt-cell .env-progress-bar{min-width:140px}
     .rec-table td.rec-amt-cell .env-progress-text{font-size:12px}
   }
-  /* Phone landscape: short height — hide the BTC ticker, compress the header
+  /* Phone landscape: short height - hide the BTC ticker, compress the header
      into a single row, drop sub-balance lines, and trim the bottom save bar
      so actual content has breathing room. setStickyOffsets() re-measures the
      visible bars on resize/orientationchange, so JS offsets follow along. */
@@ -928,7 +928,7 @@
 
 <!-- ══ SAVE BAR (bottom menu) ══ -->
 <div class="save-bar" style="display:none">
-  <div class="save-hint">All data saved locally — <span>never leaves this device</span></div>
+  <div class="save-hint">All data saved locally - <span>never leaves this device</span></div>
   <div class="btn-group">
     <button class="bar-btn bar-btn-privacy" id="privacyBtn" onclick="togglePrivacy()" title="Toggle privacy mode" aria-label="Toggle privacy mode">&#128065; <span class="privacy-label">Privacy</span></button>
     <button class="bar-btn bar-btn-about" onclick="openAbout()" title="About"><span class="about-icon">i</span> <span class="bar-btn-label">About</span></button>
@@ -1056,7 +1056,7 @@
 </script>
 
 <script>
-// Always start at the top — disable browser scroll restoration on reload
+// Always start at the top - disable browser scroll restoration on reload
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 // ── PWA (early registration for install prompt) ──────────────────────────
@@ -1090,33 +1090,33 @@ const APP_VERSION = '1.13.0';
 const CHANGELOG = [
   { version: '1.13.0', items: [
     'Month-to-Date Expenses card: new month dropdown to look back at previous months’ spending, not just the current one. The card reads "Month-to-Date Expenses" for the current (partial) month and "Monthly Expenses" for a completed past month. How far back you can look depends on the new History Retention setting',
-    'Settings: new History Retention option (30 days / 90 days / 6 months / 1 year / Keep everything). Paid & received transactions older than the chosen window are pruned on save — previously history was always trimmed to 30 days. Shrinking the window asks for confirmation before removing anything',
-    'Fixed: a transaction scheduled for one month but marked paid in the next (e.g. due May 31, paid June 1) now groups under its scheduled month in the "Show paid" view, and counts toward that month’s Month-to-Date total — instead of the day you tapped Paid',
+    'Settings: new History Retention option (30 days / 90 days / 6 months / 1 year / Keep everything). Paid & received transactions older than the chosen window are pruned on save - previously history was always trimmed to 30 days. Shrinking the window asks for confirmation before removing anything',
+    'Fixed: a transaction scheduled for one month but marked paid in the next (e.g. due May 31, paid June 1) now groups under its scheduled month in the "Show paid" view, and counts toward that month’s Month-to-Date total - instead of the day you tapped Paid',
     'Drill-down from the Month-to-Date chart now focuses the selected month on the Transactions tab: that month is expanded and scrolled into view while the others collapse'
   ]},
   { version: '1.12.2', items: [
-    'Lock screen: added a "Forgot password? Reset app" link beneath the Unlock button. Because your data is encrypted and the password is never stored, a forgotten password can\'t be recovered — the link offers a confirm-gated way to wipe everything and start fresh, instead of having to manually clear browser storage'
+    'Lock screen: added a "Forgot password? Reset app" link beneath the Unlock button. Because your data is encrypted and the password is never stored, a forgotten password can\'t be recovered - the link offers a confirm-gated way to wipe everything and start fresh, instead of having to manually clear browser storage'
   ]},
   { version: '1.12.1', items: [
-    'Mobile: fixed an intermittent bug where tapping a collapsed month header on the Transactions tab would start to expand and then immediately snap shut. A child row\'s background transition was bubbling up and aborting the body\'s expand animation — the listener now ignores transitionend events that didn\'t originate on the body itself'
+    'Mobile: fixed an intermittent bug where tapping a collapsed month header on the Transactions tab would start to expand and then immediately snap shut. A child row\'s background transition was bubbling up and aborting the body\'s expand animation - the listener now ignores transitionend events that didn\'t originate on the body itself'
   ]},
   { version: '1.12.0', items: [
     'Transactions tab: new Category filter dropdown beside the search bar. Options are derived from the categories present in the current view, with Uncategorized pinned at the bottom. Combines with the search box. On phones the search input takes its own row and the dropdown sits centered below it',
-    'Dashboard → Transactions shortcut: double-click (desktop) or double-tap (mobile) any category on the Month-to-Date Expenses chart — slice, bar, axis label, or legend item — to jump straight to the Transactions tab with Show Paid turned on and the category filter applied. BTC DCA is now also a first-class filter option on the Transactions tab'
+    'Dashboard → Transactions shortcut: double-click (desktop) or double-tap (mobile) any category on the Month-to-Date Expenses chart - slice, bar, axis label, or legend item - to jump straight to the Transactions tab with Show Paid turned on and the category filter applied. BTC DCA is now also a first-class filter option on the Transactions tab'
   ]},
   { version: '1.11.2', items: [
-    'Dashboard charts on mobile: tap a category name to surface its tooltip — small pie slices and narrow bars can be hard to hit, so the category names double as tap targets. Pie charts: tap any entry in the legend below the chart. Bar charts: tap the category label on the axis (y-axis in horizontal mode, x-axis in vertical mode). Tap the active item again or anywhere outside the chart to dismiss',
+    'Dashboard charts on mobile: tap a category name to surface its tooltip - small pie slices and narrow bars can be hard to hit, so the category names double as tap targets. Pie charts: tap any entry in the legend below the chart. Bar charts: tap the category label on the axis (y-axis in horizontal mode, x-axis in vertical mode). Tap the active item again or anywhere outside the chart to dismiss',
     'Suppressed the iOS Safari tap-highlight overlay that was flashing across the entire chart card on every bar tap'
   ]},
   { version: '1.11.1', items: [
-    'Dashboard charts stack one-per-line on phones and tablets in portrait — single-column breakpoint raised from 600px to 900px so each chart has room to breathe',
+    'Dashboard charts stack one-per-line on phones and tablets in portrait - single-column breakpoint raised from 600px to 900px so each chart has room to breathe',
     'Bar chart mode auto-flips to a horizontal layout when a chart has more than 8 categories. Category labels live on the y-axis where they always fit, and the canvas grows in height instead of Chart.js skipping ticks on a cramped x-axis',
-    'Phone landscape: hidden the BTC ticker, collapsed the main header to a single row, and trimmed the bottom save bar to icons-only on short, rotated viewports — recovers ~100px of vertical content space',
+    'Phone landscape: hidden the BTC ticker, collapsed the main header to a single row, and trimmed the bottom save bar to icons-only on short, rotated viewports - recovers ~100px of vertical content space',
     'Privacy mode now blurs the dollar amount in the Month-to-Date Expenses subtitle (the chart canvas itself was already blurred)'
   ]},
   { version: '1.11.0', items: [
-    'Dashboard: replaced the BTC vs Fiat allocation chart with Month-to-Date Expenses — actual spend so far this month, broken down by category. Sats expenses convert to fiat using the price at time of payment, and DCA purchases show as BTC DCA',
-    'Pie/Bar toggle on the Income Breakdown, Expense Breakdown, and Month-to-Date Expenses charts — each card has its own switch and the preference persists with your data',
+    'Dashboard: replaced the BTC vs Fiat allocation chart with Month-to-Date Expenses - actual spend so far this month, broken down by category. Sats expenses convert to fiat using the price at time of payment, and DCA purchases show as BTC DCA',
+    'Pie/Bar toggle on the Income Breakdown, Expense Breakdown, and Month-to-Date Expenses charts - each card has its own switch and the preference persists with your data',
     'Donation reminder popup: Maybe Later and Already Donated buttons now render at identical width'
   ]},
   { version: '1.10.1', items: [
@@ -1125,20 +1125,20 @@ const CHANGELOG = [
     'What\'s New popup now shows release notes from every version since you last looked, so skipping a version no longer loses its notes'
   ]},
   { version: '1.10.0', items: [
-    'Cross-device sync via Nostr: pair multiple devices using a single sync key (nsec) so your data stays in sync across them. Settings → Configure sync → Set up sync, then either generate a fresh key or paste an existing one. Data is end-to-end encrypted with NIP-44 before being published, so relay operators only see ciphertext. Public defaults: Damus, nos.lol, nostr.band, nostr.wine — fully editable, and self-hosted relays (e.g. wss://your-relay.example) work too. Auto-pulls newer snapshots on unlock and auto-pushes after every save',
-    'Settings modal redesign: desktop now uses a two-column layout — Theme, Currency, Custom Categories on the left; Change Password, Cross-device sync, Export/Import/Clear on the right. Mobile keeps the single-column stacked flow'
+    'Cross-device sync via Nostr: pair multiple devices using a single sync key (nsec) so your data stays in sync across them. Settings → Configure sync → Set up sync, then either generate a fresh key or paste an existing one. Data is end-to-end encrypted with NIP-44 before being published, so relay operators only see ciphertext. Public defaults: Damus, nos.lol, nostr.band, nostr.wine - fully editable, and self-hosted relays (e.g. wss://your-relay.example) work too. Auto-pulls newer snapshots on unlock and auto-pushes after every save',
+    'Settings modal redesign: desktop now uses a two-column layout - Theme, Currency, Custom Categories on the left; Change Password, Cross-device sync, Export/Import/Clear on the right. Mobile keeps the single-column stacked flow'
   ]},
   { version: '1.9.0', items: [
-    'Multiple envelopes per category: the one-envelope-per-category limit is gone — keep "Food & Dining" as a single category but track separate Groceries and Restaurants envelopes underneath. Quick Add and the transaction edit modal show an Envelope picker whenever a category has more than one envelope; existing one-offs migrate automatically based on their current category match',
-    'Semi-annual recurring frequency: option for bills that hit every six months — car insurance, vehicle registration, and similar',
+    'Multiple envelopes per category: the one-envelope-per-category limit is gone - keep "Food & Dining" as a single category but track separate Groceries and Restaurants envelopes underneath. Quick Add and the transaction edit modal show an Envelope picker whenever a category has more than one envelope; existing one-offs migrate automatically based on their current category match',
+    'Semi-annual recurring frequency: option for bills that hit every six months - car insurance, vehicle registration, and similar',
     'Mobile: envelope progress bar on the Recurring tab now stacks neatly below the amount with proper breathing room, instead of cramming horizontally beside it'
   ]},
   { version: '1.8.0', items: [
-    'Envelope budgeting: toggle any fiat-expense recurring to "Envelope" — one-offs in matching category deduct from a monthly budget. Progress bar shows on the Recurring row plus a new Budgets card on the Dashboard. Validation prevents two envelopes per category. Two new default categories — Groceries and Dining — for cleaner envelope tracking',
+    'Envelope budgeting: toggle any fiat-expense recurring to "Envelope" - one-offs in matching category deduct from a monthly budget. Progress bar shows on the Recurring row plus a new Budgets card on the Dashboard. Validation prevents two envelopes per category. Two new default categories - Groceries and Dining - for cleaner envelope tracking',
     'SATS denomination for recurring expenses and income: $/₿ toggle in the inline edit row of any non-BTC recurring item. Sats-denominated recurring settle against BTC balance on Paid/Received',
     'Default Transactions and Forecast horizon dropped from 6 to 1 month, and your chosen horizon now persists across sessions',
     'Summary bar (Avg Monthly Income / Expenses / Net) moved from the persistent header into the top of the Dashboard, freeing significant vertical space on mobile across all other tabs',
-    'Transactions tab toolbar (horizon, Show paid, Quick Add, search, Collapse All) is now sticky — pins under the tab nav while transaction rows scroll past',
+    'Transactions tab toolbar (horizon, Show paid, Quick Add, search, Collapse All) is now sticky - pins under the tab nav while transaction rows scroll past',
     'Recurring tab polish: sections collapsed by default, equal-width Save/Cancel buttons, brighter + Add buttons, centered + Add bar; sats display no longer wraps and tables are wider on desktop',
     'Mobile header diet: Cache Flow title block hidden, Total Balance label dropped, balance font shrunk, and the redundant "≈ $X" cash-equivalent of the sats balance removed'
   ]},
@@ -1150,20 +1150,20 @@ const CHANGELOG = [
   ]},
   { version: '1.6.0', items: [
     'Quick Add: new categories on one-off transactions (Bonus added to Income); $/₿ unit toggle so a one-off can be denominated in USD or sats (e.g. a 50,000-sat coffee). Sats-denominated one-offs settle against your BTC balance on Paid/Received',
-    'Dashboard Income/Expense Breakdown charts now include one-offs from the past 60 days and next 60 days, averaged across that 120-day window — captures unexpected expenses alongside recurring baselines. Legends moved below the doughnuts',
+    'Dashboard Income/Expense Breakdown charts now include one-offs from the past 60 days and next 60 days, averaged across that 120-day window - captures unexpected expenses alongside recurring baselines. Legends moved below the doughnuts',
     'Quick Add layout polish: reduced Description width, fixed dropdown arrow overlapping the Category text, and Save/Cancel buttons centered on mobile inline forms'
   ]},
   { version: '1.5.0', items: [
-    'New privacy mode toggle in the bottom menu (eye icon next to Lock) — blurs balances, summary bar, recurring/transaction/forecast amounts, dashboard charts, and runway. Setting persists with your data',
+    'New privacy mode toggle in the bottom menu (eye icon next to Lock) - blurs balances, summary bar, recurring/transaction/forecast amounts, dashboard charts, and runway. Setting persists with your data',
     'Mobile: Save/Cancel buttons in the Quick Add and Add Recurring forms now center within their row'
   ]},
   { version: '1.4.0', items: [
-    'New FIAT / SATS toggle under Total Balance — denominates all fiat values (Total Balance, summary bar, recurring, dashboard, forecast) in sats; Cash sub-line stays in fiat',
+    'New FIAT / SATS toggle under Total Balance - denominates all fiat values (Total Balance, summary bar, recurring, dashboard, forecast) in sats; Cash sub-line stays in fiat',
     'Toggle is disabled when BTC price is unavailable, and auto-falls back to fiat if the price fetch fails while sats mode is active; preference persists with your data',
     'Recurring expense categories: added Taxes, Childcare, Dues & Memberships, Fees & Charges, Gifts & Donations, Personal Care, Pets, and Travel'
   ]},
   { version: '1.3.1', items: [
-    'Transactions tab: removed the Weekly subgroups — transactions are now grouped by month only'
+    'Transactions tab: removed the Weekly subgroups - transactions are now grouped by month only'
   ]},
   { version: '1.3.0', items: [
     'Transactions tab: each upcoming row now shows a running balance projection ($1,000 − $50 = $950), turning red when a transaction would push you into the red',
@@ -1180,7 +1180,7 @@ const CHANGELOG = [
   { version: '1.1.0', items: [
     'Dashboard: income profitability chart showing net return per income source after linked recurring expenses',
     'Recurring expenses can now be linked to an income source via the category dropdown',
-    'Editing a transaction on the Transactions tab now only edits that occurrence — the recurring template is preserved',
+    'Editing a transaction on the Transactions tab now only edits that occurrence - the recurring template is preserved',
     'Mobile: Recurring tab uses a compact card layout (no more horizontal scroll) with larger Save/Cancel buttons'
   ]},
   { version: '1.0.0', items: [
@@ -2098,7 +2098,7 @@ function migrateRecurringUnits(recurring) {
 }
 
 // One-shot: assign envelopeId to legacy oneoffs based on the (then-unique) envelope-per-category.
-// Idempotent — only sets when missing. Pre-Path-B data has at most one envelope per category, so
+// Idempotent - only sets when missing. Pre-Path-B data has at most one envelope per category, so
 // the unique-match branch always fires for legacy oneoffs.
 function migrateOneoffEnvelopeIds(oneoffs, recurring) {
   if (!Array.isArray(oneoffs) || !Array.isArray(recurring)) return;
@@ -2124,7 +2124,7 @@ function forEachWindowedOneoff(fn) {
     if (!o || !o.date) continue;
     const t = new Date(o.date + 'T00:00:00').getTime();
     if (t < winStart || t > winEnd) continue;
-    if (oneoffIsInEnvelope(o)) continue; // consumed by an envelope budget — counted via that envelope, not separately
+    if (oneoffIsInEnvelope(o)) continue; // consumed by an envelope budget - counted via that envelope, not separately
     const raw = parseFloat(o.amount) || 0;
     const fiatAmt = o.unit === 'sats' ? satsToFiat(raw) : raw;
     fn(o, fiatAmt / ONEOFF_WINDOW_MONTHS);
@@ -2246,7 +2246,7 @@ function renderBalanceHeader() {
   combEl.className = 'balance-value' + balCls;
   document.body.setAttribute('data-display-unit', displayUnit);
 
-  // Cash sub-line — always shown in fiat
+  // Cash sub-line - always shown in fiat
   const bal = appData.balance;
   const balEl = document.getElementById('balanceDisplay');
   balEl.textContent = fmtFiat(bal);
@@ -2481,7 +2481,7 @@ function renderDashboard() {
     else if (runwayDays <= 90) runwayClass = 'warning';
   }
 
-  // ── Summary bar totals (fiat-only, sats-recurring excluded — matches prior summary-bar semantics) ──
+  // ── Summary bar totals (fiat-only, sats-recurring excluded - matches prior summary-bar semantics) ──
   let summaryIncome = 0, summaryExpense = 0;
   appData.recurring.filter(r => r.enabled).forEach(r => {
     if (recIsSats(r)) return;
@@ -2497,7 +2497,7 @@ function renderDashboard() {
   // ── Build HTML ──
   let html = '';
 
-  // Summary bar (moved from persistent header — only shown on Dashboard)
+  // Summary bar (moved from persistent header - only shown on Dashboard)
   html += summaryBarHtml(summaryIncome, summaryExpense);
 
   // Budgets card (only renders if user has envelope-kind recurring)
@@ -2771,7 +2771,7 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
   const wrap = ctx.parentElement;
   if (wrap) wrap.style.height = '260px';
 
-  // Pie/doughnut legend below the chart — clickable on mobile so users can tap
+  // Pie/doughnut legend below the chart - clickable on mobile so users can tap
   // the category name to surface the tooltip when slices are too small to hit
   // reliably. Bar mode skips the legend (axis tick labels serve the same role
   // and are wired separately via the chart's onClick handler).
@@ -2838,7 +2838,7 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
     };
 
     // Categories live on whichever axis isn't the value axis. Mapping a click
-    // back to a tick index lets us treat the axis labels as tap targets — the
+    // back to a tick index lets us treat the axis labels as tap targets - the
     // narrow bars are hard to hit on mobile so tapping the name is the escape
     // hatch.
     const categoryAxisKey = useHorizontal ? 'y' : 'x';
@@ -2884,7 +2884,7 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
         scales: useHorizontal
           ? { x: valueScale, y: categoryScale }
           : { x: categoryScale, y: valueScale },
-        // Desktop affordance only — onHover gives us `elements` for free.
+        // Desktop affordance only - onHover gives us `elements` for free.
         // Tap handling is on the canvas directly (below) since Chart.js'
         // onClick is unreliable for synthetic touch clicks on axis labels.
         onHover: function(evt, elements, chart) {
@@ -2897,7 +2897,7 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
       }
     });
 
-    // Native click listener — runs for both mouse clicks and tap-synthesized
+    // Native click listener - runs for both mouse clicks and tap-synthesized
     // clicks. Computes coords from getBoundingClientRect so we don't depend on
     // Chart.js' event normalization (which sometimes skips axis-label hits on
     // mobile). We delegate bar hits to Chart.js' own tooltip behavior.
@@ -2961,11 +2961,11 @@ function mkChart(canvasId, legendId, labels, values, colors, type) {
 // Pie mode wires legend-item taps to programmatically pin the matching slice
 // tooltip; bar mode pins via its own onClick (axis-label taps). Either way we
 // also install a document-level dismiss listener so tapping anywhere outside
-// the chart + legend clears the pinned tooltip — important for the bar case
+// the chart + legend clears the pinned tooltip - important for the bar case
 // where Chart.js' default hover-clear never fires (no mouse on mobile).
 const _chartDismissHandlers = {};
 function wireLegendTooltips(canvasId, legendEl) {
-  // Remove any prior dismiss listener for this canvas — renderAll() rebuilds
+  // Remove any prior dismiss listener for this canvas - renderAll() rebuilds
   // the legend container via innerHTML so the old DOM node is gone, but the
   // document-level listener it registered would otherwise stay attached.
   if (_chartDismissHandlers[canvasId]) {
@@ -3139,8 +3139,8 @@ function currentMonthBounds() {
 }
 
 // Spent this month against an envelope: sum fiat-expense one-offs resolved to this envelope
-// (via envelopeForOneoff — id-based with category fallback) dated within the current calendar
-// month. Paid or unpaid both count — committed spend.
+// (via envelopeForOneoff - id-based with category fallback) dated within the current calendar
+// month. Paid or unpaid both count - committed spend.
 function envelopeSpent(r) {
   if (!recIsEnvelope(r)) return 0;
   const { startStr, endStr } = currentMonthBounds();
@@ -3165,7 +3165,7 @@ function envelopeForOneoff(o) {
   if (o.envelopeId) {
     const r = appData.recurring.find(x => x.id === o.envelopeId);
     if (r && r.enabled && recIsEnvelope(r)) return r;
-    // stale id (envelope deleted or kind toggled) — fall through to category match
+    // stale id (envelope deleted or kind toggled) - fall through to category match
   }
   if (!o.category) return null;
   const matches = appData.recurring.filter(r => r.enabled && recIsEnvelope(r) && r.category === o.category);
@@ -3264,8 +3264,8 @@ function buildRecRow(r) {
     if (recCanBeEnvelope(r)) {
       const isEnv = r.kind === 'envelope';
       catCell += '<div class="rec-kind-toggle" style="margin-top:4px">';
-      catCell += '<button type="button" class="rec-kind-btn' + (!isEnv ? ' active' : '') + '" onclick="event.stopPropagation();setRecEditKind(\'' + r.id + '\',\'fixed\')" title="Fixed bill — appears in Transactions and is marked paid">Fixed</button>';
-      catCell += '<button type="button" class="rec-kind-btn' + (isEnv ? ' active env' : '') + '" onclick="event.stopPropagation();setRecEditKind(\'' + r.id + '\',\'envelope\')" title="Envelope budget — one-offs assigned to this envelope deduct from the monthly budget">Envelope</button>';
+      catCell += '<button type="button" class="rec-kind-btn' + (!isEnv ? ' active' : '') + '" onclick="event.stopPropagation();setRecEditKind(\'' + r.id + '\',\'fixed\')" title="Fixed bill - appears in Transactions and is marked paid">Fixed</button>';
+      catCell += '<button type="button" class="rec-kind-btn' + (isEnv ? ' active env' : '') + '" onclick="event.stopPropagation();setRecEditKind(\'' + r.id + '\',\'envelope\')" title="Envelope budget - one-offs assigned to this envelope deduct from the monthly budget">Envelope</button>';
       catCell += '</div>';
     }
     if (r.direction === 'expense') {
@@ -4246,7 +4246,7 @@ function renderForecast() {
 
   let monthlyIncome = 0, monthlyExpense = 0;
   appData.recurring.filter(r => r.enabled).forEach(r => {
-    if (recIsSats(r)) return; // sats recurring excluded from fiat forecast — projected via BTC sim
+    if (recIsSats(r)) return; // sats recurring excluded from fiat forecast - projected via BTC sim
     const monthly = normalizeToMonthly(parseFloat(r.amount) || 0, r.frequency);
     if (r.direction === 'income') monthlyIncome += monthly;
     else if (r.direction === 'expense' || r.direction === 'btc-buy') monthlyExpense += monthly;
@@ -4571,7 +4571,7 @@ function renderForecast() {
   hoverArea.addEventListener('touchmove', function(e) { e.preventDefault(); fcHoverHandler(e.touches[0]); }, { passive: false });
   hoverArea.addEventListener('touchend', fcLeaveHandler);
 
-  // Update table rows — animate only added/removed rows
+  // Update table rows - animate only added/removed rows
   const tbody = document.getElementById('fc-tbody');
   const prevCount = tbody.children.length;
   const newCount = months.length;
@@ -4592,7 +4592,7 @@ function renderForecast() {
   }
 
   if (prevCount === 0) {
-    // First render — no animation
+    // First render - no animation
     tbody.innerHTML = months.map(m => buildRow(m, '')).join('');
   } else if (newCount > prevCount) {
     // Update existing rows in place, animate new ones in
@@ -4620,7 +4620,7 @@ function renderForecast() {
       }, { once: true });
     }
   } else {
-    // Same count — just update values
+    // Same count - just update values
     for (let i = 0; i < newCount; i++) {
       tbody.children[i].outerHTML = buildRow(months[i], '');
     }
@@ -4746,7 +4746,7 @@ function renderSyncSettings() {
 }
 
 // ── SYNC SETUP WIZARD ─────────────────────────────────────────────────────
-// In-flight wizard state — never persisted. The secretKey lives here only
+// In-flight wizard state - never persisted. The secretKey lives here only
 // while the wizard is open; on Cancel it is zeroed; on Finish ownership is
 // transferred to currentNsec.
 let _syncSetupState = null;
@@ -4804,7 +4804,7 @@ function syncSetupRenderModeContent() {
     const npub = npubFromSecret(_syncSetupState.secretKey);
     el.innerHTML =
       '<div class="settings-help" style="margin-bottom:10px">' +
-        'Save this sync key (nsec) somewhere safe — your password manager, an offline note, or a piece of paper. ' +
+        'Save this sync key (nsec) somewhere safe - your password manager, an offline note, or a piece of paper. ' +
         "You'll need it to add this account to other devices, and there's no recovery if it's lost." +
       '</div>' +
       '<div class="settings-section-label" style="margin-bottom:4px;text-align:left">Sync key (nsec)</div>' +
@@ -4833,10 +4833,10 @@ function syncSetupCopyNsec() {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(nsec).then(
       () => showToast('Sync key copied', 'success'),
-      () => showToast('Copy failed — select and copy manually', 'error')
+      () => showToast('Copy failed - select and copy manually', 'error')
     );
   } else {
-    showToast('Clipboard unavailable — select and copy manually', 'error');
+    showToast('Clipboard unavailable - select and copy manually', 'error');
   }
 }
 
@@ -4925,14 +4925,14 @@ async function syncSetupFinish() {
       try {
         fetchedEvent = await fetchLatestSyncEvent(relays, pubkeyHex);
       } catch (_) {
-        // Network failure — proceed without remote (user can Pull later)
+        // Network failure - proceed without remote (user can Pull later)
       }
 
       if (fetchedEvent) {
         const decrypted = parseSyncEvent(sk, fetchedEvent);
         if (!decrypted) {
           if (btn) { btn.disabled = false; btn.textContent = 'Enable sync'; }
-          showToast('Found existing sync data on relays, but it could not be decrypted with this nsec — wrong key?', 'error');
+          showToast('Found existing sync data on relays, but it could not be decrypted with this nsec - wrong key?', 'error');
           return;
         }
         try {
@@ -4984,13 +4984,13 @@ async function syncSetupFinish() {
       renderAll();
       showToast('Pulled existing sync data from relays', 'success');
     } else {
-      showToast('Sync enabled — publishing initial snapshot…', 'info');
+      showToast('Sync enabled - publishing initial snapshot…', 'info');
       pushSyncSnapshot().then(result => {
         if (!result) return;
         if (result.ok > 0) {
           showToast('Synced to ' + result.ok + '/' + result.total + ' relays', 'success');
         } else {
-          showToast('Could not reach any relay — try Push later', 'error');
+          showToast('Could not reach any relay - try Push later', 'error');
         }
       }).catch(err => {
         showToast('Push failed: ' + (err && err.message || err), 'error');
@@ -5002,7 +5002,7 @@ async function syncSetupFinish() {
   }
 }
 
-// Heuristic for "this device has nothing yet" — used when applying remote
+// Heuristic for "this device has nothing yet" - used when applying remote
 // sync data on first pair to skip the confirmation modal.
 function appDataIsEmpty(d) {
   if (!d) return true;
@@ -5197,7 +5197,7 @@ function retentionLabel(days) {
 
 async function setHistoryRetention(val) {
   const days = parseInt(val, 10) || 0; // 0 = keep everything
-  // Reducing the window permanently deletes entries on save — confirm first.
+  // Reducing the window permanently deletes entries on save - confirm first.
   if (days > 0) {
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     const toRemove = (appData.history || []).filter(h => new Date(h.paidAt).getTime() <= cutoff).length;
@@ -5217,7 +5217,7 @@ async function setHistoryRetention(val) {
 async function setDisplayUnit(unit) {
   if (unit !== 'fiat' && unit !== 'sats') return;
   if (unit === 'sats' && !btcPrice) {
-    showToast('BTC price unavailable — cannot denominate in sats', 'error');
+    showToast('BTC price unavailable - cannot denominate in sats', 'error');
     return;
   }
   displayUnit = unit;
@@ -5287,7 +5287,7 @@ function checkWhatsNew() {
     versionEl.style.display = '';
     listEl.innerHTML = entries[0].items.map(item => '<li>' + item + '</li>').join('');
   } else {
-    // Multiple versions to surface — hide the single-version label and use
+    // Multiple versions to surface - hide the single-version label and use
     // inline per-version section markers within the list instead.
     versionEl.style.display = 'none';
     let html = '';
@@ -5322,7 +5322,7 @@ function dismissWhatsNew() {
   localStorage.setItem(CHANGELOG_SEEN_KEY, APP_VERSION);
   // For existing users (previousSeen exists and is older than the sync release),
   // launch the sync mini-tour after a short delay so the modal close animation
-  // finishes first. First-run users don't hit this — they see the full tour from
+  // finishes first. First-run users don't hit this - they see the full tour from
   // setPassword and previousSeen is null.
   if (previousSeen && versionLt(previousSeen, SYNC_TOUR_INTRODUCED_IN) && !versionLt(APP_VERSION, SYNC_TOUR_INTRODUCED_IN)) {
     setTimeout(() => startSyncMiniTour(), 350);
@@ -5716,11 +5716,11 @@ async function markPaid(recurringId, oneoffId, date, btn, originalDate) {
     if (isIncomeSide) {
       appData.btcBalance += sats;
       entry.btcPriceAtTime = btcPrice;
-      toastMsg = 'Received: ' + entry.name + ' — +' + fmtSats(sats);
+      toastMsg = 'Received: ' + entry.name + ' - +' + fmtSats(sats);
     } else {
       appData.btcBalance -= sats;
       entry.btcPriceAtTime = btcPrice;
-      toastMsg = 'Paid: ' + entry.name + ' — −' + fmtSats(sats);
+      toastMsg = 'Paid: ' + entry.name + ' - −' + fmtSats(sats);
     }
   } else if (entry.direction === 'expense') {
     appData.balance -= entry.amount;
@@ -5731,9 +5731,9 @@ async function markPaid(recurringId, oneoffId, date, btn, originalDate) {
   } else if (entry.direction === 'btc-income') {
     appData.btcBalance += Math.round(entry.amount);
     entry.btcPriceAtTime = btcPrice;
-    toastMsg = 'Received: ' + entry.name + ' — +' + fmtSats(Math.round(entry.amount));
+    toastMsg = 'Received: ' + entry.name + ' - +' + fmtSats(Math.round(entry.amount));
   } else if (entry.direction === 'btc-buy') {
-    if (!btcPrice) { showToast('BTC price unavailable — cannot process', 'error'); return; }
+    if (!btcPrice) { showToast('BTC price unavailable - cannot process', 'error'); return; }
     const satsReceived = Math.round((entry.amount / btcPrice) * 1e8);
     appData.balance -= entry.amount;
     appData.btcBalance += satsReceived;
@@ -5989,10 +5989,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
 // ── GUIDED TOUR ──────────────────────────────────────────────────────────
 
-// Sync-specific steps — appended to the full first-run tour, AND used standalone
+// Sync-specific steps - appended to the full first-run tour, AND used standalone
 // as a "mini-tour" for existing users when they upgrade to a version that ships sync.
 const SYNC_TOUR_STEPS = [
-  { target: null, label: 'Cross-device sync', body: 'Cache Flow can now sync your data across devices over <strong>Nostr</strong>. Pair your phone, laptop, and tablet with a single <strong>sync key</strong> and changes on one device propagate to the others.<br><br>Your data stays end-to-end encrypted with NIP-44 — relay operators only see ciphertext. Off by default.' },
+  { target: null, label: 'Cross-device sync', body: 'Cache Flow can now sync your data across devices over <strong>Nostr</strong>. Pair your phone, laptop, and tablet with a single <strong>sync key</strong> and changes on one device propagate to the others.<br><br>Your data stays end-to-end encrypted with NIP-44 - relay operators only see ciphertext. Off by default.' },
   { target: '#settingsBtn', label: 'Where to set it up', body: 'Open <strong>Settings</strong> from the bottom bar, then click <strong>Configure sync…</strong> to start. The wizard will walk you through generating a fresh sync key (recommended) or pasting an existing one.', onEnter: () => switchTab('dashboard') }
 ];
 
