@@ -259,7 +259,13 @@
   .horizon-btn:disabled{opacity:.3;cursor:not-allowed;border-color:var(--border)}
   .collapse-all-btn{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:13px;letter-spacing:1px;padding:3px 8px;border-radius:3px;cursor:pointer;transition:all .15s;white-space:nowrap}
   .collapse-all-btn:hover{color:var(--accent);border-color:var(--accent-dim)}
-  .toggle-switch{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:13px;color:var(--text-dim);cursor:pointer}
+  /* Vertical padding grows the hit area to ~40px tall; the matching negative
+     margin cancels it so the toolbar row keeps its original height and the
+     spacing to Quick Add is untouched. The bare 16px target meant a near-miss
+     landed on .tx-toolbar, which has no handler, so nothing happened at all. */
+  .toggle-switch{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:13px;color:var(--text-dim);cursor:pointer;padding:12px 0;margin:-12px 0;border-radius:4px;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  .toggle-switch:active{background:var(--accent-glow)}
+  .toggle-switch:focus-visible{outline:1px solid var(--accent-dim);outline-offset:-1px}
   .toggle-track{width:28px;height:14px;border-radius:7px;background:var(--border);position:relative;transition:background .2s}
   .toggle-track.on{background:var(--accent-dim)}
   .toggle-knob{width:10px;height:10px;border-radius:50%;background:var(--text-dim);position:absolute;top:2px;left:2px;transition:all .2s}
@@ -3591,6 +3597,7 @@ async function deleteRecurringItem(id) {
 }
 
 let showPaidHistory = false;
+const PAID_FADE_BUDGET = 0.4; // seconds the whole paid-row fade-in may span
 let editingTxId = null;
 let txSearchQuery = '';
 let txCategoryFilter = '';
@@ -3672,7 +3679,7 @@ function renderTransactions() {
   html += '<button class="horizon-btn" onclick="event.stopPropagation();setHorizon(24)"' + (txHorizonMonths >= 24 ? ' disabled' : '') + '>&raquo;</button>';
   html += '</div>';
   html += '<div style="display:flex;align-items:center;gap:12px">';
-  html += '<div class="toggle-switch" onclick="togglePaidHistory()">';
+  html += '<div class="toggle-switch" role="switch" tabindex="0" aria-checked="' + (showPaidHistory ? 'true' : 'false') + '" onclick="togglePaidHistory()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();togglePaidHistory()}">';
   html += '<span>Show paid</span>';
   html += '<div class="toggle-track' + (showPaidHistory ? ' on' : '') + '"><div class="toggle-knob"></div></div>';
   html += '</div>';
@@ -3786,7 +3793,12 @@ function renderTransactions() {
       html += '</div>';
 
       if (clickable) {
-        html += '<div class="edit-panel-wrap" data-edit-for="' + editKey + '"' + (editingTxId !== editKey ? ' style="display:none"' : '') + '>' + renderEditPanel(editKey) + '</div>';
+        // Edit panels are built on demand. Rendering one per row meant every
+        // full form - name, amount, date and two populated <select>s - was
+        // constructed and parsed on every render, which is what made toggling
+        // Show paid or typing in the search box block for so long on a phone.
+        const panelOpen = editingTxId === editKey;
+        html += '<div class="edit-panel-wrap" data-edit-for="' + editKey + '"' + (panelOpen ? '' : ' style="display:none"') + '>' + (panelOpen ? renderEditPanel(editKey) : '') + '</div>';
       }
     });
     html += '</div>'; // close month body
@@ -3919,9 +3931,13 @@ function togglePaidHistory() {
   renderTransactions();
   if (showPaidHistory) {
     const rows = document.querySelectorAll('.tx-row.paid-row');
+    // Spread the stagger over a fixed budget instead of 0.04s per row. At 90
+    // paid rows the last one used to start 3.6s after the tap, and fadeUp's
+    // `both` fill held it invisible until then.
+    const step = Math.min(0.04, PAID_FADE_BUDGET / Math.max(rows.length, 1));
     rows.forEach((row, i) => {
       row.classList.add('paid-fade-in');
-      row.style.animationDelay = (i * 0.04) + 's';
+      row.style.animationDelay = (i * step).toFixed(3) + 's';
     });
   }
 }
@@ -3979,6 +3995,12 @@ function toggleEditTx(recurringId) {
   if (editingTxId) {
     const panel = document.querySelector('[data-edit-for="' + editingTxId + '"]');
     if (panel) {
+      // Built here rather than during the row loop - see renderTransactions.
+      if (!panel.firstChild) {
+        const built = renderEditPanel(editingTxId);
+        if (!built) { editingTxId = null; return; }
+        panel.innerHTML = built;
+      }
       panel.style.display = '';
       // Initialize the envelope picker (oneoff edits only) from the saved envelopeId
       const catEl = panel.querySelector('[data-env-field]');
@@ -4116,11 +4138,22 @@ async function toggleEnabled(id) {
 function animateRowOut(btn, callback) {
   const row = btn ? btn.closest('.tx-row') : null;
   if (!row) { callback(); return; }
-  row.classList.add('tx-removing');
-  row.addEventListener('animationend', () => {
+  // markPaid() awaits this, so the callback must fire no matter what. If a
+  // re-render tears the row out of the DOM mid-animation - toggling Show paid
+  // during the .3s slide-out did exactly that - animationend never arrives and
+  // the payment is lost: no balance change, no history entry, no toast.
+  let done = false;
+  let timer = null;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
     row.remove();
     callback();
-  }, { once: true });
+  };
+  row.classList.add('tx-removing');
+  row.addEventListener('animationend', finish, { once: true });
+  timer = setTimeout(finish, 600); // slideOut is .3s
 }
 
 function renderSummaryAndBalance() {
