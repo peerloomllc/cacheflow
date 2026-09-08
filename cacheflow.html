@@ -3689,7 +3689,7 @@ function renderTransactions() {
   html += '</div>';
 
   html += '<div style="padding:6px 16px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center">';
-  html += '<button class="collapse-all-btn" onclick="event.stopPropagation();toggleCollapseAll()">' + (txAllCollapsed ? 'Expand All' : 'Collapse All') + '</button>';
+  html += '<button class="collapse-all-btn" id="tx-collapse-all" onclick="event.stopPropagation();toggleCollapseAll()">' + (txAllCollapsed ? 'Expand All' : 'Collapse All') + '</button>';
   html += '</div>';
   html += '<div id="quick-add-form"></div>';
   html += '</div>'; // /tx-sticky-head
@@ -3798,28 +3798,67 @@ function renderTransactions() {
 
   html += '</div>';
   container.innerHTML = html;
+  syncCollapseAllLabel();
   const searchEl = document.getElementById('tx-search');
   if (searchEl && txSearchQuery) { searchEl.focus(); searchEl.selectionStart = searchEl.selectionEnd = searchEl.value.length; }
 }
 
+// Tear down whatever animation state a collapse body is carrying: the pending
+// transitionend handler, the safety timer and the inline styles the animation
+// needs. Every toggleCollapse() call starts here, so a handler left over from a
+// transition that never completed can no longer fire against a later one.
+function clearCollapseTransition(body) {
+  if (body._cfCollapseHandler) {
+    body.removeEventListener('transitionend', body._cfCollapseHandler);
+    body._cfCollapseHandler = null;
+  }
+  if (body._cfCollapseTimer) {
+    clearTimeout(body._cfCollapseTimer);
+    body._cfCollapseTimer = null;
+  }
+  body.style.transition = '';
+  body.style.overflow = '';
+  body.style.maxHeight = '';
+  body.style.opacity = '';
+}
+
 function toggleCollapse(body, arrow, collapsed) {
-  arrow.textContent = collapsed ? '\u25b6' : '\u25bc';
+  if (arrow) arrow.textContent = collapsed ? '\u25b6' : '\u25bc';
+  clearCollapseTransition(body);
+
+  // Already in the requested state, so there is nothing to animate. Bail out
+  // rather than starting a max-height transition from 0 to 0: that fires no
+  // transitionend, which used to strand a handler on the element and slam the
+  // section shut the next time it was opened.
+  const isHidden = body.style.display === 'none';
+  if (collapsed === isHidden) {
+    body.style.display = collapsed ? 'none' : '';
+    return;
+  }
+
+  const finish = () => {
+    clearCollapseTransition(body);
+    if (collapsed) body.style.display = 'none';
+  };
+  const arm = () => {
+    body._cfCollapseHandler = function (e) {
+      if (e.target !== body || e.propertyName !== 'max-height') return;
+      finish();
+    };
+    body.addEventListener('transitionend', body._cfCollapseHandler);
+    // transitionend can be skipped entirely - reduced motion, a backgrounded
+    // tab, a zero-height body - so never leave a section half animated.
+    body._cfCollapseTimer = setTimeout(finish, 600);
+  };
+
   if (collapsed) {
     body.style.overflow = 'hidden';
     body.style.transition = 'max-height .4s ease, opacity .4s ease';
     body.style.maxHeight = body.scrollHeight + 'px';
+    arm();
     requestAnimationFrame(() => {
       body.style.maxHeight = '0';
       body.style.opacity = '0';
-    });
-    body.addEventListener('transitionend', function handler(e) {
-      if (e.target !== body || e.propertyName !== 'max-height') return;
-      body.removeEventListener('transitionend', handler);
-      body.style.display = 'none';
-      body.style.transition = '';
-      body.style.overflow = '';
-      body.style.maxHeight = '';
-      body.style.opacity = '';
     });
   } else {
     body.style.display = '';
@@ -3827,19 +3866,24 @@ function toggleCollapse(body, arrow, collapsed) {
     body.style.maxHeight = '0';
     body.style.opacity = '0';
     body.style.transition = 'max-height .4s ease, opacity .4s ease';
+    arm();
     requestAnimationFrame(() => {
       body.style.maxHeight = body.scrollHeight + 'px';
       body.style.opacity = '1';
     });
-    body.addEventListener('transitionend', function handler(e) {
-      if (e.target !== body || e.propertyName !== 'max-height') return;
-      body.removeEventListener('transitionend', handler);
-      body.style.transition = '';
-      body.style.overflow = '';
-      body.style.maxHeight = '';
-      body.style.opacity = '';
-    });
   }
+}
+
+// Keep the Collapse All / Expand All button honest. txAllCollapsed alone cannot
+// be trusted: collapsing or expanding a single month changes what is on screen
+// without going through toggleCollapseAll().
+function syncCollapseAllLabel() {
+  const btn = document.getElementById('tx-collapse-all');
+  if (!btn) return;
+  const headers = Array.from(document.querySelectorAll('[data-month-header]'));
+  const anyExpanded = headers.some(h => !collapsedMonths[h.dataset.monthHeader]);
+  txAllCollapsed = headers.length > 0 && !anyExpanded;
+  btn.textContent = txAllCollapsed ? 'Expand All' : 'Collapse All';
 }
 
 function toggleMonth(key) {
@@ -3848,22 +3892,26 @@ function toggleMonth(key) {
   const body = document.querySelector('[data-month-body="' + key + '"]');
   if (header && body) {
     toggleCollapse(body, header.querySelector('.collapse-arrow'), collapsedMonths[key]);
+    syncCollapseAllLabel();
   } else {
     renderTransactions();
   }
 }
 
 function toggleCollapseAll() {
-  txAllCollapsed = !txAllCollapsed;
-  const monthHeaders = document.querySelectorAll('[data-month-header]');
+  const monthHeaders = Array.from(document.querySelectorAll('[data-month-header]'));
+  // Decide from what is actually open, not from the last button press. If any
+  // month is still expanded the button collapses everything, otherwise it
+  // expands everything - so one tap always does what the label says.
+  const anyExpanded = monthHeaders.some(h => !collapsedMonths[h.dataset.monthHeader]);
+  txAllCollapsed = anyExpanded;
   monthHeaders.forEach(h => {
     const key = h.dataset.monthHeader;
     collapsedMonths[key] = txAllCollapsed;
     const body = document.querySelector('[data-month-body="' + key + '"]');
     if (body) toggleCollapse(body, h.querySelector('.collapse-arrow'), txAllCollapsed);
   });
-  const btn = document.querySelector('[onclick="event.stopPropagation();toggleCollapseAll()"]');
-  if (btn) btn.textContent = txAllCollapsed ? 'Expand All' : 'Collapse All';
+  syncCollapseAllLabel();
 }
 
 function togglePaidHistory() {
