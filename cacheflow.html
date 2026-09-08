@@ -1092,8 +1092,14 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.13.0';
+const APP_VERSION = '1.13.1';
 const CHANGELOG = [
+  { version: '1.13.1', items: [
+    'Fixed: marking something paid could be silently dropped. If the list redrew at the moment you tapped Paid - turning "Show paid" on at the same time, for example - the payment was abandoned partway: your balance never changed, nothing was recorded and no confirmation appeared, yet the item still sat there looking unpaid. Marking paid now always completes',
+    'Fixed: month sections on the Transactions tab could get permanently stuck shut. Once it happened, Collapse All, Expand All and tapping the month header itself all failed to reopen that month until the page was reloaded',
+    'Collapse All and Expand All now always do what the label says. Previously, once you had opened or closed a month by hand, the button could do the opposite of its label or nothing at all',
+    '"Show paid" responds much faster, especially on a phone with a long history. The toggle is also a bigger tap target and lights up when tapped, so a near-miss is obvious'
+  ]},
   { version: '1.13.0', items: [
     'Month-to-Date Expenses card: new month dropdown to look back at previous months’ spending, not just the current one. The card reads "Month-to-Date Expenses" for the current (partial) month and "Monthly Expenses" for a completed past month. How far back you can look depends on the new History Retention setting',
     'Settings: new History Retention option (30 days / 90 days / 6 months / 1 year / Keep everything). Paid & received transactions older than the chosen window are pruned on save - previously history was always trimmed to 30 days. Shrinking the window asks for confirmation before removing anything',
