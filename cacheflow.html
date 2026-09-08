@@ -829,11 +829,16 @@
           <input type="checkbox" id="export-mask-amounts">
           <span class="settings-help" style="margin:0">Mask amounts in export</span>
         </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:6px">
+          <input type="checkbox" id="export-encrypt" onchange="if(!this.checked)cancelEncryptedExport()">
+          <span class="settings-help" style="margin:0">Encrypt export with a password</span>
+        </label>
+        <div id="export-encrypt-panel"></div>
         <div id="backup-import-preview"></div>
         <div style="margin-top:6px">
           <button class="settings-btn danger" onclick="clearAllData()">Clear All Data</button>
         </div>
-        <div class="settings-help">Export saves an unencrypted backup. Mask amounts replaces every figure with *** so the file can be shared safely, but it can no longer be restored. Import restores a Cache Flow backup. Clear permanently removes all data.</div>
+        <div class="settings-help">Export saves a backup. Mask amounts replaces every figure with *** so the file can be shared safely, but it can no longer be restored. Encrypt asks for a password and locks the file with it; Import prompts for that password when you restore it. Clear permanently removes all data.</div>
       </div>
 
       <div class="settings-section ga-history">
@@ -4759,6 +4764,9 @@ function openSettings() {
   const curRet = appData.settings.historyRetentionDays == null ? 30 : appData.settings.historyRetentionDays;
   retSel.innerHTML = [[30,'30 days'],[90,'90 days'],[180,'6 months'],[365,'1 year'],[0,'Keep everything']]
     .map(([v,l]) => '<option value="' + v + '"' + (v === curRet ? ' selected' : '') + '>' + l + '</option>').join('');
+  // Never reopen the modal holding a password someone typed last time.
+  cancelEncryptedExport();
+  cancelBackupImport();
   document.getElementById('settings-modal').classList.remove('hidden');
 }
 
@@ -5342,6 +5350,8 @@ function applyPrivacyMode() {
 }
 
 function closeSettings() {
+  cancelEncryptedExport();
+  cancelBackupImport();
   document.getElementById('settings-modal').classList.add('hidden');
 }
 
@@ -5605,36 +5615,129 @@ function maskAmounts(value) {
   return value;
 }
 
-function exportJSON() {
+// An encrypted export is a small envelope around the same AES-256-GCM payload
+// the app already writes to localStorage, with its own salt so the file password
+// is independent of the app password. Version it: a future format change has to
+// be told apart from a corrupt file when someone restores a year-old backup.
+const ENC_EXPORT_MAGIC = 'cacheflow-encrypted-backup';
+const ENC_EXPORT_VERSION = 1;
+
+function exportOptions() {
   const maskEl = document.getElementById('export-mask-amounts');
-  const mask = !!(maskEl && maskEl.checked);
+  const encEl = document.getElementById('export-encrypt');
+  return { mask: !!(maskEl && maskEl.checked), encrypt: !!(encEl && encEl.checked) };
+}
 
-  let payload = appData;
-  if (mask) {
-    payload = maskAmounts(appData);
-    payload._masked = true;
-    // A masked export exists to be handed to someone else, so the sync identity
-    // goes too. The nsec is encrypted at rest, the npub is not and names the user.
-    if (payload.sync) {
-      if (payload.sync.encryptedNsec) payload.sync.encryptedNsec = MASK_TOKEN;
-      if (payload.sync.npub) payload.sync.npub = MASK_TOKEN;
-    }
+function buildExportPayload(mask) {
+  if (!mask) return appData;
+  const payload = maskAmounts(appData);
+  payload._masked = true;
+  // A masked export exists to be handed to someone else, so the sync identity
+  // goes too. The nsec is encrypted at rest, the npub is not and names the user.
+  if (payload.sync) {
+    if (payload.sync.encryptedNsec) payload.sync.encryptedNsec = MASK_TOKEN;
+    if (payload.sync.npub) payload.sync.npub = MASK_TOKEN;
   }
+  return payload;
+}
 
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+function downloadExport(obj, filename) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'cacheflow-' + (mask ? 'masked-' : '') + toDateStr(new Date()) + '.json';
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function exportFilename(mask, encrypted) {
+  return 'cacheflow-' + (mask ? 'masked-' : '') + (encrypted ? 'encrypted-' : '') + toDateStr(new Date()) + '.json';
+}
+
+function exportJSON() {
+  const { mask, encrypt } = exportOptions();
+  if (encrypt) { showExportPasswordPrompt(); return; }
+
+  downloadExport(buildExportPayload(mask), exportFilename(mask, false));
   closeSettings();
   showToast(mask ? 'Exported masked cacheflow backup' : 'Exported cacheflow backup', 'success');
+}
+
+// ── ENCRYPTED EXPORT ──────────────────────────────────────────────────────
+
+function showExportPasswordPrompt() {
+  const el = document.getElementById('export-encrypt-panel');
+  if (!el) return;
+  el.innerHTML = '<div class="import-preview">' +
+    'Choose a password for this file. It is separate from your app password, and it cannot be recovered - lose it and the backup is gone.' +
+    '<input type="password" class="settings-input" id="export-pw" placeholder="Password (8 characters minimum)" style="margin-top:8px;cursor:text" autocomplete="new-password">' +
+    '<input type="password" class="settings-input" id="export-pw2" placeholder="Confirm password" style="margin-top:6px;cursor:text" autocomplete="new-password">' +
+    '<div id="export-pw-error" style="color:var(--negative);font-size:13px;min-height:16px;margin-top:6px"></div>' +
+    '<div style="display:flex;justify-content:center;gap:8px">' +
+    '<button class="form-btn" id="export-pw-go" onclick="confirmEncryptedExport()">Encrypt &amp; Export</button>' +
+    '<button class="form-btn cancel" onclick="cancelEncryptedExport()">Cancel</button></div></div>';
+
+  const go = () => confirmEncryptedExport();
+  ['export-pw', 'export-pw2'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  });
+  document.getElementById('export-pw').focus();
+}
+
+function cancelEncryptedExport() {
+  const el = document.getElementById('export-encrypt-panel');
+  if (el) el.innerHTML = '';
+}
+
+async function confirmEncryptedExport() {
+  const pw = (document.getElementById('export-pw') || {}).value || '';
+  const pw2 = (document.getElementById('export-pw2') || {}).value || '';
+  const errEl = document.getElementById('export-pw-error');
+  const btn = document.getElementById('export-pw-go');
+  if (!errEl || !btn) return;
+  errEl.textContent = '';
+
+  if (pw.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if (pw !== pw2) { errEl.textContent = 'Passwords do not match.'; return; }
+
+  // Key derivation is 310k PBKDF2 rounds and takes about a second, so the
+  // button has to say something or it reads as a dead tap.
+  btn.disabled = true;
+  btn.textContent = 'Encrypting\u2026';
+
+  try {
+    const { mask } = exportOptions();
+    const salt = crypto.getRandomValues(new Uint8Array(32));
+    const key = await deriveKey(pw, salt);
+    const { iv, ct } = await encryptPayload(JSON.stringify(buildExportPayload(mask)), key);
+
+    downloadExport({
+      _cacheflow: ENC_EXPORT_MAGIC,
+      version: ENC_EXPORT_VERSION,
+      kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations: PBKDF2_ITERS },
+      cipher: 'AES-GCM',
+      salt: buf2b64(salt),
+      iv: iv,
+      ct: ct,
+      masked: mask,
+      exportedAt: new Date().toISOString()
+    }, exportFilename(mask, true));
+
+    cancelEncryptedExport();
+    closeSettings();
+    showToast(mask ? 'Exported encrypted masked backup' : 'Exported encrypted backup', 'success');
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Encrypt & Export';
+    errEl.textContent = 'Could not encrypt: ' + e.message;
+  }
 }
 
 // ── IMPORT CACHEFLOW BACKUP ──────────────────────────────────────────────
 
 let pendingBackupData = null;
+let pendingEncryptedBackup = null;
 
 async function handleBackupImport(event) {
   const file = event.target.files[0];
@@ -5645,35 +5748,105 @@ async function handleBackupImport(event) {
     const text = await file.text();
     const json = JSON.parse(text);
 
-    if (!Array.isArray(json.recurring)) {
-      showToast('Not a valid Cache Flow backup', 'error');
+    if (json && json._cacheflow === ENC_EXPORT_MAGIC) {
+      if (json.version > ENC_EXPORT_VERSION) {
+        showToast('That backup was written by a newer version of Cache Flow', 'error');
+        return;
+      }
+      pendingEncryptedBackup = json;
+      showImportPasswordPrompt(json);
       return;
     }
 
-    if (json._masked) {
-      showToast('That backup has masked amounts and cannot be restored', 'error');
-      return;
-    }
-
-    pendingBackupData = json;
-
-    const rCount = json.recurring.length;
-    const hCount = (json.history || []).length;
-    const bal = typeof json.balance === 'number' ? fmtMoney(json.balance) : '—';
-    const btc = typeof json.btcBalance === 'number' && json.btcBalance > 0 ? fmtSats(json.btcBalance) : null;
-    const saved = json.savedAt ? new Date(json.savedAt).toLocaleDateString() : 'unknown';
-
-    let summary = 'Backup from ' + saved + '<br>' +
-      'Balance: ' + bal + (btc ? ' &nbsp;|&nbsp; BTC: ' + btc : '') + '<br>' +
-      rCount + ' recurring items, ' + hCount + ' history entries';
-
-    const preview = document.getElementById('backup-import-preview');
-    preview.innerHTML = '<div class="import-preview">' + summary + '<br><br>' +
-      '<div style="display:flex;justify-content:center;gap:8px;margin-top:4px">' +
-      '<button class="form-btn" onclick="confirmBackupImport()">Restore Backup</button>' +
-      '<button class="form-btn cancel" onclick="cancelBackupImport()">Cancel</button></div></div>';
+    presentBackupPreview(json);
   } catch (e) {
     showToast('Invalid JSON file: ' + e.message, 'error');
+  }
+}
+
+// Renders the confirm-and-restore preview for a decoded backup, whichever way
+// it arrived: a plain file, or the plaintext out of an encrypted one.
+function presentBackupPreview(json) {
+  if (!json || !Array.isArray(json.recurring)) {
+    showToast('Not a valid Cache Flow backup', 'error');
+    return;
+  }
+
+  if (json._masked) {
+    showToast('That backup has masked amounts and cannot be restored', 'error');
+    return;
+  }
+
+  pendingBackupData = json;
+
+  const rCount = json.recurring.length;
+  const hCount = (json.history || []).length;
+  const bal = typeof json.balance === 'number' ? fmtMoney(json.balance) : '—';
+  const btc = typeof json.btcBalance === 'number' && json.btcBalance > 0 ? fmtSats(json.btcBalance) : null;
+  const saved = json.savedAt ? new Date(json.savedAt).toLocaleDateString() : 'unknown';
+
+  let summary = 'Backup from ' + saved + '<br>' +
+    'Balance: ' + bal + (btc ? ' &nbsp;|&nbsp; BTC: ' + btc : '') + '<br>' +
+    rCount + ' recurring items, ' + hCount + ' history entries';
+
+  const preview = document.getElementById('backup-import-preview');
+  preview.innerHTML = '<div class="import-preview">' + summary + '<br><br>' +
+    '<div style="display:flex;justify-content:center;gap:8px;margin-top:4px">' +
+    '<button class="form-btn" onclick="confirmBackupImport()">Restore Backup</button>' +
+    '<button class="form-btn cancel" onclick="cancelBackupImport()">Cancel</button></div></div>';
+}
+
+function showImportPasswordPrompt(env) {
+  const preview = document.getElementById('backup-import-preview');
+  if (!preview) return;
+  const when = env.exportedAt ? new Date(env.exportedAt).toLocaleDateString() : 'unknown';
+  preview.innerHTML = '<div class="import-preview">' +
+    'Encrypted backup from ' + escHtml(when) + '.' + (env.masked ? ' Amounts in it are masked.' : '') +
+    '<input type="password" class="settings-input" id="import-pw" placeholder="Backup password" style="margin-top:8px;cursor:text" autocomplete="current-password">' +
+    '<div id="import-pw-error" style="color:var(--negative);font-size:13px;min-height:16px;margin-top:6px"></div>' +
+    '<div style="display:flex;justify-content:center;gap:8px">' +
+    '<button class="form-btn" id="import-pw-go" onclick="confirmImportDecrypt()">Unlock Backup</button>' +
+    '<button class="form-btn cancel" onclick="cancelBackupImport()">Cancel</button></div></div>';
+
+  const input = document.getElementById('import-pw');
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') confirmImportDecrypt(); });
+  input.focus();
+}
+
+async function confirmImportDecrypt() {
+  const env = pendingEncryptedBackup;
+  if (!env) return;
+  const pw = (document.getElementById('import-pw') || {}).value || '';
+  const errEl = document.getElementById('import-pw-error');
+  const btn = document.getElementById('import-pw-go');
+  if (!errEl || !btn) return;
+  errEl.textContent = '';
+  if (!pw) { errEl.textContent = 'Enter the backup password.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Unlocking\u2026';
+
+  let plain;
+  try {
+    // AES-GCM authenticates, so a wrong password fails here rather than
+    // producing garbage that then fails to parse.
+    const key = await deriveKey(pw, b642buf(env.salt));
+    plain = await decryptPayload(env.iv, env.ct, key);
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Unlock Backup';
+    errEl.textContent = 'Wrong password, or the file is damaged.';
+    return;
+  }
+
+  try {
+    const json = JSON.parse(plain);
+    pendingEncryptedBackup = null;
+    presentBackupPreview(json);
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Unlock Backup';
+    errEl.textContent = 'Unlocked, but the contents are not readable.';
   }
 }
 
@@ -5715,6 +5888,7 @@ async function confirmBackupImport() {
 
 function cancelBackupImport() {
   pendingBackupData = null;
+  pendingEncryptedBackup = null;
   document.getElementById('backup-import-preview').innerHTML = '';
 }
 
