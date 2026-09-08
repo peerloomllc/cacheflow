@@ -1104,8 +1104,13 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.13.1';
+const APP_VERSION = '1.14.0';
 const CHANGELOG = [
+  { version: '1.14.0', items: [
+    'Export JSON can now hide your amounts. Tick "Mask amounts in export" and every figure in the saved file is replaced with ***, while names, categories and dates stay readable. You can hand the file to someone, or send it with a bug report, without showing what you have. A masked file cannot be restored, and Cache Flow says so if you try',
+    'Export JSON can now be locked with a password. Tick "Encrypt export with a password", choose one, and the saved file is scrambled so nobody can read it. Importing that file asks for the password before it restores anything. The file password is separate from your app password and cannot be recovered, so keep it somewhere safe',
+    'The two options work together, so a backup can be both masked and password-locked'
+  ]},
   { version: '1.13.1', items: [
     'Fixed: marking something paid could be silently dropped. If the list redrew at the moment you tapped Paid - turning "Show paid" on at the same time, for example - the payment was abandoned partway: your balance never changed, nothing was recorded and no confirmation appeared, yet the item still sat there looking unpaid. Marking paid now always completes',
     'Fixed: month sections on the Transactions tab could get permanently stuck shut. Once it happened, Collapse All, Expand All and tapping the month header itself all failed to reopen that month until the page was reloaded',
