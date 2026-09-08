@@ -825,11 +825,15 @@
           <button class="settings-btn" onclick="document.getElementById('import-backup-file').click()" style="flex:1">Import JSON</button>
         </div>
         <input type="file" id="import-backup-file" accept=".json" style="display:none" onchange="handleBackupImport(event)">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+          <input type="checkbox" id="export-mask-amounts">
+          <span class="settings-help" style="margin:0">Mask amounts in export</span>
+        </label>
         <div id="backup-import-preview"></div>
         <div style="margin-top:6px">
           <button class="settings-btn danger" onclick="clearAllData()">Clear All Data</button>
         </div>
-        <div class="settings-help">Export saves an unencrypted backup. Import restores a Cache Flow backup. Clear permanently removes all data.</div>
+        <div class="settings-help">Export saves an unencrypted backup. Mask amounts replaces every figure with *** so the file can be shared safely, but it can no longer be restored. Import restores a Cache Flow backup. Clear permanently removes all data.</div>
       </div>
 
       <div class="settings-section ga-history">
@@ -5579,16 +5583,53 @@ function cancelImport() {
 
 // ── EXPORT ────────────────────────────────────────────────────────────────
 
+const MASK_TOKEN = '***';
+
+// Every key in appData that carries a money figure, at any depth. A masked
+// export swaps each one for MASK_TOKEN and leaves names, categories, dates and
+// frequencies readable, so the file shows the shape of the budget without the
+// numbers. btcPriceAtTime is left alone: it is the public market price, and
+// with amount and satsReceived masked it reveals nothing about the holding.
+const MASKED_FIELDS = ['amount', 'balance', 'btcBalance', 'satsReceived'];
+
+function maskAmounts(value) {
+  if (Array.isArray(value)) return value.map(maskAmounts);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const k in value) {
+      const v = value[k];
+      out[k] = (MASKED_FIELDS.indexOf(k) !== -1 && v != null) ? MASK_TOKEN : maskAmounts(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 function exportJSON() {
-  const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+  const maskEl = document.getElementById('export-mask-amounts');
+  const mask = !!(maskEl && maskEl.checked);
+
+  let payload = appData;
+  if (mask) {
+    payload = maskAmounts(appData);
+    payload._masked = true;
+    // A masked export exists to be handed to someone else, so the sync identity
+    // goes too. The nsec is encrypted at rest, the npub is not and names the user.
+    if (payload.sync) {
+      if (payload.sync.encryptedNsec) payload.sync.encryptedNsec = MASK_TOKEN;
+      if (payload.sync.npub) payload.sync.npub = MASK_TOKEN;
+    }
+  }
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'cacheflow-' + toDateStr(new Date()) + '.json';
+  a.download = 'cacheflow-' + (mask ? 'masked-' : '') + toDateStr(new Date()) + '.json';
   a.click();
   URL.revokeObjectURL(url);
   closeSettings();
-  showToast('Exported cacheflow backup', 'success');
+  showToast(mask ? 'Exported masked cacheflow backup' : 'Exported cacheflow backup', 'success');
 }
 
 // ── IMPORT CACHEFLOW BACKUP ──────────────────────────────────────────────
@@ -5606,6 +5647,11 @@ async function handleBackupImport(event) {
 
     if (!Array.isArray(json.recurring)) {
       showToast('Not a valid Cache Flow backup', 'error');
+      return;
+    }
+
+    if (json._masked) {
+      showToast('That backup has masked amounts and cannot be restored', 'error');
       return;
     }
 
