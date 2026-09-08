@@ -348,6 +348,9 @@
   .cc-act.danger:hover{border-color:var(--red-dim);color:var(--red);background:var(--red-glow)}
   .cc-empty{font-family:var(--mono);font-size:14px;color:var(--text-dim);text-align:center;padding:8px 0}
   .import-preview{font-family:var(--mono);font-size:15px;color:var(--text-muted);padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;margin-top:8px}
+  .import-preview .form-btn-row{display:flex;gap:8px;margin-top:10px}
+  .import-preview .form-btn-row .form-btn{flex:1}
+  #export-encrypt-panel:empty,#backup-import-preview:empty{display:none}
 
   /* ── BALANCE EDITOR ── */
 
@@ -825,11 +828,11 @@
           <button class="settings-btn" onclick="document.getElementById('import-backup-file').click()" style="flex:1">Import JSON</button>
         </div>
         <input type="file" id="import-backup-file" accept=".json" style="display:none" onchange="handleBackupImport(event)">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="export-mask-amounts">
           <span class="settings-help" style="margin:0">Mask amounts in export</span>
         </label>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="export-encrypt" onchange="if(!this.checked)cancelEncryptedExport()">
           <span class="settings-help" style="margin:0">Encrypt export with a password</span>
         </label>
@@ -5672,17 +5675,17 @@ function showExportPasswordPrompt() {
   el.innerHTML = '<div class="import-preview">' +
     'Choose a password for this file. It is separate from your app password, and it cannot be recovered - lose it and the backup is gone.' +
     '<input type="password" class="settings-input" id="export-pw" placeholder="Password (8 characters minimum)" style="margin-top:8px;cursor:text" autocomplete="new-password">' +
-    '<input type="password" class="settings-input" id="export-pw2" placeholder="Confirm password" style="margin-top:6px;cursor:text" autocomplete="new-password">' +
-    '<div id="export-pw-error" style="color:var(--negative);font-size:13px;min-height:16px;margin-top:6px"></div>' +
-    '<div style="display:flex;justify-content:center;gap:8px">' +
-    '<button class="form-btn" id="export-pw-go" onclick="confirmEncryptedExport()">Encrypt &amp; Export</button>' +
+    '<input type="password" class="settings-input" id="export-pw2" placeholder="Confirm password" style="margin-top:8px;cursor:text" autocomplete="new-password">' +
+    '<div class="lock-error" id="export-pw-error" style="margin-top:8px"></div>' +
+    '<div class="form-btn-row">' +
+    '<button class="form-btn" id="export-pw-go" onclick="confirmEncryptedExport()">Encrypt</button>' +
     '<button class="form-btn cancel" onclick="cancelEncryptedExport()">Cancel</button></div></div>';
 
-  const go = () => confirmEncryptedExport();
-  ['export-pw', 'export-pw2'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
-  });
-  document.getElementById('export-pw').focus();
+  const pw1 = document.getElementById('export-pw');
+  const pw2 = document.getElementById('export-pw2');
+  pw1.addEventListener('keydown', e => { if (e.key === 'Enter') pw2.focus(); });
+  pw2.addEventListener('keydown', e => { if (e.key === 'Enter') confirmEncryptedExport(); });
+  pw1.focus();
 }
 
 function cancelEncryptedExport() {
@@ -5729,7 +5732,7 @@ async function confirmEncryptedExport() {
     showToast(mask ? 'Exported encrypted masked backup' : 'Exported encrypted backup', 'success');
   } catch (e) {
     btn.disabled = false;
-    btn.textContent = 'Encrypt & Export';
+    btn.textContent = 'Encrypt';
     errEl.textContent = 'Could not encrypt: ' + e.message;
   }
 }
@@ -5790,8 +5793,8 @@ function presentBackupPreview(json) {
     rCount + ' recurring items, ' + hCount + ' history entries';
 
   const preview = document.getElementById('backup-import-preview');
-  preview.innerHTML = '<div class="import-preview">' + summary + '<br><br>' +
-    '<div style="display:flex;justify-content:center;gap:8px;margin-top:4px">' +
+  preview.innerHTML = '<div class="import-preview">' + summary +
+    '<div class="form-btn-row">' +
     '<button class="form-btn" onclick="confirmBackupImport()">Restore Backup</button>' +
     '<button class="form-btn cancel" onclick="cancelBackupImport()">Cancel</button></div></div>';
 }
@@ -5803,9 +5806,9 @@ function showImportPasswordPrompt(env) {
   preview.innerHTML = '<div class="import-preview">' +
     'Encrypted backup from ' + escHtml(when) + '.' + (env.masked ? ' Amounts in it are masked.' : '') +
     '<input type="password" class="settings-input" id="import-pw" placeholder="Backup password" style="margin-top:8px;cursor:text" autocomplete="current-password">' +
-    '<div id="import-pw-error" style="color:var(--negative);font-size:13px;min-height:16px;margin-top:6px"></div>' +
-    '<div style="display:flex;justify-content:center;gap:8px">' +
-    '<button class="form-btn" id="import-pw-go" onclick="confirmImportDecrypt()">Unlock Backup</button>' +
+    '<div class="lock-error" id="import-pw-error" style="margin-top:8px"></div>' +
+    '<div class="form-btn-row">' +
+    '<button class="form-btn" id="import-pw-go" onclick="confirmImportDecrypt()">Unlock</button>' +
     '<button class="form-btn cancel" onclick="cancelBackupImport()">Cancel</button></div></div>';
 
   const input = document.getElementById('import-pw');
@@ -5834,7 +5837,7 @@ async function confirmImportDecrypt() {
     plain = await decryptPayload(env.iv, env.ct, key);
   } catch (e) {
     btn.disabled = false;
-    btn.textContent = 'Unlock Backup';
+    btn.textContent = 'Unlock';
     errEl.textContent = 'Wrong password, or the file is damaged.';
     return;
   }
@@ -5845,7 +5848,7 @@ async function confirmImportDecrypt() {
     presentBackupPreview(json);
   } catch (e) {
     btn.disabled = false;
-    btn.textContent = 'Unlock Backup';
+    btn.textContent = 'Unlock';
     errEl.textContent = 'Unlocked, but the contents are not readable.';
   }
 }
