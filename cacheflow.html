@@ -1151,8 +1151,11 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 // ── CONSTANTS & STATE ────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION = '1.14.0';
+const APP_VERSION = '1.14.1';
 const CHANGELOG = [
+  { version: '1.14.1', items: [
+    'Fonts and charts are now built into the app, so opening it no longer contacts Google Fonts or an outside server. Everything looks and works the same'
+  ]},
   { version: '1.14.0', items: [
     'Export JSON can now hide your amounts. Tick "Mask amounts in export" and every figure in the saved file is replaced with ***, while names, categories and dates stay readable. You can hand the file to someone, or send it with a bug report, without showing what you have. A masked file cannot be restored, and Cache Flow says so if you try',
     'Export JSON can now be locked with a password. Tick "Encrypt export with a password", choose one, and the saved file is scrambled so nobody can read it. Importing that file asks for the password before it restores anything. The file password is separate from your app password and cannot be recovered, so keep it somewhere safe',
